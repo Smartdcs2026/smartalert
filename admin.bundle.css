@@ -22310,3 +22310,134 @@ body.admin-page .admin-editor__header .icon-text-button {
     padding: 10px !important;
   }
 }
+
+/* ============================================================
+ * SMARTALERT MODULE EDITOR FINAL CHECKBOX + FOOTER FIX
+ * Build: 2026.07.20-editor-checkbox-footer-r1
+ * สาเหตุเดิม: กฎ input ทั่วไป width:100% ไปครอบ checkbox
+ * ============================================================ */
+body.admin-page #adminModuleForm input[type="checkbox"],
+body.admin-page #adminModuleForm .admin-toggle input[type="checkbox"],
+body.admin-page #adminModuleForm .admin-dynamic-checks input[type="checkbox"] {
+  appearance: auto !important;
+  -webkit-appearance: checkbox !important;
+  display: inline-block !important;
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  max-width: 20px !important;
+  min-height: 20px !important;
+  max-height: 20px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  flex: 0 0 20px !important;
+  box-sizing: border-box !important;
+}
+
+body.admin-page #adminModuleForm .admin-toggle-grid {
+  grid-template-columns: repeat(5, minmax(180px, 1fr)) !important;
+  align-items: stretch !important;
+}
+
+body.admin-page #adminModuleForm .admin-toggle {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 10px !important;
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 52px !important;
+  height: auto !important;
+  padding: 10px 12px !important;
+  overflow: hidden !important;
+}
+
+body.admin-page #adminModuleForm .admin-toggle > span {
+  display: block !important;
+  min-width: 0 !important;
+  width: auto !important;
+  max-width: 100% !important;
+  color: #1e293b !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  line-height: 1.3 !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere !important;
+  writing-mode: horizontal-tb !important;
+}
+
+body.admin-page #adminModuleForm .admin-toggle--feature > span {
+  display: grid !important;
+  gap: 3px !important;
+}
+
+body.admin-page #adminModuleForm .admin-toggle--feature strong,
+body.admin-page #adminModuleForm .admin-toggle--feature small {
+  display: block !important;
+  min-width: 0 !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  writing-mode: horizontal-tb !important;
+}
+
+body.admin-page #adminModuleForm .admin-toggle--feature strong {
+  font-size: 12px !important;
+  line-height: 1.25 !important;
+}
+
+body.admin-page #adminModuleForm .admin-toggle--feature small {
+  color: #64748b !important;
+  font-size: 10px !important;
+  line-height: 1.35 !important;
+}
+
+body.admin-page #adminModuleForm .admin-dynamic-checks {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 8px 14px !important;
+}
+
+body.admin-page #adminModuleForm .admin-dynamic-checks label {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 6px !important;
+  width: auto !important;
+  min-width: 0 !important;
+  white-space: nowrap !important;
+}
+
+body.admin-page .admin-editor__footer {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  justify-self: stretch !important;
+  align-self: stretch !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 1380px) {
+  body.admin-page #adminModuleForm .admin-toggle-grid {
+    grid-template-columns: repeat(3, minmax(180px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  body.admin-page #adminModuleForm .admin-toggle-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 580px) {
+  body.admin-page #adminModuleForm .admin-toggle-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.admin-page #adminModuleForm .admin-toggle--feature {
+    grid-column: 1 !important;
+  }
+}
