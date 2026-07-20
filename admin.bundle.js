@@ -1,7 +1,7 @@
 /*
  * AlertVendor Consolidated Bundle
  * Output: github-pages/admin.bundle.js
- * Build: 20260720-admin-shift-timeout-fullpage-r1
+ * Build: 20260720-clean-editor-rebuild-r2
  * Generated: 2026-07-20 00:02:45
  * Mode: concatenate-only / no business logic rewrite
  */
