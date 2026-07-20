@@ -8164,7 +8164,7 @@
     'alertvendor:checkout-pending:v2:';
   const CHECKOUT_VERIFY_ATTEMPTS = 3;
   const RECEIVING_COMMITTED_OVERLAY_PREFIX =
-    'alertvendor:receiving-handoff:v2:';
+    'smartalert:receiving-handoff:v1:';
   const RECEIVING_COMMITTED_OVERLAY_MAX_AGE_MS =
     24 * 60 * 60 * 1000;
   let receivingCommittedOverlayCache = null;
@@ -18606,7 +18606,7 @@
 
 (function (window, document) {
   const BUILD = '2026.07.20-round11-revision2-receiving-one-click-v1';
-  const STORAGE_PREFIX = 'alertvendor:receiving-command:v2:';
+  const STORAGE_PREFIX = 'smartalert:receiving-command:v1:';
   const MAX_ITEM_AGE_MS = 24 * 60 * 60 * 1000;
   const SEND_RETRY_MIN_MS = 2500;
   const SEND_RETRY_MAX_MS = 60000;
@@ -21988,7 +21988,7 @@
         measureLayout();
       });
     });
-    document.addEventListener('alertvendor:receiving-card-state', handleReceivingCardState);
+    document.addEventListener('smartalert:receiving-card-state', handleReceivingCardState);
   }
 
   function scheduleMeasure() {
