@@ -11,237 +11,35 @@
   <title>Dashboard | SmartAlert Vendor Workflow</title>
   <link rel="manifest" href="../manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="64x64" href="../icons/favicon-64.png?v=20260628">
-  <link rel="stylesheet" href="../core.bundle.css?v=20260720-smartalert-hotfix-r1">
-  <link rel="stylesheet" href="./dashboard.bundle.css?v=20260720-smartalert-hotfix-r1">
+  <link rel="stylesheet" href="../core.bundle.css?v=20260720-admin-settings-r2">
+  <link rel="stylesheet" href="./dashboard.bundle.css?v=20260720-admin-settings-r2">
+  <style>
+    :root{--brand:#07526a;--brand2:#0f6b82;--ink:#0b2239;--muted:#64748b;--line:#d6e4ec;--soft:#eef7fb;--card:#fff;--danger:#c2410c;--ok:#0f766e;--warn:#b45309;--radius:18px;--shadow:0 14px 40px rgba(15,35,55,.10)}
+    *{box-sizing:border-box} body.dashboard-page{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#eef8fb,#f7fbfd 52%,#eef6f9);color:var(--ink);font-size:14px}.button,.chip{border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px 14px;font-weight:800;color:#12354a;cursor:pointer}.button--primary,.chip.is-active{background:var(--brand);border-color:var(--brand);color:#fff}.button--ghost{background:rgba(255,255,255,.75)}.dashboard-header{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;gap:16px;align-items:center;padding:14px 18px;background:linear-gradient(135deg,#064965,#087184);color:#fff;box-shadow:var(--shadow)}.dashboard-header h1{margin:0;font-size:clamp(22px,3vw,34px);line-height:1}.dashboard-header p{margin:3px 0;color:rgba(255,255,255,.86)}.eyebrow{font-size:12px;letter-spacing:.14em;font-weight:900;color:#087184;text-transform:uppercase}.dashboard-header .eyebrow{color:#9ff3ea}.dashboard-header__left,.dashboard-header__right{display:flex;align-items:center;gap:12px}.dashboard-user,.dashboard-clock{padding:8px 12px;border:1px solid rgba(255,255,255,.26);border-radius:14px;background:rgba(255,255,255,.10);display:grid;gap:2px}.dashboard-user span,.dashboard-clock span{font-size:11px;opacity:.86}.dashboard-shell{max-width:1480px;margin:0 auto;padding:18px;display:grid;gap:14px}.dashboard-card{background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}.dashboard-snapshot-state{display:flex;align-items:center;justify-content:space-between;gap:14px}.dashboard-snapshot-state h2,.situation-card h2{margin:2px 0;font-size:22px}.dashboard-snapshot-meta{display:grid;gap:5px;text-align:right;color:var(--muted);font-size:12px}.dashboard-kpi-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}.metric-card{min-height:86px;display:grid;align-content:center}.metric-card span{color:var(--muted);font-weight:800}.metric-card strong{font-size:34px;line-height:1;color:var(--brand)}.situation-card{display:flex;align-items:center;justify-content:space-between}.situation-card>strong{font-size:42px;color:var(--brand)}.dashboard-toolbar{display:grid;grid-template-columns:auto 1fr 180px 180px auto;gap:10px;align-items:center}.chip-group{display:flex;gap:8px;flex-wrap:wrap}input,select{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px 12px;background:#fff;font:inherit}.dashboard-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.card-header h2{font-size:18px;margin:0}.dashboard-list{display:grid;gap:8px}.empty-state{border:1px dashed var(--line);border-radius:14px;padding:18px;color:var(--muted);text-align:center}.table-scroll{overflow:auto}.dashboard-table{width:100%;border-collapse:separate;border-spacing:0 8px}.dashboard-table th{font-size:12px;color:var(--muted);text-align:left;padding:6px 10px}.dashboard-table td{background:#f8fcfe;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px}.dashboard-loading{position:fixed;inset:0;display:grid;place-items:center;background:rgba(238,248,251,.78);z-index:1000}.dashboard-loading.is-hidden{display:none}.dashboard-loading__box{background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);padding:24px;min-width:280px;text-align:center}.dashboard-loading__spinner{width:42px;height:42px;border:4px solid #dbeafe;border-top-color:var(--brand);border-radius:999px;margin:0 auto 12px;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.mobile-record-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.mobile-tabs{display:flex;gap:8px;overflow:auto;padding-bottom:6px}.mobile-counter{font-weight:900;color:var(--brand);margin:8px 0}.dashboard-shift-controls,#dashboardShiftDateControls{display:flex;gap:8px;flex-wrap:wrap}.noscript-message{padding:18px;background:#fee2e2;color:#991b1b;text-align:center;font-weight:900}
+    @media(max-width:900px){.dashboard-header{align-items:flex-start;flex-direction:column}.dashboard-header__right{width:100%;justify-content:space-between;flex-wrap:wrap}.dashboard-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-grid{grid-template-columns:1fr}.dashboard-toolbar{grid-template-columns:1fr 1fr;gap:8px}.dashboard-toolbar input{grid-column:1/-1}.dashboard-snapshot-state,.situation-card{align-items:flex-start;flex-direction:column}.dashboard-snapshot-meta{text-align:left}.metric-card{min-height:74px;padding:12px}.metric-card strong{font-size:28px}.dashboard-shell{padding:10px}.dashboard-card{padding:12px;border-radius:16px}.mobile-record-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:480px){.dashboard-header h1{font-size:22px}.dashboard-toolbar{grid-template-columns:1fr}.dashboard-kpi-grid{gap:8px}.button,.chip,input,select{padding:9px 10px}.mobile-record-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}}
+  </style>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-  <script src="./dashboard.bundle.js?v=20260720-smartalert-hotfix-r1" defer></script>
+  <script src="./dashboard.bundle.js?v=20260720-admin-settings-r2" defer></script>
 </head>
-
 <body data-page="dashboard" class="dashboard-page">
-  <div id="dashboardLoading" class="dashboard-loading" aria-live="polite">
-    <div class="dashboard-loading__box">
-      <div class="dashboard-loading__spinner"></div>
-      <strong>กำลังโหลด Dashboard...</strong>
-      <span>กำลังตรวจสอบข้อมูลล่าสุด</span>
-    </div>
-  </div>
-
+  <div id="dashboardLoading" class="dashboard-loading" aria-live="polite"><div class="dashboard-loading__box"><div class="dashboard-loading__spinner"></div><strong>กำลังโหลด Dashboard...</strong><br><span>กำลังตรวจสอบข้อมูลล่าสุด</span></div></div>
   <header class="dashboard-header app-shell-header">
-    <div class="dashboard-header__left">
-      <button id="dashboardBackButton" type="button" class="button button--ghost">← กลับ Module</button>
-      <div>
-        <p class="eyebrow">SMARTALERT DASHBOARD</p>
-        <h1 id="dashboardModuleTitle">Vendor / Receiving</h1>
-        <p id="dashboardModuleDescription">ภาพรวมรถและตู้สินค้า</p>
-      </div>
-    </div>
-
-    <div class="dashboard-header__right">
-      <div class="dashboard-user">
-        <strong id="dashboardUserName">ผู้ใช้งาน</strong>
-        <span id="dashboardUserRole">DASHBOARD</span>
-      </div>
-      <div class="dashboard-clock">
-        <span id="dashboardConnection">กำลังเชื่อมต่อ</span>
-        <strong id="dashboardCurrentDateTime">--/--/---- --:--:--</strong>
-      </div>
-      <button id="dashboardRefreshButton" type="button" class="button button--primary">รีเฟรช</button>
-      <button id="dashboardFullscreenButton" type="button" class="button button--ghost" data-fullscreen-label>เต็มจอ</button>
-    </div>
+    <div class="dashboard-header__left"><button id="dashboardBackButton" type="button" class="button button--ghost">← กลับ Module</button><div><p class="eyebrow">SMARTALERT DASHBOARD</p><h1 id="dashboardModuleTitle">Vendor / Receiving</h1><p id="dashboardModuleDescription">ภาพรวมรถและตู้สินค้า</p></div></div>
+    <div class="dashboard-header__right"><div class="dashboard-user"><strong id="dashboardUserName">ผู้ใช้งาน</strong><span id="dashboardUserRole">DASHBOARD</span></div><div class="dashboard-clock"><span id="dashboardConnection">กำลังเชื่อมต่อ</span><strong id="dashboardCurrentDateTime">--/--/---- --:--:--</strong></div><button id="dashboardRefreshButton" type="button" class="button button--primary">รีเฟรช</button><button id="dashboardFullscreenButton" type="button" class="button button--ghost" data-fullscreen-label>เต็มจอ</button></div>
   </header>
-
   <main class="dashboard-shell">
-    <section id="dashboardSnapshotBanner" class="dashboard-card dashboard-snapshot-state">
-      <div>
-        <p class="eyebrow">SNAPSHOT</p>
-        <h2 id="dashboardSnapshotState">กำลังตรวจสอบข้อมูล</h2>
-        <p id="dashboardSnapshotQuality">รอข้อมูลจากระบบ</p>
-      </div>
-      <div class="dashboard-snapshot-meta">
-        <span id="dashboardSnapshotId">-</span>
-        <span id="dashboardSnapshotReconciliation">-</span>
-        <span id="dashboardLastUpdated">-</span>
-      </div>
-    </section>
-
-    <section class="dashboard-kpi-grid">
-      <article class="dashboard-card metric-card" data-metric-info="total">
-        <span>รายการทั้งหมด</span>
-        <strong id="dashboardRecordTotal">0</strong>
-      </article>
-      <article class="dashboard-card metric-card" data-metric-info="action">
-        <span>Action Queue</span>
-        <strong id="dashboardActionCount">0</strong>
-      </article>
-      <article class="dashboard-card metric-card" data-metric-info="warning">
-        <span>เตือนสีเหลือง</span>
-        <strong id="dashboardWarningThreshold">60</strong>
-      </article>
-      <article class="dashboard-card metric-card" data-metric-info="overdue">
-        <span>เตือนสีแดง</span>
-        <strong id="dashboardOverdueThreshold">120</strong>
-      </article>
-      <article class="dashboard-card metric-card" data-metric-info="autoclose">
-        <span>Auto Close</span>
-        <strong id="dashboardAutoCloseThreshold">36</strong>
-      </article>
-      <article class="dashboard-card metric-card">
-        <span>ช่วง Flow</span>
-        <strong id="dashboardFlowPeriodLabel">LIVE</strong>
-      </article>
-    </section>
-
-    <section id="dashboardSituation" class="dashboard-card situation-card">
-      <div>
-        <p class="eyebrow">EXECUTIVE SITUATION</p>
-        <h2 id="dashboardSituationLabel">กำลังประเมินสถานการณ์</h2>
-        <p id="dashboardSituationMessage">รอข้อมูลล่าสุด</p>
-      </div>
-      <strong id="dashboardSituationCount">0</strong>
-    </section>
-
-    <section id="dashboardViewToolbar" class="dashboard-card dashboard-toolbar">
-      <div id="dashboardPeriodGroup" class="chip-group" role="group" aria-label="ช่วงข้อมูล">
-        <button type="button" class="chip is-active" data-period="LIVE">Live</button>
-        <button type="button" class="chip" data-period="TODAY">วันนี้</button>
-        <button type="button" class="chip" data-period="ROLLING_24">24 ชม.</button>
-      </div>
-      <input id="dashboardSearchInput" type="search" placeholder="ค้นหา Auto ID / บริษัท / ทะเบียน">
-      <select id="dashboardStatusFilter" data-status-filter>
-        <option value="">ทุกสถานะ</option>
-        <option value="ACTIVE">อยู่ในพื้นที่</option>
-        <option value="COMPLETED">ออกแล้ว</option>
-        <option value="OVERDUE">เกินเวลา</option>
-      </select>
-      <select id="dashboardStageFilter" data-stage-filter>
-        <option value="">ทุกขั้นตอน</option>
-        <option value="WAITING_INBOUND_DOCUMENT">รอยื่นเอกสาร</option>
-        <option value="WAITING_RECEIVING">รอรับสินค้า</option>
-        <option value="WAITING_DOCUMENT_RETURN">รอคืนเอกสาร</option>
-        <option value="WAITING_GATE_OUT">รอ Gate Out</option>
-      </select>
-      <button id="dashboardResetFilters" type="button" class="button button--ghost">ล้างตัวกรอง</button>
-    </section>
-
-    <section class="dashboard-grid">
-      <article class="dashboard-card">
-        <div class="card-header">
-          <h2>สัดส่วนสถานะ</h2>
-        </div>
-        <canvas id="statusDistributionChart" height="220"></canvas>
-      </article>
-
-      <article class="dashboard-card">
-        <div class="card-header">
-          <h2>เคลื่อนไหวรายชั่วโมง</h2>
-        </div>
-        <canvas id="hourlyMovementChart" height="220"></canvas>
-        <p id="hourlyMovementEmpty" class="empty-state">ยังไม่มีข้อมูลรายชั่วโมง</p>
-      </article>
-
-      <article class="dashboard-card">
-        <div class="card-header">
-          <h2>แนวโน้ม Active</h2>
-        </div>
-        <canvas id="activeTrendChart" height="220"></canvas>
-      </article>
-
-      <article class="dashboard-card">
-        <div class="card-header">
-          <h2>รอนานที่สุด</h2>
-        </div>
-        <canvas id="longestWaitingChart" height="220"></canvas>
-      </article>
-
-      <article class="dashboard-card">
-        <div class="card-header">
-          <h2>SLA กระบวนการ</h2>
-        </div>
-        <canvas id="processSlaChart" height="220"></canvas>
-      </article>
-
-      <article class="dashboard-card">
-        <div class="card-header">
-          <h2>เวลาแต่ละช่วง</h2>
-        </div>
-        <canvas id="processTimeShareChart" height="220"></canvas>
-      </article>
-    </section>
-
-    <section class="dashboard-grid">
-      <article class="dashboard-card">
-        <div class="card-header">
-          <h2>Action Queue</h2>
-        </div>
-        <div id="dashboardActionQueue" class="dashboard-list"></div>
-      </article>
-
-      <article class="dashboard-card">
-        <div class="card-header">
-          <h2>รายการเกินเวลา</h2>
-          <span id="dashboardOverdueListCount">0</span>
-        </div>
-        <div id="dashboardOverdueList" class="dashboard-list"></div>
-      </article>
-    </section>
-
-    <section id="dashboardReceivingSection" class="dashboard-card">
-      <div class="card-header">
-        <h2>ขั้นตอนรับสินค้า</h2>
-      </div>
-      <div id="mobileAnalyticsTabs" class="mobile-tabs" data-mobile-view="records"></div>
-      <div id="mobileRecordCounter" class="mobile-counter">0 รายการ</div>
-      <div id="mobileRecordGrid" class="mobile-record-grid"></div>
-      <p id="mobileRecordEmpty" class="empty-state">ยังไม่มีรายการ</p>
-      <button id="mobileLoadMoreRecords" type="button" class="button button--ghost">โหลดเพิ่ม</button>
-    </section>
-
-    <section class="dashboard-card table-card">
-      <div class="card-header">
-        <h2>รายการทั้งหมด</h2>
-      </div>
-      <div class="table-scroll">
-        <table class="dashboard-table">
-          <thead>
-            <tr>
-              <th>Auto ID</th>
-              <th>เลขนัดหมาย</th>
-              <th>บริษัท</th>
-              <th>ทะเบียน</th>
-              <th>สถานะ</th>
-              <th>เวลาเข้า</th>
-            </tr>
-          </thead>
-          <tbody id="dashboardRecordTableBody"></tbody>
-        </table>
-      </div>
-      <p id="dashboardRecordEmpty" class="empty-state">ยังไม่มีข้อมูลตามเงื่อนไข</p>
-    </section>
-
-    <section id="dashboardShiftWorkspace" class="dashboard-card">
-      <div class="card-header">
-        <h2>บริบทกะทำงาน</h2>
-        <div id="dashboardShiftDateControls">
-          <button id="dashboardShiftPreviousDate" type="button" class="button button--ghost">ก่อนหน้า</button>
-          <input id="dashboardShiftDate" type="date">
-          <button id="dashboardShiftToday" type="button" class="button button--ghost">วันนี้</button>
-          <button id="dashboardShiftNextDate" type="button" class="button button--ghost">ถัดไป</button>
-          <button id="dashboardShiftCalendarButton" type="button" class="button button--ghost">ปฏิทิน</button>
-        </div>
-      </div>
-      <p id="dashboardShiftDateDisplay">-</p>
-      <button id="retryShiftDashboard" type="button" class="button button--ghost">ลองโหลดข้อมูลกะอีกครั้ง</button>
-      <div class="dashboard-grid">
-        <canvas id="dailyShiftHistoryChart" height="180"></canvas>
-        <canvas id="shiftFlowComparisonChart" height="180"></canvas>
-        <canvas id="shiftSlaComparisonChart" height="180"></canvas>
-      </div>
-    </section>
+    <section id="dashboardSnapshotBanner" class="dashboard-card dashboard-snapshot-state"><div><p class="eyebrow">SNAPSHOT</p><h2 id="dashboardSnapshotState">กำลังตรวจสอบข้อมูล</h2><p id="dashboardSnapshotQuality">รอข้อมูลจากระบบ</p></div><div class="dashboard-snapshot-meta"><span id="dashboardSnapshotId">-</span><span id="dashboardSnapshotReconciliation">-</span><span id="dashboardLastUpdated">-</span></div></section>
+    <section class="dashboard-kpi-grid"><article class="dashboard-card metric-card"><span>รายการทั้งหมด</span><strong id="dashboardRecordTotal">0</strong></article><article class="dashboard-card metric-card"><span>Action Queue</span><strong id="dashboardActionCount">0</strong></article><article class="dashboard-card metric-card"><span>เตือนเหลือง</span><strong id="dashboardWarningThreshold">0</strong></article><article class="dashboard-card metric-card"><span>เตือนแดง</span><strong id="dashboardOverdueThreshold">0</strong></article><article class="dashboard-card metric-card"><span>Auto Close</span><strong id="dashboardAutoCloseThreshold">0</strong></article><article class="dashboard-card metric-card"><span>ช่วง Flow</span><strong id="dashboardFlowPeriodLabel">LIVE</strong></article></section>
+    <section id="dashboardSituation" class="dashboard-card situation-card"><div><p class="eyebrow">EXECUTIVE SITUATION</p><h2 id="dashboardSituationLabel">กำลังประเมินสถานการณ์</h2><p id="dashboardSituationMessage">รอข้อมูลล่าสุด</p></div><strong id="dashboardSituationCount">0</strong></section>
+    <section id="dashboardViewToolbar" class="dashboard-card dashboard-toolbar"><div id="dashboardPeriodGroup" class="chip-group"><button type="button" class="chip is-active" data-period="LIVE">Live</button><button type="button" class="chip" data-period="TODAY">วันนี้</button><button type="button" class="chip" data-period="ROLLING_24">24 ชม.</button></div><input id="dashboardSearchInput" type="search" placeholder="ค้นหา Auto ID / บริษัท / ทะเบียน"><select id="dashboardStatusFilter" data-status-filter><option value="">ทุกสถานะ</option><option value="ACTIVE">อยู่ในพื้นที่</option><option value="COMPLETED">ออกแล้ว</option><option value="OVERDUE">เกินเวลา</option></select><select id="dashboardStageFilter" data-stage-filter><option value="">ทุกขั้นตอน</option><option value="WAITING_INBOUND_DOCUMENT">รอยื่นเอกสาร</option><option value="WAITING_RECEIVING">รอรับสินค้า</option><option value="WAITING_DOCUMENT_RETURN">รอคืนเอกสาร</option><option value="WAITING_GATE_OUT">รอ Gate Out</option></select><button id="dashboardResetFilters" type="button" class="button button--ghost">ล้างตัวกรอง</button></section>
+    <section class="dashboard-grid"><article class="dashboard-card"><div class="card-header"><h2>สัดส่วนสถานะ</h2></div><canvas id="statusDistributionChart" height="220"></canvas></article><article class="dashboard-card"><div class="card-header"><h2>เคลื่อนไหวรายชั่วโมง</h2></div><canvas id="hourlyMovementChart" height="220"></canvas><p id="hourlyMovementEmpty" class="empty-state">ยังไม่มีข้อมูลรายชั่วโมง</p></article><article class="dashboard-card"><div class="card-header"><h2>แนวโน้ม Active</h2></div><canvas id="activeTrendChart" height="220"></canvas></article><article class="dashboard-card"><div class="card-header"><h2>รอนานที่สุด</h2></div><canvas id="longestWaitingChart" height="220"></canvas></article><article class="dashboard-card"><div class="card-header"><h2>SLA กระบวนการ</h2></div><canvas id="processSlaChart" height="220"></canvas></article><article class="dashboard-card"><div class="card-header"><h2>เวลาแต่ละช่วง</h2></div><canvas id="processTimeShareChart" height="220"></canvas></article></section>
+    <section class="dashboard-grid"><article class="dashboard-card"><div class="card-header"><h2>Action Queue</h2></div><div id="dashboardActionQueue" class="dashboard-list"></div></article><article class="dashboard-card"><div class="card-header"><h2>รายการเกินเวลา</h2><span id="dashboardOverdueListCount">0</span></div><div id="dashboardOverdueList" class="dashboard-list"></div></article></section>
+    <section id="dashboardReceivingSection" class="dashboard-card"><div class="card-header"><h2>ขั้นตอนรับสินค้า</h2></div><div id="mobileAnalyticsTabs" class="mobile-tabs" data-mobile-view="records"></div><div id="mobileRecordCounter" class="mobile-counter">0 รายการ</div><div id="mobileRecordGrid" class="mobile-record-grid"></div><p id="mobileRecordEmpty" class="empty-state">ยังไม่มีรายการ</p><button id="mobileLoadMoreRecords" type="button" class="button button--ghost">โหลดเพิ่ม</button></section>
+    <section class="dashboard-card table-card"><div class="card-header"><h2>รายการทั้งหมด</h2></div><div class="table-scroll"><table class="dashboard-table"><thead><tr><th>Auto ID</th><th>เลขนัดหมาย</th><th>บริษัท</th><th>ทะเบียน</th><th>สถานะ</th><th>เวลาเข้า</th></tr></thead><tbody id="dashboardRecordTableBody"></tbody></table></div><p id="dashboardRecordEmpty" class="empty-state">ยังไม่มีข้อมูลตามเงื่อนไข</p></section>
+    <section id="dashboardShiftWorkspace" class="dashboard-card"><div class="card-header"><h2>บริบทกะทำงาน</h2><div id="dashboardShiftDateControls"><button id="dashboardShiftPreviousDate" type="button" class="button button--ghost">ก่อนหน้า</button><input id="dashboardShiftDate" type="date"><button id="dashboardShiftToday" type="button" class="button button--ghost">วันนี้</button><button id="dashboardShiftNextDate" type="button" class="button button--ghost">ถัดไป</button><button id="dashboardShiftCalendarButton" type="button" class="button button--ghost">ปฏิทิน</button></div></div><p id="dashboardShiftDateDisplay">-</p><button id="retryShiftDashboard" type="button" class="button button--ghost">ลองโหลดข้อมูลกะอีกครั้ง</button><div class="dashboard-grid"><canvas id="dailyShiftHistoryChart" height="180"></canvas><canvas id="shiftFlowComparisonChart" height="180"></canvas><canvas id="shiftSlaComparisonChart" height="180"></canvas></div></section>
   </main>
-
-  <noscript>
-    <div class="noscript-message">กรุณาเปิดใช้งาน JavaScript เพื่อใช้งาน Dashboard</div>
-  </noscript>
+  <noscript><div class="noscript-message">กรุณาเปิดใช้งาน JavaScript เพื่อใช้งาน Dashboard</div></noscript>
 </body>
 </html>
