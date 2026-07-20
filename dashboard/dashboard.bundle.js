@@ -1,7 +1,7 @@
 /*
  * AlertVendor Consolidated Bundle
  * Output: github-pages/dashboard/dashboard.bundle.js
- * Build: 20260720-consolidated-bundle-r1
+ * Build: 20260721-baseline2-admin-governance-v1
  * Generated: 2026-07-20 00:02:45
  * Mode: concatenate-only / no business logic rewrite
  */
@@ -43,10 +43,10 @@
       700,
 
     REFRESH_SECONDS:
-      15,
+      null,
 
     OPERATIONAL_BOARD_LIMIT:
-      3000,
+      null,
 
     LAST_GOOD_SNAPSHOT_TTL_MS:
       15 * 60 * 1000,
@@ -312,10 +312,9 @@
           '/operational-board',
         {
           query: {
-            limit:
-              Number(config.limit) ||
-              Number(CONFIG.OPERATIONAL_BOARD_LIMIT) ||
-              3000,
+            limit: Number.isFinite(Number(config.limit))
+              ? Number(config.limit)
+              : '',
             forceRefresh: config.forceRefresh === true ? 'true' : ''
           }
         }
@@ -392,6 +391,7 @@
     moduleId: '',
     session: null,
     module: {},
+    runtimePolicy: {},
     records: [],
     movement: {},
     receiving: {
@@ -1363,7 +1363,6 @@
       const board = await API.getOperationalBoard(
         state.moduleId,
         {
-          limit: Number(CONFIG.OPERATIONAL_BOARD_LIMIT) || 3000,
           forceRefresh: config.forceRefresh === true
         }
       );
@@ -1466,6 +1465,8 @@
       generatedAtEpochMs:
         Number(board.generatedAtEpochMs || dashboard.generatedAtEpochMs) || 0,
       module: board.module || {},
+      runtimePolicy: board.runtimePolicy || {},
+      effectiveSla: board.effectiveSla || {},
       records: board.records,
       movement: dashboard.movement || {},
       receiving: createDashboardReceivingFromBoard(board, dashboard),
@@ -1507,6 +1508,7 @@
     state.snapshotMode = String(config.mode || 'LIVE');
     state.snapshotStoredAtMs = Date.now();
     state.module = snapshot.module || {};
+    state.runtimePolicy = snapshot.runtimePolicy || {};
     state.records = Array.isArray(snapshot.records) ? snapshot.records : [];
     state.movement = snapshot.movement || {};
     state.receiving = snapshot.receiving || {
@@ -3488,123 +3490,54 @@
 
   function recalculateRecords() {
     const nowMs = getServerNow().getTime();
-    const thresholds = getThresholds();
 
-    state.records.forEach(
-      (record) => {
-        const timestampInMs =
-          Number(record.timestampInEpochMs);
+    state.records.forEach((record) => {
+      const timestampInMs = Number(record.timestampInEpochMs);
 
-        if (
-          !record.isCurrentlyInArea ||
-          !Number.isFinite(timestampInMs)
-        ) {
-          record.durationSeconds = 0;
-          record.statusCode = 'INCOMPLETE';
-          return;
-        }
-
-        record.durationSeconds = Math.max(
-          0,
-          Math.floor(
-            (nowMs - timestampInMs) / 1000
-          )
-        );
-
-        record.statusCode =
-          record.durationSeconds >=
-            thresholds.redSeconds
-            ? 'OVERDUE'
-            : record.durationSeconds >=
-                thresholds.warningSeconds
-              ? 'WARNING'
-              : 'NORMAL';
+      if (!record.isCurrentlyInArea || !Number.isFinite(timestampInMs)) {
+        record.durationSeconds = 0;
+        record.statusCode = 'INCOMPLETE';
+        return;
       }
-    );
-  }
 
-  function updateLiveDurations() {
-    const nowMs = getServerNow().getTime();
-
-    document
-      .querySelectorAll('[data-live-record]')
-      .forEach(
-        (element) => {
-          const recordId = String(
-            element.dataset.liveRecord || ''
-          );
-
-          const record = state.records.find(
-            (item) =>
-              String(item.recordId || '') ===
-              recordId
-          );
-
-          if (!record) {
-            return;
-          }
-
-          const receiving =
-            state.receivingByRecordId.get(recordId);
-
-          let startMs = receiving
-            ? operationalStageStartEpochMs(record, receiving.stageCode)
-            : Number(record.timestampInEpochMs);
-
-          const seconds =
-            Number.isFinite(startMs)
-              ? Math.max(
-                  0,
-                  Math.floor(
-                    (nowMs - startMs) / 1000
-                  )
-                )
-              : 0;
-
-          element.textContent =
-            formatDuration(seconds);
-        }
+      record.durationSeconds = Math.max(
+        0,
+        Math.floor((nowMs - timestampInMs) / 1000)
       );
-  }
 
-  function renderSnapshotState() {
-    const banner = byId('dashboardSnapshotBanner');
+      const stageSla = record.stageSla && typeof record.stageSla === 'object'
+        ? record.stageSla
+        : {};
+      const warningMinutes = Number(stageSla.warningMinutes);
+      const redMinutes = Number(stageSla.redMinutes);
+      const startedAtMs = Number(stageSla.startedAtEpochMs) ||
+        operationalStageStartEpochMs(record, record.operationalStage);
 
-    if (!banner) {
-      return;
-    }
+      if (
+        stageSla.configured !== true ||
+        !Number.isFinite(startedAtMs) ||
+        !Number.isFinite(warningMinutes) ||
+        !Number.isFinite(redMinutes) ||
+        redMinutes <= warningMinutes
+      ) {
+        record.statusCode = String(record.statusCode || 'INCOMPLETE').toUpperCase();
+        return;
+      }
 
-    const snapshot = state.snapshot || {};
-    const reconciliation = state.reconciliation || {};
-    const quality = state.dataQuality || {};
-    const mode = state.snapshotMode || 'BLOCKED';
-    const labels = {
-      LIVE: 'ข้อมูลสดและ Reconcile แล้ว',
-      STALE: 'ข้อมูลสำรองแบบอ่านอย่างเดียว',
-      INTEGRITY_ERROR: 'ข้อมูลไม่สมดุล ห้ามใช้ตัดสินใจ',
-      BLOCKED: 'ยังไม่มี Snapshot ที่เชื่อถือได้'
-    };
+      const elapsedSeconds = Math.max(
+        0,
+        Math.floor((nowMs - startedAtMs) / 1000)
+      );
+      const warningSeconds = warningMinutes * 60;
+      const redSeconds = redMinutes * 60;
 
-    banner.dataset.state = mode;
-    banner.classList.remove('is-hidden');
-    setText('dashboardSnapshotState', labels[mode] || labels.BLOCKED);
-    setText('dashboardSnapshotId', snapshot.snapshotId || '-');
-    setText(
-      'dashboardSnapshotReconciliation',
-      reconciliation.success === true
-        ? 'Source Active = Board = Stage (' +
-          Number(reconciliation.boardActive || 0) + ')'
-        : 'ไม่ผ่าน: ' +
-          (Array.isArray(reconciliation.failedCheckIds)
-            ? reconciliation.failedCheckIds.join(', ')
-            : 'UNKNOWN')
-    );
-    setText(
-      'dashboardSnapshotQuality',
-      Number.isFinite(Number(quality.score))
-        ? String(Math.round(Number(quality.score))) + '%'
-        : '--'
-    );
+      record.statusElapsedSeconds = elapsedSeconds;
+      record.statusCode = elapsedSeconds >= redSeconds
+        ? 'OVERDUE'
+        : elapsedSeconds >= warningSeconds
+          ? 'WARNING'
+          : 'NORMAL';
+    });
   }
 
   function operationalStageStartEpochMs(record, stageCode) {
@@ -3664,29 +3597,26 @@
   }
 
   function getThresholds() {
-    const thresholds =
-      state.movement.thresholds || {};
-
-    const warningMinutes =
-      Number(thresholds.warningStartMinutes) ||
-      Number(state.module.warningStartMinutes) ||
-      45;
-
-    const redMinutes =
-      Number(thresholds.redStartMinutes) ||
-      Number(state.module.redStartMinutes) ||
-      60;
-
-    const autoCloseHours =
-      Number(thresholds.autoCloseHours) ||
-      36;
+    const thresholds = state.movement.thresholds || {};
+    const autoCloseHours = Number(
+      thresholds.autoCloseHours ??
+      state.runtimePolicy.autoCloseHours ??
+      state.module.autoCloseHours
+    );
+    const autoCloseConfigured =
+      Number.isFinite(autoCloseHours) && autoCloseHours >= 1;
+    const coverage =
+      state.runtimePolicy.rulesCoverage ||
+      state.snapshot?.effectiveSla?.coverage ||
+      {};
 
     return {
-      warningMinutes,
-      redMinutes,
-      autoCloseHours,
-      warningSeconds: warningMinutes * 60,
-      redSeconds: redMinutes * 60
+      warningMinutes: 'รายขั้นตอน',
+      redMinutes: 'รายขั้นตอน',
+      autoCloseHours: autoCloseConfigured ? autoCloseHours : '-',
+      autoCloseConfigured,
+      configuredRuleCount: Number(coverage.configuredCount) || 0,
+      totalRuleCount: Number(coverage.totalCount) || 4
     };
   }
 
@@ -4385,15 +4315,14 @@
       );
     }
 
-    const seconds = Math.max(
-      10,
-      Math.min(
-        60,
-        Number(state.module.refreshSeconds) ||
-        Number(CONFIG.REFRESH_SECONDS) ||
-        15
-      )
-    );
+    const configuredSeconds = Number(state.module.refreshSeconds);
+
+    if (!Number.isFinite(configuredSeconds) || configuredSeconds < 10) {
+      setConnectionState('ERROR', 'Admin ยังไม่ได้ตั้งรอบ Refresh');
+      return;
+    }
+
+    const seconds = Math.max(10, Math.min(3600, configuredSeconds));
 
     state.refreshTimer = window.setTimeout(
       () => {
