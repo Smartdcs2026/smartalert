@@ -1,0 +1,33 @@
+{
+  "id": "https://smartdcs2026.github.io/smartalert/",
+  "name": "SmartAlert Vendor Workflow",
+  "short_name": "SmartAlert",
+  "description": "ระบบ SmartAlert สำหรับติดตามรถ/ตู้ เอกสาร Inbound Receiving และ Gate Out",
+  "lang": "th",
+  "start_url": "https://smartdcs2026.github.io/smartalert/login.html?source=pwa",
+  "scope": "https://smartdcs2026.github.io/smartalert/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#eef4f8",
+  "theme_color": "#0f3d5e",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

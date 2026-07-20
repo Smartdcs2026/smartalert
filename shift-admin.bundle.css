@@ -1,0 +1,499 @@
+/*
+ * AlertVendor Consolidated Bundle
+ * Output: github-pages/shift-admin.bundle.css
+ * Build: 20260720-consolidated-bundle-r1
+ * Generated: 2026-07-20 00:02:45
+ * Mode: concatenate-only / no business logic rewrite
+ */
+
+
+/* ============================================================
+ * SOURCE 01: shift-admin(5).css
+ * ============================================================ */
+/**
+ * shift-admin.css
+ * PRODUCTION R07 — Shift Admin Responsive UI
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  color-scheme: light;
+  --shift-admin-navy: #063952;
+  --shift-admin-blue: #1a6f86;
+  --shift-admin-ink: #203847;
+  --shift-admin-muted: #6c7f8a;
+  --shift-admin-line: #d4dfe5;
+  --shift-admin-canvas: #eef3f6;
+  --shift-admin-surface: #ffffff;
+}
+
+html {
+  min-height: 100%;
+  background: var(--shift-admin-canvas);
+}
+
+body.shift-admin-page {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--shift-admin-ink);
+  background: var(--shift-admin-canvas);
+  font-family: "Noto Sans Thai", "Sarabun", Tahoma, sans-serif;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button,
+a,
+input,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgba(26, 111, 134, .24);
+  outline-offset: 2px;
+}
+
+.shift-admin-header {
+  min-height: 82px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px max(16px, calc((100vw - 1320px) / 2));
+  color: #ffffff;
+  background: linear-gradient(110deg, #052f47, var(--shift-admin-navy));
+  box-shadow: 0 7px 22px rgba(6, 57, 82, .18);
+}
+
+.shift-admin-header a {
+  border: 1px solid rgba(255, 255, 255, .28);
+  border-radius: 8px;
+  padding: 8px 11px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, .05);
+  text-decoration: none;
+  font-size: .8rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.shift-admin-header a:hover {
+  background: rgba(255, 255, 255, .12);
+}
+
+.shift-admin-header small {
+  color: #6ed5df;
+  font-size: .63rem;
+  font-weight: 950;
+  letter-spacing: .08em;
+}
+
+.shift-admin-header h1 {
+  margin: 3px 0 0;
+  font-size: clamp(1.05rem, 2.2vw, 1.4rem);
+  line-height: 1.25;
+}
+
+.shift-admin-header > span {
+  max-width: 180px;
+  overflow: hidden;
+  color: #d7edf2;
+  font-size: .76rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shift-admin-main {
+  width: min(1320px, calc(100% - 24px));
+  display: grid;
+  gap: 12px;
+  margin: 14px auto 40px;
+}
+
+.shift-admin-toolbar,
+.shift-admin-card {
+  min-width: 0;
+  border: 1px solid var(--shift-admin-line);
+  border-radius: 12px;
+  background: var(--shift-admin-surface);
+  box-shadow: 0 6px 20px rgba(17, 52, 72, .06);
+}
+
+.shift-admin-toolbar {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) auto auto;
+  align-items: end;
+  gap: 8px;
+  padding: 10px;
+}
+
+.shift-admin-toolbar label,
+.shift-admin-config-grid label,
+.shift-admin-row label {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.shift-admin-toolbar span,
+.shift-admin-config-grid span,
+.shift-admin-row label > span {
+  color: var(--shift-admin-muted);
+  font-size: .72rem;
+  font-weight: 800;
+}
+
+.shift-admin-toolbar select,
+.shift-admin-config-grid input,
+.shift-admin-row input {
+  width: 100%;
+  min-width: 0;
+  min-height: 39px;
+  border: 1px solid #ccd9df;
+  border-radius: 8px;
+  padding: 7px 9px;
+  color: #203e50;
+  background: #ffffff;
+}
+
+.shift-admin-toolbar select:disabled,
+.shift-admin-config-grid input:disabled,
+.shift-admin-row input:disabled {
+  color: #7b8d97;
+  background: #f2f5f7;
+}
+
+.shift-admin-toolbar button,
+.shift-admin-shifts-head button,
+.shift-admin-actions button,
+.shift-admin-card > header button {
+  min-height: 39px;
+  border: 1px solid var(--shift-admin-blue);
+  border-radius: 8px;
+  padding: 7px 12px;
+  color: #ffffff;
+  background: var(--shift-admin-blue);
+  cursor: pointer;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.shift-admin-toolbar button:hover,
+.shift-admin-shifts-head button:hover,
+.shift-admin-actions button:hover,
+.shift-admin-card > header button:hover {
+  background: #145d72;
+}
+
+.shift-admin-toolbar button:disabled,
+.shift-admin-shifts-head button:disabled,
+.shift-admin-actions button:disabled,
+.shift-admin-card > header button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.shift-admin-card > header {
+  min-height: 66px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #dce4e8;
+  padding: 13px 15px;
+}
+
+.shift-admin-card > header small {
+  color: #17809a;
+  font-size: .62rem;
+  font-weight: 950;
+  letter-spacing: .08em;
+}
+
+.shift-admin-card > header h2 {
+  margin: 3px 0 0;
+  font-size: 1.1rem;
+}
+
+.shift-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: #eef4f6;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.shift-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--shift-admin-blue);
+}
+
+.shift-admin-config-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  padding: 12px 15px;
+}
+
+.shift-admin-shifts-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-top: 1px solid #e1e8ec;
+  border-bottom: 1px solid #e1e8ec;
+  padding: 10px 15px;
+  background: #f6f8f9;
+}
+
+.shift-admin-shifts-head strong,
+.shift-admin-shifts-head span {
+  display: block;
+}
+
+.shift-admin-shifts-head span {
+  margin-top: 2px;
+  color: #71828c;
+  font-size: .72rem;
+}
+
+#shiftAdminRows {
+  padding: 8px 15px;
+}
+
+.shift-admin-row {
+  display: grid;
+  grid-template-columns: 90px minmax(150px, 1fr) 120px 120px 92px 70px;
+  align-items: end;
+  gap: 7px;
+  border-bottom: 1px solid #e3e9ed;
+  padding: 8px 0;
+}
+
+.shift-admin-row:last-child {
+  border-bottom: 0;
+}
+
+.shift-admin-active {
+  min-height: 39px;
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+  padding: 7px;
+}
+
+.shift-admin-active input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--shift-admin-blue);
+}
+
+.shift-admin-row > button {
+  min-height: 39px;
+  border: 1px solid #d6a9a9;
+  border-radius: 8px;
+  color: #a12323;
+  background: #fff5f5;
+  cursor: pointer;
+}
+
+.shift-admin-row > button:hover:not(:disabled) {
+  background: #ffe8e8;
+}
+
+.shift-admin-row > button:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+.shift-admin-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-top: 1px solid #dce4e8;
+  padding: 10px 15px;
+}
+
+.shift-admin-actions > span {
+  color: #466371;
+  font-size: .78rem;
+  font-weight: 850;
+}
+
+.shift-admin-actions > span.is-warning {
+  color: #a96808;
+}
+
+.shift-admin-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 0 15px 15px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.shift-admin-table-wrap table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.shift-admin-table-wrap th,
+.shift-admin-table-wrap td {
+  border-bottom: 1px solid #e0e7eb;
+  padding: 9px 8px;
+  font-size: .76rem;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.shift-admin-table-wrap th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  color: #546b78;
+  background: #f5f8f9;
+}
+
+.shift-admin-table-wrap td {
+  color: #294654;
+}
+
+@media (max-width: 800px) {
+  .shift-admin-header {
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 10px 12px;
+  }
+
+  .shift-admin-header > span {
+    display: none;
+  }
+
+  .shift-admin-header a {
+    padding: 8px 9px;
+    font-size: 0;
+  }
+
+  .shift-admin-header a::first-letter {
+    font-size: 1.1rem;
+  }
+
+  .shift-admin-main {
+    width: min(100% - 16px, 1320px);
+    margin-top: 8px;
+  }
+
+  .shift-admin-toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .shift-admin-toolbar label {
+    grid-column: 1 / -1;
+  }
+
+  .shift-admin-toolbar button {
+    white-space: normal;
+  }
+
+  .shift-admin-config-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .shift-admin-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border: 1px solid #e0e7eb;
+    border-radius: 10px;
+    margin: 8px 0;
+    padding: 10px;
+    background: #fbfdfe;
+  }
+
+  .shift-admin-row > button {
+    grid-column: 1 / -1;
+  }
+
+  .shift-admin-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .shift-admin-actions button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 460px) {
+  .shift-admin-card > header,
+  .shift-admin-shifts-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .shift-admin-shifts-head button,
+  .shift-admin-card > header button {
+    width: 100%;
+  }
+
+  .shift-admin-row {
+    grid-template-columns: 1fr;
+  }
+
+  .shift-admin-row > button {
+    grid-column: auto;
+  }
+}
+/* =====================================================================
+ * SMARTALERT COMPACT MATERIAL BENTO UI
+ * Build: 2026.07.20-compact-material-bento-r1
+ * Purpose: clean mobile-first, data-dense, bento cards, minimal vertical scroll.
+ * Note: UI-only patch. No workflow/API/business logic changed.
+ * ===================================================================== */
+:root{
+  --sa-bento-gap: clamp(6px, 1.5vw, 10px);
+  --sa-bento-radius: 14px;
+  --sa-bento-line: #d9e5eb;
+  --sa-bento-surface: #ffffff;
+  --sa-bento-soft: #f4f8fb;
+  --sa-bento-ink: #15384a;
+  --sa-bento-muted: #667d89;
+  --sa-bento-shadow: 0 5px 16px rgba(7, 52, 78, .075);
+}
+@media (max-width: 920px){
+  html,body{max-width:100%;overflow-x:hidden!important;}
+  .button,.icon-text-button,.vehicle-tool-button,button{touch-action:manipulation;}
+  .swal2-popup{max-width:calc(100vw - 12px)!important;}
+}
+
+/* Standalone Shift Admin compact bento */
+@media (max-width: 920px){
+  .shift-admin-header{grid-template-columns:auto minmax(0,1fr)!important;min-height:0!important;padding:9px 10px!important;}
+  .shift-admin-header span{grid-column:1/-1!important;justify-self:start!important;font-size:.72rem!important;}
+  .shift-admin-main{padding:8px!important;gap:8px!important;}
+  .shift-admin-toolbar{display:grid!important;grid-template-columns:1fr 1fr!important;gap:7px!important;}
+  .shift-admin-toolbar label{grid-column:1/-1!important;}
+  .shift-admin-toolbar button{min-height:38px!important;border-radius:11px!important;font-size:.68rem!important;}
+  .shift-admin-card{padding:10px!important;border-radius:15px!important;box-shadow:var(--sa-bento-shadow)!important;}
+  .shift-admin-card header{gap:8px!important;}
+  .shift-admin-config-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important;}
+  .shift-admin-config-grid label:first-child{grid-column:1/-1!important;}
+  .shift-admin-row{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important;padding:8px!important;border:1px solid var(--sa-bento-line)!important;border-radius:13px!important;background:#fff!important;}
+  .shift-admin-row button{grid-column:1/-1!important;min-height:34px!important;}
+  .shift-admin-table-wrap{overflow-x:auto!important;}
+}
+@media (max-width: 380px){.shift-admin-config-grid{grid-template-columns:1fr!important;}}

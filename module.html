@@ -1,0 +1,2310 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <!-- Consolidated bundle build: 20260720-compact-material-bento-r1; original: module(9).html -->
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+
+  <meta
+    name="theme-color"
+    content="#0f3d5e"
+  >
+
+  <!-- 20260717-r3r4-module-route-isolation: server-confirmed role + legacy route cache cleanup -->
+  <title>
+    สถานะรถ | ระบบติดตามสถานะรถและตู้สินค้า
+  </title>
+
+  <link
+    rel="manifest"
+    href="./manifest.webmanifest"
+  >
+
+  <link
+    id="dynamicFavicon"
+    rel="icon"
+    type="image/png"
+    href="./icons/favicon-64.png"
+  >
+
+  <link
+    rel="apple-touch-icon"
+    href="./icons/apple-touch-icon.png"
+  >
+  <link rel="stylesheet" href="./module.bundle.css?v=20260720-compact-material-bento-r1">
+
+
+<!-- โหลดลำดับสุดท้ายเพื่อให้ Action Sheet ชนะ SweetAlert และ CSS เดิมทุกชุด -->
+
+
+<!--
+    Production R24: Footer Alert Control owns its critical CSS here.
+    This small, page-scoped block prevents native browser button styles
+    or stale shared CSS from changing the control again.
+  -->
+  <style id="moduleFooterAlertControlStyles">
+    body.module-page > footer.app-footer.module-footer {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      gap: 12px !important;
+      width: 100% !important;
+      min-height: 38px !important;
+      margin: 0 !important;
+      padding:
+        5px max(14px, env(safe-area-inset-right))
+        calc(5px + var(--safe-bottom, 0px))
+        max(14px, env(safe-area-inset-left)) !important;
+      box-sizing: border-box !important;
+      border-top: 1px solid #d5e1e8 !important;
+      background: #eef4f7 !important;
+      text-align: left !important;
+    }
+
+    body.module-page > footer.app-footer.module-footer
+    > .module-footer__brand {
+      min-width: 0;
+      color: #647985;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+    }
+
+    body.module-page > footer.app-footer.module-footer
+    > button.module-footer-alert {
+      all: unset;
+      -webkit-appearance: none;
+      appearance: none;
+      box-sizing: border-box;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 30px;
+      min-width: 118px;
+      margin: 0;
+      padding: 3px 6px 3px 4px;
+      border: 1px solid #b9c8cf;
+      border-radius: 999px;
+      background: #ffffff;
+      color: #415966;
+      box-shadow: 0 1px 2px rgba(15, 45, 62, 0.08);
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+      user-select: none;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      transition:
+        background-color 0.16s ease,
+        border-color 0.16s ease,
+        box-shadow 0.16s ease,
+        transform 0.08s ease;
+    }
+
+    body.module-page > footer.app-footer.module-footer
+    > button.module-footer-alert:hover {
+      border-color: #88a5b2;
+      box-shadow: 0 2px 6px rgba(15, 45, 62, 0.12);
+    }
+
+    body.module-page > footer.app-footer.module-footer
+    > button.module-footer-alert:active {
+      transform: translateY(1px);
+      box-shadow: none;
+    }
+
+    body.module-page > footer.app-footer.module-footer
+    > button.module-footer-alert:focus-visible {
+      outline: 3px solid rgba(15, 118, 110, 0.24);
+      outline-offset: 2px;
+    }
+
+    body.module-page > footer.app-footer.module-footer
+    > button.module-footer-alert
+    > .module-footer-alert__icon {
+      display: inline-grid;
+      place-items: center;
+      width: 22px;
+      height: 22px;
+      flex: 0 0 22px;
+      border-radius: 50%;
+      background: #e9eff2;
+      font-size: 13px;
+      line-height: 1;
+    }
+
+    body.module-page > footer.app-footer.module-footer
+    > button.module-footer-alert
+    > .module-footer-alert__label {
+      white-space: nowrap;
+    }
+
+    body.module-page > footer.app-footer.module-footer
+    > button.module-footer-alert
+    > .module-footer-alert__status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 31px;
+      height: 20px;
+      padding: 0 7px;
+      box-sizing: border-box;
+      border-radius: 999px;
+      background: #e6ecef;
+      color: #586e79;
+      font-size: 10px;
+      font-weight: 900;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    body.module-page > footer.app-footer.module-footer
+    > button.module-footer-alert.is-enabled {
+      border-color: #75cbb8;
+      background: #f0fcf8;
+      color: #075f53;
+    }
+
+    body.module-page > footer.app-footer.module-footer
+    > button.module-footer-alert.is-enabled
+    > .module-footer-alert__icon {
+      background: #d7f5ec;
+    }
+
+    body.module-page > footer.app-footer.module-footer
+    > button.module-footer-alert.is-enabled
+    > .module-footer-alert__status {
+      background: #0d8f79;
+      color: #ffffff;
+    }
+
+    body.module-page > footer.app-footer.module-footer
+    > button.module-footer-alert.is-disabled {
+      border-color: #c9d2d7;
+      background: #f5f7f8;
+      color: #667a84;
+    }
+
+    body.module-page > footer.app-footer.module-footer
+    > button.module-footer-alert.is-disabled
+    > .module-footer-alert__icon {
+      background: #e7ecef;
+      filter: grayscale(1);
+      opacity: 0.72;
+    }
+
+    body.module-page > footer.app-footer.module-footer
+    > button.module-footer-alert.is-disabled
+    > .module-footer-alert__status {
+      background: #75858d;
+      color: #ffffff;
+    }
+
+    @media (max-width: 640px) {
+      body.module-page > footer.app-footer.module-footer {
+        min-height: 36px !important;
+        gap: 8px !important;
+        padding:
+          4px max(9px, env(safe-area-inset-right))
+          calc(4px + var(--safe-bottom, 0px))
+          max(9px, env(safe-area-inset-left)) !important;
+      }
+
+      body.module-page > footer.app-footer.module-footer
+      > .module-footer__brand {
+        overflow: hidden;
+        font-size: 10px;
+        text-overflow: ellipsis;
+      }
+
+      body.module-page > footer.app-footer.module-footer
+      > button.module-footer-alert {
+        min-width: 66px;
+        height: 30px;
+        gap: 4px;
+        padding: 3px 5px 3px 4px;
+      }
+
+      body.module-page > footer.app-footer.module-footer
+      > button.module-footer-alert
+      > .module-footer-alert__label {
+        display: none;
+      }
+
+      body.module-page > footer.app-footer.module-footer
+      > button.module-footer-alert
+      > .module-footer-alert__status {
+        min-width: 28px;
+        padding: 0 5px;
+      }
+    }
+  </style>
+
+
+  <script id="moduleRouteSessionIsolation">
+    (function () {
+      'use strict';
+
+      window.__ALERT_VENDOR_PAGE_INTENT__ = 'MODULE';
+
+      var currentTokenKey = 'alertvendor_access_token_v2';
+      var legacyTokenKeys = [
+        'alertvendor_access_token',
+        'alertvendor_access_token_v1',
+        'alertvendor_token',
+        'alertvendorAccessToken',
+        'access_token',
+        'accessToken',
+        'token',
+        'sessionToken',
+        'authToken',
+        'vehicle_status_access_token',
+        'vehicle_access_token'
+      ];
+      var staleRoleKeys = [
+        'vcw_inbound_only',
+        'alertvendor_user',
+        'alertvendor_current_user',
+        'currentUser',
+        'auth_user',
+        'user',
+        'vehicle_status_user',
+        'alertvendor_session'
+      ];
+
+      function remove(storage, key) {
+        try {
+          storage.removeItem(key);
+        } catch (error) {}
+      }
+
+      [window.sessionStorage, window.localStorage].forEach(function (storage) {
+        staleRoleKeys.forEach(function (key) {
+          remove(storage, key);
+        });
+      });
+
+      /* localStorage ไม่ใช่แหล่ง Session ปัจจุบัน ล้าง Token รุ่นเก่าได้ทันที */
+      legacyTokenKeys.forEach(function (key) {
+        remove(window.localStorage, key);
+      });
+
+      /* เมื่อมี Token ปัจจุบันแล้ว ให้ล้าง Token รุ่นเก่าใน sessionStorage ด้วย */
+      var hasCurrentToken = false;
+      try {
+        hasCurrentToken = Boolean(window.sessionStorage.getItem(currentTokenKey));
+      } catch (error) {}
+
+      if (hasCurrentToken) {
+        legacyTokenKeys.forEach(function (key) {
+          remove(window.sessionStorage, key);
+        });
+      }
+    })();
+  </script>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/sweetalert2@11"
+    defer
+  ></script>
+
+  
+
+
+
+
+
+
+
+
+
+
+<style id="moduleDesktopMaterialCleanupPatch">
+    /* Desktop-only Material cleanup. Mobile drawer and two-card grid remain unchanged. */
+    @media (min-width: 768px) {
+      body.module-page .module-command-bar {
+        display: grid;
+        grid-template-columns: auto minmax(340px, 1.35fr) auto auto auto;
+        align-items: center;
+        gap: 14px;
+      }
+
+      body.module-page .module-command-brand {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+        gap: 14px;
+        min-width: 0;
+      }
+
+      body.module-page .module-command-brand__text {
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        gap: 2px !important;
+        min-width: 0;
+        overflow: hidden;
+      }
+
+      body.module-page .module-command-brand__text > * {
+        position: static !important;
+        inset: auto !important;
+        transform: none !important;
+        margin: 0 !important;
+      }
+
+      body.module-page .module-live-label {
+        font-size: 10px !important;
+        line-height: 1.2 !important;
+        letter-spacing: .11em !important;
+        white-space: nowrap;
+        opacity: .92;
+      }
+
+      body.module-page #moduleTitle {
+        overflow: hidden;
+        font-size: clamp(1.45rem, 1.55vw, 2rem) !important;
+        line-height: 1.08 !important;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      body.module-page #moduleDescription {
+        overflow: hidden;
+        color: rgba(255,255,255,.92);
+        font-size: .95rem !important;
+        line-height: 1.22 !important;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      body.module-page .vehicle-grid {
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
+        gap: 14px !important;
+        align-items: stretch !important;
+      }
+
+      body.module-page .vehicle-card--professional {
+        display: flex !important;
+        flex-direction: column !important;
+        height: 100% !important;
+        min-height: 0 !important;
+      }
+
+      body.module-page .vehicle-card--professional .vehicle-card__footer {
+        margin-top: auto !important;
+      }
+
+      body.module-page .vehicle-card--professional .vehicle-operational-stage {
+        margin-top: 10px;
+      }
+
+      body.module-page .receiving-live-status {
+        min-height: 0 !important;
+        margin-top: 10px !important;
+        padding: 10px 12px !important;
+        font-size: 12px !important;
+        line-height: 1.35 !important;
+      }
+    }
+  </style>
+
+
+  <style id="mobileDrawerRightToLeftViewportFix">
+    /*
+     * MOBILE DRAWER + HEADER VIEWPORT FIX — 2026-07-18
+     * - Drawer เปิดจากขอบขวาและเลื่อนเข้าหาด้านซ้าย
+     * - Header มือถือไม่กว้างเกิน viewport
+     * - แถบแท็บด้านบนเป็น 2 x 2 และไม่สร้าง horizontal scroll
+     */
+    @media (max-width: 767px) {
+      html,
+      body.module-page {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden !important;
+      }
+
+      body.module-page .module-header,
+      body.module-page .module-header__inner,
+      body.module-page .module-command-bar,
+      body.module-page .module-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+      }
+
+      body.module-page .module-header__inner {
+        padding-inline:
+          max(6px, env(safe-area-inset-left))
+          max(6px, env(safe-area-inset-right)) !important;
+      }
+
+      body.module-page .module-command-bar {
+        grid-template-columns: 44px minmax(0, 1fr) 93px !important;
+        gap: 5px !important;
+        overflow: hidden !important;
+      }
+
+      body.module-page .module-command-brand,
+      body.module-page .module-command-brand__text,
+      body.module-page #moduleTitle {
+        min-width: 0 !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
+      }
+
+      body.module-page #moduleTitle {
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+      }
+
+      body.module-page .module-header-actions {
+        grid-column: 3 !important;
+        display: grid !important;
+        grid-template-columns: 44px 44px !important;
+        gap: 5px !important;
+        width: 93px !important;
+        min-width: 93px !important;
+        max-width: 93px !important;
+        justify-content: end !important;
+        overflow: visible !important;
+      }
+
+      body.module-page #moduleDashboardLauncher,
+      body.module-page #mobileModuleMenuButton {
+        width: 44px !important;
+        min-width: 44px !important;
+        max-width: 44px !important;
+        height: 44px !important;
+        min-height: 44px !important;
+        padding: 0 !important;
+      }
+
+      body.module-page .mobile-workspace-tabs {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 5px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        overflow: hidden !important;
+      }
+
+      body.module-page .mobile-workspace-tabs button {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
+      }
+
+      body.module-page .mobile-workspace-tabs button span {
+        display: block;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      body.module-page .module-mobile-menu {
+        top: 0 !important;
+        right: 0 !important;
+        left: auto !important;
+        width: min(86vw, 340px) !important;
+        max-width: calc(100vw - 48px) !important;
+        height: 100dvh !important;
+        margin: 0 !important;
+        transform: translate3d(100%, 0, 0) !important;
+        transform-origin: right center !important;
+        will-change: transform;
+        visibility: hidden;
+        transition:
+          transform .24s cubic-bezier(.2, .75, .25, 1),
+          visibility 0s linear .24s !important;
+      }
+
+      body.module-page .module-mobile-menu.is-open {
+        transform: translate3d(0, 0, 0) !important;
+        visibility: visible !important;
+        transition:
+          transform .24s cubic-bezier(.2, .75, .25, 1) !important;
+      }
+
+      body.module-page .module-mobile-menu-overlay {
+        inset: 0 !important;
+        width: 100vw !important;
+        max-width: 100vw !important;
+      }
+
+      body.module-page.module-menu-open {
+        overflow: hidden !important;
+        overscroll-behavior: none;
+      }
+    }
+
+    @media (max-width: 359px) {
+      body.module-page .module-command-bar {
+        grid-template-columns: 42px minmax(0, 1fr) 89px !important;
+        gap: 4px !important;
+      }
+
+      body.module-page .module-header-actions {
+        grid-template-columns: 42px 42px !important;
+        gap: 5px !important;
+        width: 89px !important;
+        min-width: 89px !important;
+        max-width: 89px !important;
+      }
+
+      body.module-page #moduleDashboardLauncher,
+      body.module-page #mobileModuleMenuButton,
+      body.module-page .module-command-back {
+        width: 42px !important;
+        min-width: 42px !important;
+        max-width: 42px !important;
+        height: 42px !important;
+      }
+
+      body.module-page .module-mobile-menu {
+        width: min(88vw, 320px) !important;
+        max-width: calc(100vw - 42px) !important;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      body.module-page .module-mobile-menu,
+      body.module-page .module-mobile-menu.is-open {
+        transition-duration: .01ms !important;
+      }
+    }
+  </style>
+
+  <style id="receivingCardLevelProgressStyles">
+    /*
+     * Receiving Material UI v2 — 2026-07-18
+     * UI-only: ไม่แก้ Transaction, Retry, Queue หรือ Workflow
+     */
+
+    body.module-page .receiving-card-progress {
+      display: grid;
+      gap: 8px;
+      width: 100%;
+      margin-top: 9px;
+      padding: 10px 11px;
+      border: 1px solid #bfd7e0;
+      border-radius: 12px;
+      background: #f7fbfc;
+      color: #173f52;
+      box-shadow: 0 3px 12px rgba(15, 67, 91, .07);
+    }
+
+    body.module-page .receiving-card-progress__header {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    body.module-page .receiving-card-progress__header > div {
+      display: grid;
+      gap: 1px;
+      min-width: 0;
+    }
+
+    body.module-page .receiving-card-progress__header strong {
+      overflow: hidden;
+      font-size: 12px;
+      font-weight: 850;
+      line-height: 1.3;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    body.module-page .receiving-card-progress__header small {
+      color: #667f8b;
+      font-size: 10px;
+      font-weight: 750;
+      line-height: 1.2;
+    }
+
+    body.module-page .receiving-card-progress__spinner {
+      width: 19px;
+      height: 19px;
+      flex: 0 0 19px;
+      border: 2px solid #d0e3e9;
+      border-top-color: #0b819f;
+      border-radius: 50%;
+      animation: receiving-card-spin .8s linear infinite;
+    }
+
+    body.module-page .receiving-card-progress__meter {
+      height: 5px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #dcebf0;
+    }
+
+    body.module-page .receiving-card-progress__meter i {
+      display: block;
+      width: 4%;
+      height: 100%;
+      border-radius: inherit;
+      background: #0b819f;
+      transition: width .22s ease;
+    }
+
+    body.module-page .receiving-card-progress__steps {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 4px;
+    }
+
+    body.module-page .receiving-card-progress__steps::before {
+      position: absolute;
+      top: 10px;
+      right: 11%;
+      left: 11%;
+      height: 2px;
+      background: #dbe6ea;
+      content: "";
+      z-index: 0;
+    }
+
+    body.module-page .receiving-card-progress__steps span {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      justify-items: center;
+      gap: 3px;
+      min-width: 0;
+      color: #80929b;
+      text-align: center;
+    }
+
+    body.module-page .receiving-card-progress__steps b {
+      display: grid;
+      place-items: center;
+      width: 22px;
+      height: 22px;
+      border: 2px solid #f7fbfc;
+      border-radius: 50%;
+      background: #dfe9ed;
+      color: #607681;
+      font-size: 9px;
+      font-weight: 900;
+    }
+
+    body.module-page .receiving-card-progress__steps em {
+      overflow: hidden;
+      max-width: 100%;
+      font-size: 9px;
+      font-style: normal;
+      font-weight: 800;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    body.module-page .receiving-card-progress__steps span.is-active {
+      color: #075d77;
+    }
+
+    body.module-page .receiving-card-progress__steps span.is-active b {
+      background: #0b819f;
+      color: #fff;
+      box-shadow: 0 0 0 3px rgba(11, 129, 159, .13);
+    }
+
+    body.module-page .receiving-card-progress__steps span.is-done {
+      color: #08725a;
+    }
+
+    body.module-page .receiving-card-progress__steps span.is-done b {
+      background: #14966f;
+      color: #fff;
+    }
+
+    body.module-page .receiving-card-progress[data-state="DONE"],
+    body.module-page .receiving-card-progress[data-state="SYNCED"] {
+      border-color: #8dd6bd;
+      background: #f0fbf7;
+    }
+
+    body.module-page .receiving-card-progress[data-state="DONE"]
+    .receiving-card-progress__spinner,
+    body.module-page .receiving-card-progress[data-state="SYNCED"]
+    .receiving-card-progress__spinner {
+      border-color: #14966f;
+      animation: none;
+    }
+
+    body.module-page .receiving-card-progress[data-state="QUEUED"],
+    body.module-page .receiving-card-progress[data-state="SYNC_PENDING"] {
+      border-color: #e5c374;
+      background: #fffaf0;
+    }
+
+    body.module-page .receiving-card-progress[data-state="ERROR"] {
+      border-color: #e7a0a0;
+      background: #fff4f4;
+      color: #922b2b;
+    }
+
+    /*
+     * ROUND 02 REVISION 1:
+     * Progress ต้องเป็นแถบสถานะเล็ก ไม่กินพื้นที่การ์ดและไม่ขวางงานอื่น
+     */
+    body.module-page .receiving-card-progress {
+      gap: 5px !important;
+      margin-top: 6px !important;
+      padding: 7px 9px !important;
+      border-radius: 10px !important;
+      box-shadow: none !important;
+    }
+
+    body.module-page .receiving-card-progress__header {
+      gap: 7px !important;
+    }
+
+    body.module-page .receiving-card-progress__header strong {
+      font-size: 11px !important;
+      line-height: 1.25 !important;
+    }
+
+    body.module-page .receiving-card-progress__header small {
+      font-size: 9px !important;
+      line-height: 1.15 !important;
+    }
+
+    body.module-page .receiving-card-progress__spinner {
+      width: 15px !important;
+      height: 15px !important;
+      flex-basis: 15px !important;
+      border-width: 2px !important;
+    }
+
+    body.module-page .receiving-card-progress__meter {
+      height: 3px !important;
+    }
+
+    body.module-page .receiving-card-progress__steps {
+      display: none !important;
+    }
+
+    /*
+     * Material Snackbar: ไม่ทับ Header, ไม่ตัดข้อความ, ไม่มีปุ่ม X
+     */
+    body.module-page .swal2-container.receiving-material-snackbar-container {
+      align-items: flex-end !important;
+      padding:
+        0 12px
+        calc(16px + env(safe-area-inset-bottom)) !important;
+      pointer-events: none;
+    }
+
+    body.module-page .swal2-popup.receiving-material-snackbar {
+      width: auto !important;
+      min-width: min(360px, calc(100vw - 24px)) !important;
+      max-width: min(520px, calc(100vw - 24px)) !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+      border: 0 !important;
+      border-radius: 14px !important;
+      background: #173f52 !important;
+      color: #fff !important;
+      box-shadow: 0 14px 34px rgba(10, 35, 48, .28) !important;
+      pointer-events: auto;
+    }
+
+    body.module-page .receiving-material-snackbar .swal2-html-container {
+      margin: 0 !important;
+      padding: 0 !important;
+      color: inherit !important;
+    }
+
+    body.module-page .receiving-material-snackbar .swal2-icon,
+    body.module-page .receiving-material-snackbar .swal2-title,
+    body.module-page .receiving-material-snackbar .swal2-close,
+    body.module-page .receiving-material-snackbar .swal2-actions,
+    body.module-page .receiving-material-snackbar .swal2-timer-progress-bar-container {
+      display: none !important;
+    }
+
+    body.module-page .receiving-snackbar {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr);
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px;
+      text-align: left;
+    }
+
+    body.module-page .receiving-snackbar__icon {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #2fb487;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 950;
+      line-height: 1;
+    }
+
+    body.module-page .receiving-snackbar__content {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    body.module-page .receiving-snackbar__content strong {
+      color: #fff;
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 1.25;
+    }
+
+    body.module-page .receiving-snackbar__content span,
+    body.module-page .receiving-snackbar__content small {
+      display: block;
+      overflow: hidden;
+      color: rgba(255, 255, 255, .86);
+      font-size: 11px;
+      font-weight: 650;
+      line-height: 1.3;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    body.module-page .receiving-snackbar__content small {
+      color: rgba(255, 255, 255, .72);
+    }
+
+    @keyframes receiving-card-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (max-width: 767px) {
+      body.module-page .receiving-card-progress {
+        gap: 6px;
+        margin-top: 7px;
+        padding: 8px;
+        border-radius: 10px;
+      }
+
+      body.module-page .receiving-card-progress__header {
+        gap: 7px;
+      }
+
+      body.module-page .receiving-card-progress__header strong {
+        font-size: 10px;
+        white-space: normal;
+      }
+
+      body.module-page .receiving-card-progress__header small {
+        font-size: 8px;
+      }
+
+      body.module-page .receiving-card-progress__spinner {
+        width: 16px;
+        height: 16px;
+        flex-basis: 16px;
+      }
+
+      body.module-page .receiving-card-progress__steps b {
+        width: 18px;
+        height: 18px;
+        font-size: 8px;
+      }
+
+      body.module-page .receiving-card-progress__steps::before {
+        top: 8px;
+      }
+
+      body.module-page .receiving-card-progress__steps em {
+        display: none;
+      }
+
+      body.module-page .swal2-container.receiving-material-snackbar-container {
+        padding:
+          0 8px
+          calc(10px + env(safe-area-inset-bottom)) !important;
+      }
+
+      body.module-page .swal2-popup.receiving-material-snackbar {
+        min-width: calc(100vw - 16px) !important;
+        max-width: calc(100vw - 16px) !important;
+        border-radius: 12px !important;
+      }
+
+      body.module-page .receiving-snackbar {
+        grid-template-columns: 27px minmax(0, 1fr);
+        gap: 8px;
+        padding: 10px 11px;
+      }
+
+      body.module-page .receiving-snackbar__icon {
+        width: 26px;
+        height: 26px;
+        font-size: 14px;
+      }
+
+      body.module-page .receiving-snackbar__content strong {
+        font-size: 12px;
+      }
+
+      body.module-page .receiving-snackbar__content span,
+      body.module-page .receiving-snackbar__content small {
+        font-size: 10px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      body.module-page .receiving-card-progress__spinner {
+        animation-duration: 1.8s;
+      }
+
+      body.module-page .receiving-card-progress__meter i {
+        transition: none;
+      }
+    }
+
+    /*
+     * Record Detail Pointer Fix — 2026-07-18
+     * ปุ่มปิดและปุ่มคำสั่งในหน้ารายละเอียดต้องรับ Pointer Event เอง
+     */
+    body.module-page .swal2-popup.record-action-popup,
+    body.module-page .swal2-popup.record-action-popup *,
+    body.module-page .swal2-popup.av-record-detail-popup-v55,
+    body.module-page .swal2-popup.av-record-detail-popup-v55 * {
+      pointer-events: auto !important;
+    }
+
+    body.module-page .swal2-popup.record-action-popup button,
+    body.module-page .swal2-popup.av-record-detail-popup-v55 button {
+      position: relative;
+      z-index: 20;
+      touch-action: manipulation;
+    }
+
+  </style>
+
+
+  <style id="receivingCommandJournalStyles">
+    body.module-page .receiving-command-strip[hidden] {
+      display: none !important;
+    }
+
+    body.module-page .receiving-command-strip {
+      position: sticky;
+      top: var(--module-command-sticky-offset, 72px);
+      z-index: 48;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      width: calc(100% - 32px);
+      max-width: 1580px;
+      min-height: 42px;
+      margin: 10px auto 4px;
+      padding: 8px 14px;
+      box-sizing: border-box;
+      border: 1px solid #8fcdbd;
+      border-radius: 12px;
+      background: #effbf7;
+      color: #075f53;
+      box-shadow: 0 5px 16px rgba(15, 61, 94, 0.09);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    body.module-page .receiving-command-strip strong {
+      font-size: 13px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    body.module-page .receiving-command-strip span {
+      min-width: 0;
+      font-weight: 700;
+      text-align: right;
+    }
+
+    body.module-page .receiving-command-strip[data-state="OFFLINE"] {
+      border-color: #e3ba6d;
+      background: #fff8e8;
+      color: #815000;
+    }
+
+    body.module-page .receiving-command-toast-root {
+      position: fixed;
+      top: max(76px, calc(env(safe-area-inset-top) + 62px));
+      left: 50%;
+      z-index: 30000;
+      display: grid;
+      width: min(580px, calc(100vw - 28px));
+      gap: 8px;
+      pointer-events: none;
+      transform: translateX(-50%);
+    }
+
+    body.module-page .receiving-command-toast {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr);
+      align-items: center;
+      gap: 10px;
+      min-height: 48px;
+      padding: 9px 13px;
+      box-sizing: border-box;
+      border: 1px solid #a9d8cc;
+      border-radius: 13px;
+      background: #f4fcf9;
+      color: #0b5149;
+      box-shadow: 0 12px 32px rgba(7, 47, 70, 0.2);
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 0.22s ease, transform 0.22s ease;
+    }
+
+    body.module-page .receiving-command-toast > span {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #0d9079;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 900;
+    }
+
+    body.module-page .receiving-command-toast p {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1.42;
+    }
+
+    body.module-page .receiving-command-toast.is-error {
+      border-color: #efb4b4;
+      background: #fff5f5;
+      color: #8a1f1f;
+    }
+
+    body.module-page .receiving-command-toast.is-error > span {
+      background: #d64545;
+    }
+
+    body.module-page .receiving-command-toast.is-info {
+      border-color: #bdd5e4;
+      background: #f3f9fc;
+      color: #174f70;
+    }
+
+    body.module-page .receiving-command-toast.is-info > span {
+      background: #287da8;
+    }
+
+    body.module-page .receiving-command-toast.is-leaving {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+
+    body.module-page .receiving-complete-button[data-receiving-command-pending="TRUE"] {
+      cursor: default;
+      border-color: #9fb1ba !important;
+      background: #e8eef1 !important;
+      color: #61727b !important;
+      box-shadow: none !important;
+    }
+
+    @media (max-width: 700px) {
+      body.module-page .receiving-command-strip {
+        top: 62px;
+        width: calc(100% - 18px);
+        min-height: 40px;
+        margin-top: 7px;
+        padding: 7px 10px;
+      }
+
+      body.module-page .receiving-command-strip strong {
+        font-size: 12px;
+      }
+
+      body.module-page .receiving-command-strip span {
+        font-size: 10px;
+      }
+
+      body.module-page .receiving-command-toast-root {
+        top: max(64px, calc(env(safe-area-inset-top) + 54px));
+        width: calc(100vw - 18px);
+      }
+
+      body.module-page .receiving-command-toast {
+        grid-template-columns: 26px minmax(0, 1fr);
+        min-height: 44px;
+        padding: 8px 10px;
+      }
+
+      body.module-page .receiving-command-toast > span {
+        width: 24px;
+        height: 24px;
+        font-size: 14px;
+      }
+
+      body.module-page .receiving-command-toast p {
+        font-size: 11px;
+      }
+    }
+  </style>
+
+  <script src="./module.bundle.js?v=20260720-compact-material-bento-r1" defer></script>
+</head>
+
+<!-- 20260718-mobile-drawer-right-to-left-viewport-fix -->
+<!-- 20260718-record-detail-pointer-fix -->
+<body
+  data-page="module"
+  class="module-page module-card-focus"
+  data-mobile-workspace="LIST"
+>
+  <!-- แสดงเฉพาะตอนเปิดหน้าเป็นครั้งแรก -->
+  <div
+    id="pageLoading"
+    class="page-loading"
+  >
+    <div class="spinner"></div>
+
+    <span>
+      กำลังโหลดข้อมูลสถานะรถ
+    </span>
+  </div>
+
+  <header class="module-header">
+    <div class="module-header__inner">
+      <div class="module-command-bar">
+        <button
+          id="backButton"
+          class="module-command-back"
+          type="button"
+          aria-label="กลับหน้าหลัก"
+          title="กลับหน้าหลัก"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M15 18l-6-6 6-6"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.3"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <span>หน้าหลัก</span>
+        </button>
+
+        <div class="module-command-brand">
+          <div class="module-command-brand__icon" aria-hidden="true">
+            <svg viewBox="0 0 48 48">
+              <path
+                d="M24 5 39 11v11c0 10-6.5 17.2-15 21-8.5-3.8-15-11-15-21V11L24 5Z"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linejoin="round"
+              />
+              <path
+                d="m17 24 5 5 10-11"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </div>
+
+          <div class="module-command-brand__text">
+            <p class="eyebrow module-live-label">VEHICLE CONTROL TOWER</p>
+            <h1 id="moduleTitle">กำลังโหลดโมดูล...</h1>
+            <p id="moduleDescription" class="module-title-description">กรุณารอสักครู่</p>
+          </div>
+        </div>
+
+        <div
+          id="overdueAppBadge"
+          class="module-command-kpi overdue-app-badge is-zero"
+          data-count="0"
+          role="status"
+          aria-live="polite"
+          aria-label="ไม่มีตู้เกินเวลาค้าง"
+          title="จำนวนตู้เกินเวลาสะสมที่ยังไม่มีเวลาออก"
+        >
+          <span class="overdue-app-badge__label">เกินเวลาค้าง</span>
+          <strong id="overdueAppBadgeCount">0</strong>
+        </div>
+
+        <div class="module-header-actions">
+          <div
+            id="moduleDashboardHost"
+            class="module-dashboard-host"
+            aria-label="ทางลัดไป Dashboard"
+          ></div>
+
+          <section
+            id="moduleSnapshotState"
+            class="module-snapshot-state module-snapshot-state--compact"
+            data-state="LOADING"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            aria-label="กำลังตรวจสอบสถานะข้อมูลจากระบบ"
+            aria-expanded="false"
+            tabindex="0"
+          >
+            <span class="module-snapshot-state__dot" aria-hidden="true"></span>
+            <div class="module-snapshot-state__popover">
+              <div class="module-snapshot-state__body">
+                <strong id="moduleSnapshotTitle">กำลังตรวจสอบข้อมูล</strong>
+                <span id="moduleSnapshotDetail">กำลังยืนยันข้อมูลจากระบบ</span>
+              </div>
+              <div class="module-snapshot-state__actions">
+                <button
+                  id="moduleSnapshotRetry"
+                  class="button button--secondary module-snapshot-state__retry"
+                  type="button"
+                  hidden
+                >
+                  โหลดข้อมูลอีกครั้ง
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <button
+            id="mobileModuleMenuButton"
+            class="module-menu-button"
+            type="button"
+            aria-label="เปิดเมนู"
+            aria-expanded="false"
+            aria-controls="mobileModuleDrawer"
+            title="เมนู"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="module-user">
+          <div class="module-user__identity">
+            <span id="userDisplayName">กำลังโหลด...</span>
+            <strong id="currentDateTime">--/--/---- --:--:--</strong>
+          </div>
+          <button id="logoutButton" class="module-command-logout" type="button">ออกจากระบบ</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div id="mobileModuleDrawerOverlay" class="module-mobile-menu-overlay" hidden></div>
+
+  <aside
+    id="mobileModuleDrawer"
+    class="module-mobile-menu"
+    aria-hidden="true"
+    aria-labelledby="mobileModuleDrawerTitle"
+    tabindex="-1"
+  >
+    <header class="module-mobile-menu__header">
+      <div>
+        <small>เมนูการทำงาน</small>
+        <h2 id="mobileModuleDrawerTitle">สถานะรถและตู้สินค้า</h2>
+        <p id="mobileModuleDrawerUser">กำลังอ่านข้อมูลผู้ใช้งาน</p>
+      </div>
+      <button id="mobileModuleDrawerClose" type="button" aria-label="ปิดเมนู" title="ปิดเมนู">×</button>
+    </header>
+
+    <nav class="module-mobile-menu__nav" aria-label="เมนูหน้า Module">
+      <button type="button" data-module-menu-action="DASHBOARD">
+        <span aria-hidden="true">▥</span><b>เปิด Dashboard</b>
+      </button>
+      <button type="button" data-module-menu-action="FULLSCREEN">
+        <span aria-hidden="true">⛶</span><b id="mobileMenuFullscreenLabel">เปิดเต็มหน้าจอ</b>
+      </button>
+      <button type="button" data-module-menu-action="CALENDAR">
+        <span aria-hidden="true">▣</span><b>ดูข้อมูลย้อนหลัง</b>
+      </button>
+      <button type="button" data-module-menu-action="REFRESH">
+        <span aria-hidden="true">↻</span><b>โหลดข้อมูลใหม่</b>
+      </button>
+    </nav>
+
+    <section class="module-mobile-menu__status" data-drawer-status="LOADING" aria-label="สถานะข้อมูลจากระบบ">
+      <span class="module-mobile-menu__status-dot" aria-hidden="true"></span>
+      <div>
+        <strong id="mobileDrawerSnapshotTitle">กำลังตรวจสอบข้อมูล</strong>
+        <p id="mobileDrawerSnapshotDetail">กำลังยืนยันข้อมูลล่าสุดจากระบบ</p>
+      </div>
+      <button id="mobileDrawerSnapshotRetry" type="button" hidden>ตรวจสอบอีกครั้ง</button>
+    </section>
+
+    <nav class="module-mobile-menu__nav module-mobile-menu__nav--secondary" aria-label="คำสั่งเพิ่มเติม">
+      <button type="button" data-module-menu-action="ALERT">
+        <span aria-hidden="true">◉</span><b>การแจ้งเตือน</b>
+      </button>
+      <button type="button" data-module-menu-action="THRESHOLD">
+        <span aria-hidden="true">i</span><b>เกณฑ์เวลา</b>
+      </button>
+      <button type="button" data-module-menu-action="HOME">
+        <span aria-hidden="true">⌂</span><b>กลับหน้าหลัก</b>
+      </button>
+      <button type="button" class="is-danger" data-module-menu-action="LOGOUT">
+        <span aria-hidden="true">⇥</span><b>ออกจากระบบ</b>
+      </button>
+    </nav>
+  </aside>
+
+  <main class="module-container">
+
+    <section
+      id="moduleThresholdInfo"
+      class="module-threshold-info"
+      aria-label="เกณฑ์เวลาของโมดูล"
+    >
+      <div class="module-threshold-info__title">
+        <span>เกณฑ์สถานะ</span>
+
+        <button
+          id="thresholdInfoButton"
+          type="button"
+          aria-label="ดูคำอธิบายเกณฑ์เวลา"
+        >
+          i
+        </button>
+      </div>
+
+      <div class="module-threshold-info__chips">
+        <div data-status="NORMAL">
+          <i aria-hidden="true"></i>
+          <span>ปกติ</span>
+          <strong id="thresholdNormalText">-- นาที</strong>
+        </div>
+
+        <div data-status="WARNING">
+          <i aria-hidden="true"></i>
+          <span>เฝ้าระวัง</span>
+          <strong id="thresholdWarningText">-- นาที</strong>
+        </div>
+
+        <div data-status="OVERDUE">
+          <i aria-hidden="true"></i>
+          <span>เกินเวลา</span>
+          <strong id="thresholdOverdueText">-- นาที</strong>
+        </div>
+
+        <div data-status="AUTO_CLOSE">
+          <i aria-hidden="true"></i>
+          <span>เคลียร์อัตโนมัติ</span>
+          <strong id="thresholdAutoCloseText">36 ชั่วโมง</strong>
+        </div>
+      </div>
+    </section>
+
+
+
+    <section
+      id="moduleFocusToolbar"
+      class="module-focus-toolbar module-critical-summary"
+      aria-label="สถานการณ์สำคัญที่ต้องเห็นทันที"
+    >
+      <div
+        id="criticalStatusFilters"
+        class="module-focus-statuses"
+        role="toolbar"
+        aria-label="กรองตามระดับเวลา"
+      >
+        <button
+          type="button"
+          class="is-active"
+          data-focus-status="ALL"
+          aria-pressed="true"
+        >
+          <span>ทั้งหมด</span>
+          <strong id="focusCountAll">0</strong>
+        </button>
+
+        <button
+          type="button"
+          data-focus-status="NORMAL"
+          aria-pressed="false"
+        >
+          <span>ปกติ</span>
+          <strong id="focusCountNormal">0</strong>
+        </button>
+
+        <button
+          type="button"
+          data-focus-status="WARNING"
+          aria-pressed="false"
+        >
+          <span>ใกล้เกิน</span>
+          <strong id="focusCountWarning">0</strong>
+        </button>
+
+        <button
+          type="button"
+          data-focus-status="OVERDUE"
+          aria-pressed="false"
+        >
+          <span>เกินเวลา</span>
+          <strong id="focusCountOverdue">0</strong>
+        </button>
+
+        <button
+          id="mobileConflictFilter"
+          type="button"
+          class="mobile-critical-conflict"
+          data-mobile-conflict-filter="true"
+          aria-pressed="false"
+        >
+          <span>ข้อมูลผิดปกติ</span>
+          <strong id="mobileCriticalConflictCount">0</strong>
+        </button>
+      </div>
+    </section>
+
+    <nav
+      id="mobileWorkspaceTabs"
+      class="mobile-workspace-tabs"
+      aria-label="เลือกส่วนข้อมูล"
+    >
+      <button type="button" class="is-active" data-mobile-workspace="LIST" aria-pressed="true">
+        <span>รายการรถ</span>
+        <strong id="mobileTabListCount">0</strong>
+      </button>
+      <button type="button" data-mobile-workspace="STAGES" aria-pressed="false">
+        <span>ขั้นตอนงาน</span>
+        <strong id="mobileTabStageCount">0</strong>
+      </button>
+      <button type="button" data-mobile-workspace="SHIFTS" aria-pressed="false">
+        <span>ภาพรวมกะ</span>
+        <strong id="mobileTabShiftCount">0</strong>
+      </button>
+      <button type="button" data-mobile-workspace="HANDOVER" aria-pressed="false">
+        <span>ส่งมอบ</span>
+        <strong id="mobileTabHandoverState">–</strong>
+      </button>
+    </nav>
+
+    <section
+      id="operationalBoardPanel"
+      class="operational-board-panel is-professional-collapsed"
+      aria-label="สถานะปฏิบัติงานและความรับผิดชอบตามกะ"
+    >
+      <header class="operational-board-panel__header">
+        <div>
+          <small>ภาพรวมการปฏิบัติงาน</small>
+          <h2>ภาพรวมขั้นตอนงานและกะรับผิดชอบ</h2>
+          <p id="operationalCurrentShift">กำลังอ่านการตั้งค่ากะ</p>
+        </div>
+
+        <div class="operational-board-panel__header-actions">
+          <span id="operationalIntegrity" class="operational-integrity" data-state="LOADING">กำลังตรวจความครบถ้วน</span>
+          <span id="operationalSnapshotTime">กำลังโหลดข้อมูลล่าสุด</span>
+          <button id="operationalBoardRefresh" type="button">อัปเดตข้อมูล</button>
+          <button id="operationalBoardCollapseToggle" type="button" aria-expanded="false">เปิดภาพรวมกะ</button>
+        </div>
+      </header>
+
+      <div
+        id="operationalStageFilters"
+        class="operational-stage-filters"
+        data-mobile-workspace-section="STAGES"
+        role="toolbar"
+        aria-label="กรองตามขั้นตอนปฏิบัติงาน"
+      >
+        <button
+          type="button"
+          class="is-active"
+          data-operational-stage="ALL"
+          aria-pressed="true"
+        >
+          <span>ทุกขั้นตอน</span>
+          <strong id="operationalCountAll">0</strong>
+        </button>
+
+        <button type="button" data-operational-stage="WAITING_INBOUND_DOCUMENT">
+          <span>รอ พขร.ยื่นเอกสาร</span>
+          <strong id="operationalCountWaitingInboundDocument">0</strong>
+        </button>
+
+        <button type="button" data-operational-stage="WAITING_RECEIVING">
+          <span>รอรับสินค้าเสร็จ</span>
+          <strong id="operationalCountWaitingReceiving">0</strong>
+        </button>
+
+        <button type="button" data-operational-stage="WAITING_DOCUMENT_RETURN">
+          <span>พขร.รอรับเอกสารคืน</span>
+          <strong id="operationalCountWaitingDocumentReturn">0</strong>
+        </button>
+
+        <button type="button" data-operational-stage="WAITING_GATE_OUT">
+          <span>รอ Gate Out</span>
+          <strong id="operationalCountWaitingGateOut">0</strong>
+        </button>
+
+        <button type="button" class="is-conflict" data-operational-stage="DATA_CONFLICT">
+          <span>ข้อมูลขัดแย้ง</span>
+          <strong id="operationalCountDataConflict">0</strong>
+        </button>
+      </div>
+
+      <div class="operational-shift-toolbar" data-mobile-workspace-section="SHIFTS">
+        <div>
+          <span>แบ่งตามกะที่ Admin ตั้งค่า</span>
+          <strong>ค้างข้ามกะ <b id="operationalCarryOverCount">0</b></strong>
+        </div>
+
+        <div
+          id="operationalShiftFilters"
+          class="operational-shift-filters"
+          role="toolbar"
+          aria-label="กรองตามกะเข้า"
+        ></div>
+
+        <button id="operationalResetFilters" type="button">
+          ล้างตัวกรองงาน
+        </button>
+      </div>
+
+      <div
+        id="operationalShiftSummaryGrid"
+        class="operational-shift-summary-grid"
+        data-mobile-workspace-section="SHIFTS"
+        aria-live="polite"
+      >
+        <div class="operational-shift-empty">กำลังประมวลผลข้อมูลกะ</div>
+      </div>
+
+      <section
+        id="shiftHandoverPanel"
+        class="shift-handover-panel"
+        data-mobile-workspace-section="HANDOVER"
+        data-status="LOADING"
+        aria-label="สถานะส่งมอบงานอัตโนมัติระหว่างกะ"
+      >
+        <header class="shift-handover-panel__header">
+          <div>
+            <small>การส่งมอบงานระหว่างกะ</small>
+            <h3>ส่งมอบงานอัตโนมัติระหว่างกะ</h3>
+            <p>ระบบสร้าง Snapshot ก่อนหมดกะและปิดส่งมอบให้อัตโนมัติ ผู้ใช้ไม่ต้องกดมอบงาน</p>
+          </div>
+          <span id="shiftHandoverStatus">กำลังอ่านสถานะ</span>
+        </header>
+
+        <div class="shift-handover-panel__route">
+          <div>
+            <span>กะส่งมอบ</span>
+            <strong id="shiftHandoverFrom">-</strong>
+          </div>
+          <b aria-hidden="true">→</b>
+          <div>
+            <span>กะรับมอบ</span>
+            <strong id="shiftHandoverTo">-</strong>
+          </div>
+          <div>
+            <span>อัปเดตล่าสุด</span>
+            <strong id="shiftHandoverUpdatedAt">-</strong>
+          </div>
+        </div>
+
+        <div
+          id="shiftHandoverMetrics"
+          class="shift-handover-panel__metrics"
+          aria-live="polite"
+        ></div>
+
+        <p id="shiftHandoverNote" class="shift-handover-panel__note">ยังไม่มีหมายเหตุส่งมอบ</p>
+
+        <div class="shift-handover-panel__actions">
+          <button id="shiftHandoverAddNote" type="button">เพิ่มหรือแก้หมายเหตุ</button>
+          <button id="shiftHandoverAcknowledge" type="button">รับทราบงานจากกะก่อน</button>
+          <button id="shiftHandoverRefresh" type="button" hidden>สร้าง Snapshot ใหม่</button>
+        </div>
+      </section>
+    </section>
+
+    <section class="vehicle-tools" data-mobile-workspace-section="LIST">
+      <label class="vehicle-search">
+        <span class="sr-only">
+          ค้นหาข้อมูลรถ
+        </span>
+
+        <input
+          id="searchInput"
+          type="search"
+          inputmode="search"
+          autocomplete="off"
+          placeholder="ค้นหาทะเบียน บริษัท คนขับ หรือเลขนัดหมาย"
+        >
+      </label>
+
+      <label class="vehicle-filter">
+        <span class="sr-only">
+          กรองตามสถานะ
+        </span>
+
+        <select id="statusFilter">
+          <option value="ALL">
+            ทุกสถานะ
+          </option>
+
+          <option value="NORMAL">
+            ปกติ
+          </option>
+
+          <option value="WARNING">
+            ใกล้เกินเวลา
+          </option>
+
+          <option value="OVERDUE">
+            เกินเวลา
+          </option>
+
+          <option value="INCOMPLETE">
+            ข้อมูลไม่สมบูรณ์
+          </option>
+        </select>
+      </label>
+
+      <label class="vehicle-sort module-focus-sort">
+        <span class="sr-only">
+          เรียงลำดับการ์ด
+        </span>
+
+        <select id="focusSortSelect">
+          <option value="LONGEST">
+            อยู่นานมากที่สุด
+          </option>
+
+          <option value="NEWEST">
+            เข้าพื้นที่ล่าสุด
+          </option>
+
+          <option value="APPOINTMENT">
+            เลขนัดหมาย
+          </option>
+
+          <option value="COMPANY">
+            ชื่อบริษัท
+          </option>
+        </select>
+      </label>
+
+      <button
+        id="calendarButton"
+        class="button button--secondary vehicle-tool-button"
+        type="button"
+      >
+        ปฏิทิน
+      </button>
+    </section>
+
+    <section class="vehicle-result-header" data-mobile-workspace-section="LIST">
+      <div>
+        <strong id="resultCount">
+          0 รายการ
+        </strong>
+
+        <span id="lastUpdated">
+          กำลังเตรียมข้อมูล
+        </span>
+      </div>
+    </section>
+
+    <div
+      id="vehicleEmpty"
+      class="empty-state is-hidden"
+      data-mobile-workspace-section="LIST"
+    >
+      <strong>
+        ไม่พบข้อมูลตามเงื่อนไข
+      </strong>
+
+      <span>
+        ลองเปลี่ยนคำค้นหาหรือตัวกรองสถานะ
+      </span>
+    </div>
+
+    <section
+      id="vehicleList"
+      class="vehicle-grid"
+      data-mobile-workspace-section="LIST"
+      aria-live="polite"
+      aria-busy="false"
+    ></section>
+
+
+    <section
+      id="warehouseSituation"
+      class="warehouse-control-tower"
+      data-state="NORMAL"
+      aria-label="สถานการณ์คลังปัจจุบัน"
+    >
+      <div class="warehouse-control-tower__status">
+        <div class="warehouse-control-tower__signal" aria-hidden="true">
+          <span></span>
+        </div>
+
+        <div>
+          <small>สถานการณ์คลังขณะนี้</small>
+          <strong id="situationLabel">กำลังประเมินสถานการณ์</strong>
+          <p id="situationMessage">กรุณารอสักครู่</p>
+        </div>
+      </div>
+
+      <div class="warehouse-control-tower__metrics">
+        <button
+          type="button"
+          data-summary-filter="ALL"
+        >
+          <span>อยู่ในพื้นที่</span>
+          <strong id="controlTotal">0</strong>
+        </button>
+
+        <button
+          type="button"
+          data-metric="NORMAL"
+          data-summary-filter="NORMAL"
+        >
+          <span>ปกติ</span>
+          <strong id="controlNormal">0</strong>
+        </button>
+
+        <button
+          type="button"
+          data-metric="WARNING"
+          data-summary-filter="WARNING"
+        >
+          <span>เฝ้าระวัง</span>
+          <strong id="controlWarning">0</strong>
+        </button>
+
+        <button
+          type="button"
+          data-metric="OVERDUE"
+          data-summary-filter="OVERDUE"
+        >
+          <span>เกินเวลา</span>
+          <strong id="controlOverdue">0</strong>
+        </button>
+
+        <button
+          type="button"
+          data-metric="INCOMPLETE"
+          data-summary-filter="INCOMPLETE"
+        >
+          <span>ข้อมูลไม่สมบูรณ์</span>
+          <strong id="controlIncomplete">0</strong>
+        </button>
+
+        <div data-metric="AUTO_CLOSE">
+          <span id="controlNearAutoCloseLabel">ใกล้ครบ -- ชม.</span>
+          <strong id="controlNearAutoClose">0</strong>
+          <small>รวมอยู่ในเกินเวลา</small>
+        </div>
+      </div>
+
+    </section>
+
+
+    <section
+      id="receivingFlowPanel"
+      class="receiving-flow-panel is-hidden legacy-receiving-panel"
+      hidden
+      aria-hidden="true"
+      aria-label="การติดตามการรับสินค้า"
+      aria-hidden="true"
+    >
+      <div class="receiving-flow-panel__header">
+        <div>
+          <small>RECEIVING FLOW</small>
+          <h2>สถานะการรับสินค้าและ Gate Out</h2>
+          <p id="receivingUpdatedAt">กำลังโหลดข้อมูล</p>
+        </div>
+
+        <div
+          class="receiving-flow-filters"
+          role="group"
+          aria-label="กรองขั้นตอนการรับสินค้า"
+        >
+          <button
+            type="button"
+            data-receiving-filter="ALL"
+            aria-pressed="false"
+          >
+            <span>ทั้งหมด</span>
+            <strong id="receivingFilterAllCount">0</strong>
+          </button>
+
+          <button
+            type="button"
+            class="is-active"
+            data-receiving-filter="WAITING_RECEIVING"
+            aria-pressed="true"
+          >
+            <span>รอรับเสร็จ</span>
+            <strong id="receivingFilterWaitingCount">0</strong>
+          </button>
+
+          <button
+            type="button"
+            data-receiving-filter="WAITING_GATE_OUT"
+            aria-pressed="false"
+          >
+            <span>รับเสร็จรอออก</span>
+            <strong id="receivingFilterGateOutCount">0</strong>
+          </button>
+        </div>
+      </div>
+
+      <div class="receiving-flow-panel__body">
+        <div
+          id="receivingFilterContext"
+          class="receiving-filter-context"
+          data-filter="WAITING_RECEIVING"
+          aria-live="polite"
+        >
+          <span>กำลังแสดง</span>
+          <strong>รอรับสินค้าเสร็จ</strong>
+          <em>0 รายการ</em>
+          <small>รายการที่รับสินค้าเสร็จแล้วจะถูกซ่อนอัตโนมัติ กด “รับเสร็จรอออก” เพื่อดู</small>
+        </div>
+
+        <div class="receiving-flow-summary receiving-flow-summary--executive">
+          <button
+            type="button"
+            class="receiving-flow-metric"
+            data-metric="WAITING_RECEIVING"
+            data-receiving-filter="WAITING_RECEIVING"
+          >
+            <span>รอรับสินค้าเสร็จ</span>
+            <strong id="receivingWaitingCount">0</strong>
+            <small>ต้องติดตามขั้นตอนรับสินค้า</small>
+          </button>
+
+          <button
+            type="button"
+            class="receiving-flow-metric"
+            data-metric="WAITING_GATE_OUT"
+            data-receiving-filter="WAITING_GATE_OUT"
+          >
+            <span>รับเสร็จ รอ Gate Out</span>
+            <strong id="receivingWaitingGateOutCount">0</strong>
+            <small>ต้องติดตามการออกพื้นที่</small>
+          </button>
+
+          <div
+            class="receiving-flow-metric"
+            data-metric="COMPLETED_TODAY"
+          >
+            <span>รับสินค้าเสร็จวันนี้</span>
+            <strong id="receivingCompletedTodayCount">0</strong>
+            <small>เหตุการณ์ที่บันทึกสำเร็จ</small>
+          </div>
+
+          <div
+            class="receiving-flow-metric"
+            data-metric="DATA_QUALITY"
+          >
+            <span>ออกโดยไม่บันทึกรับเสร็จ</span>
+            <strong id="receivingMissingCount">0</strong>
+            <small>ข้อมูลกระบวนการไม่ครบ</small>
+          </div>
+
+          <div
+            class="receiving-flow-metric receiving-flow-metric--duration"
+            data-metric="STAGE_ONE_AVG"
+          >
+            <span>เฉลี่ย เข้า → รับเสร็จ</span>
+            <strong id="receivingAverageStageOne">--:--:--</strong>
+            <small>ระยะเวลาช่วงรับสินค้า</small>
+          </div>
+
+          <div
+            class="receiving-flow-metric receiving-flow-metric--duration"
+            data-metric="STAGE_TWO_AVG"
+          >
+            <span>เฉลี่ย รับเสร็จ → Gate Out</span>
+            <strong id="receivingAverageStageTwo">--:--:--</strong>
+            <small>เฉพาะ Gate Out จริง</small>
+          </div>
+        </div>
+
+        <div class="receiving-priority-panel">
+          <div class="receiving-priority-panel__title">
+            <div>
+              <small>ACTION QUEUE</small>
+              <strong>รายการที่ควรติดตามก่อน</strong>
+            </div>
+            <span>เรียงตามเวลารอสูงสุด</span>
+          </div>
+
+          <div id="receivingPriorityList" class="receiving-priority-list">
+            <div class="receiving-priority-empty">กำลังประเมินรายการ</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section
+      id="movementOverview"
+      class="movement-overview"
+      data-state="NORMAL"
+      aria-label="สรุปการเคลื่อนไหวเข้าออก"
+    >
+      <div class="movement-overview__header">
+        <div>
+          <small id="movementScopeEyebrow">CURRENT 4-HOUR ROUND</small>
+          <h2 id="movementScopeTitle">รอบปัจจุบัน</h2>
+          <p id="movementScopeTime">กำลังโหลดข้อมูล</p>
+        </div>
+
+        <div
+          id="movementScopeGroup"
+          class="movement-scope-group"
+        >
+          <button
+            type="button"
+            data-movement-scope="CURRENT_ROUND"
+            class="is-active"
+          >
+            รอบ 4 ชั่วโมง
+          </button>
+
+          <button
+            type="button"
+            data-movement-scope="TODAY"
+          >
+            วันนี้
+          </button>
+        </div>
+
+        <button
+          id="moduleHourlyDetailToggle"
+          class="module-hourly-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="moduleHourlyDetails"
+        >
+          ดูรายละเอียดรายชั่วโมง
+        </button>
+      </div>
+
+      <div class="movement-overview__body">
+        <div class="movement-overview__summary">
+          <div
+            id="movementRemainingWrap"
+            class="movement-round-countdown"
+          >
+            <span>เหลือเวลาในรอบ</span>
+            <strong id="movementRemaining">--:--:--</strong>
+          </div>
+
+          <div class="movement-analysis">
+            <span>วิเคราะห์สถานการณ์</span>
+            <strong id="movementAnalysisTitle">กำลังประเมินสถานการณ์</strong>
+            <p id="movementAnalysisMessage"></p>
+          </div>
+
+          <div class="movement-primary-metrics movement-primary-metrics--executive">
+            <div data-metric="IN">
+              <span>Gate In</span>
+              <strong id="movementIn">0</strong>
+              <small>เข้าพื้นที่</small>
+            </div>
+
+            <div data-metric="OUT_REAL">
+              <span>Gate Out จริง</span>
+              <strong id="movementOutReal">0</strong>
+              <small>สแกนออกจากพื้นที่</small>
+            </div>
+
+            <div data-metric="NET_ACTUAL">
+              <span>สุทธิจริง</span>
+              <strong id="movementNetActual">0</strong>
+              <small>เข้า − Gate Out จริง</small>
+            </div>
+
+            <div data-metric="AUTO_CLOSE">
+              <span>ระบบเคลียร์ข้อมูล</span>
+              <strong id="movementOutAuto">0</strong>
+              <small>ไม่ใช่ Gate Out จริง</small>
+            </div>
+          </div>
+
+          <!--
+            ID ชุดเดิมยังคงไว้ให้ module.js ใช้คำนวณ
+            แต่ไม่แสดงซ้ำต่อผู้บริหาร
+          -->
+          <div class="movement-executive-datasource" aria-hidden="true">
+            <strong id="movementOutTotal">0</strong>
+            <strong id="movementTotal">0</strong>
+            <strong id="movementNet">0</strong>
+            <strong id="movementActiveNow">0</strong>
+            <strong id="movementOverdueNow">0</strong>
+          </div>
+        </div>
+
+        <div class="movement-chart-panel">
+          <div class="movement-chart-panel__header">
+            <div>
+              <span>HOURLY FLOW</span>
+              <strong>แนวโน้มเข้าและออก/เคลียร์รวม</strong>
+            </div>
+
+            <div class="movement-chart-legend">
+              <span data-series="IN">เข้า</span>
+              <span data-series="OUT">ออก/เคลียร์รวม</span>
+            </div>
+          </div>
+
+          <div
+            id="movementMiniChart"
+            class="movement-mini-chart"
+          >
+            <div class="movement-chart-empty">
+              กำลังโหลดข้อมูลรายชั่วโมง
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="moduleHourlyDetails" class="hourly-timeline-panel is-collapsed" aria-label="การเคลื่อนไหวรายชั่วโมง" hidden>
+      <div class="hourly-timeline-panel__header">
+        <div>
+          <small>24-HOUR MOVEMENT</small>
+          <h2>การเคลื่อนไหวเข้า–ออกรายชั่วโมง</h2>
+          <p id="activeTimelineFilter">แสดงทุกชั่วโมง</p>
+        </div>
+
+        <div id="timelineModeGroup" class="timeline-mode-group">
+          <button
+            type="button"
+            data-timeline-mode="ROLLING_24"
+            class="is-active"
+          >
+            ย้อนหลัง 24 ชม.
+          </button>
+
+          <button
+            type="button"
+            data-timeline-mode="TODAY"
+          >
+            วันนี้
+          </button>
+        </div>
+      </div>
+
+      <div
+        id="timelineFocusPreview"
+        class="timeline-focus-preview"
+        data-status="EMPTY"
+      >
+        <div class="timeline-focus-preview__time">
+          <span>ชั่วโมงตรงกลาง</span>
+          <strong id="timelineFocusLabel">--:00–--:59</strong>
+          <small id="timelineFocusOutDetail">Gate Out จริง 0 • ระบบเคลียร์ 0</small>
+        </div>
+
+        <div class="timeline-focus-preview__metrics">
+          <div data-metric="IN">
+            <span>เข้า</span>
+            <strong id="timelineFocusIn">0</strong>
+          </div>
+
+          <div data-metric="OUT">
+            <span>ออก</span>
+            <strong id="timelineFocusOut">0</strong>
+          </div>
+
+          <div data-metric="NET">
+            <span>สุทธิ</span>
+            <strong id="timelineFocusNet">0</strong>
+          </div>
+
+          <div data-metric="TOTAL">
+            <span>รวม</span>
+            <strong id="timelineFocusMovement">0</strong>
+          </div>
+        </div>
+
+        <button
+          id="timelineApplyFilterButton"
+          class="timeline-apply-filter"
+          type="button"
+        >
+          กรองรายการชั่วโมงนี้
+        </button>
+      </div>
+
+      <div class="hourly-timeline-stage">
+        <div class="hourly-timeline-center-line" aria-hidden="true"></div>
+
+        <div
+          id="hourlyTimeline"
+          class="hourly-timeline"
+          role="list"
+          aria-label="ชั่วโมงและจำนวนตู้เข้าออก"
+        ></div>
+      </div>
+
+      <div class="hourly-timeline-panel__footer">
+        <div class="timeline-legend">
+          <span data-status="NORMAL">ปกติ</span>
+          <span data-status="WARNING">เฝ้าระวัง</span>
+          <span data-status="OVERDUE">เกินเวลา</span>
+          <span id="timelineAutoCloseLegend" data-status="AUTO_CLOSE">ใกล้ครบ -- ชม.</span>
+        </div>
+
+        <button
+          id="timelineClearButton"
+          class="timeline-clear-button is-hidden"
+          type="button"
+        >
+          แสดงทุกชั่วโมง
+        </button>
+      </div>
+    </section>
+
+    <section
+      id="summarySection"
+      class="vehicle-summary-grid executive-data-source"
+      aria-label="ข้อมูลสรุปสำหรับระบบ"
+      aria-hidden="true"
+    >
+      <button
+        class="vehicle-summary-card"
+        type="button"
+        data-summary-filter="ALL"
+      >
+        <span>อยู่ในรายการ</span>
+
+        <strong id="summaryTotal">
+          0
+        </strong>
+
+        <small>คัน</small>
+      </button>
+
+      <button
+        class="vehicle-summary-card vehicle-summary-card--normal"
+        type="button"
+        data-summary-filter="NORMAL"
+      >
+        <span>ปกติ</span>
+
+        <strong id="summaryNormal">
+          0
+        </strong>
+
+        <small>คัน</small>
+      </button>
+
+      <button
+        class="vehicle-summary-card vehicle-summary-card--warning"
+        type="button"
+        data-summary-filter="WARNING"
+      >
+        <span>ใกล้เกินเวลา</span>
+
+        <strong id="summaryWarning">
+          0
+        </strong>
+
+        <small>คัน</small>
+      </button>
+
+      <button
+        class="vehicle-summary-card vehicle-summary-card--overdue"
+        type="button"
+        data-summary-filter="OVERDUE"
+      >
+        <span>เกินเวลา</span>
+
+        <strong id="summaryOverdue">
+          0
+        </strong>
+
+        <small>คัน</small>
+      </button>
+
+      <button
+        class="vehicle-summary-card vehicle-summary-card--incomplete"
+        type="button"
+        data-summary-filter="INCOMPLETE"
+      >
+        <span>ข้อมูลไม่สมบูรณ์</span>
+
+        <strong id="summaryIncomplete">
+          0
+        </strong>
+
+        <small>คัน</small>
+      </button>
+    </section>
+
+  </main>
+
+  <footer
+    class="app-footer module-footer"
+    aria-label="ส่วนท้ายระบบ"
+  >
+    <span class="module-footer__brand">
+      S&amp;LP SKDC906
+    </span>
+
+    <button
+      id="operationalAlertToggle"
+      class="module-footer-alert is-enabled"
+      type="button"
+      role="switch"
+      aria-checked="true"
+      aria-label="ปิดการแจ้งเตือนอัตโนมัติ"
+      title="การแจ้งเตือนเปิดอยู่ — กดเพื่อปิด"
+    >
+      <span
+        id="operationalAlertToggleIcon"
+        class="module-footer-alert__icon"
+        aria-hidden="true"
+      >🔔</span>
+
+      <span class="module-footer-alert__label">
+        แจ้งเตือน
+      </span>
+
+      <span
+        id="operationalAlertToggleStatus"
+        class="module-footer-alert__status"
+        aria-hidden="true"
+      >เปิด</span>
+    </button>
+  </footer>
+</body>
+</html>

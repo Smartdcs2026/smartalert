@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <!-- Consolidated bundle build: 20260720-compact-material-bento-r1; original: inbound(9).html -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#073b59">
+  <meta name="color-scheme" content="light">
+  <title>Inbound Control Room | ระบบติดตามสถานะรถและตู้สินค้า</title>
+  <!-- HOTFIX 2026-07-17: INBOUND canonical bootstrap without generic Module API -->
+  <link rel="stylesheet" href="./inbound.bundle.css?v=20260720-compact-material-bento-r1">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
+  
+
+
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@latest/umd/index.min.js" defer></script>
+  
+
+<style>
+    /* Round 05 Hotfix 21 - Responsive layout + hardware QR scanner input */
+    html,
+    body {
+      width: 100%;
+      min-width: 0;
+      overflow-x: hidden;
+    }
+
+    .inbound-shell {
+      max-width: none !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      overflow-x: hidden !important;
+    }
+
+    .inbound-topbar,
+    .inbound-module-bar,
+    .inbound-workspace,
+    .inbound-left,
+    .inbound-right,
+    .scanner-card,
+    .workflow-table-wrap {
+      min-width: 0 !important;
+      box-sizing: border-box !important;
+    }
+
+    .inbound-workspace {
+      display: grid !important;
+      grid-template-columns: minmax(300px, 25.5vw) minmax(0, 1fr) !important;
+      align-items: stretch !important;
+      gap: 10px !important;
+      overflow: hidden !important;
+    }
+
+    .inbound-left {
+      position: relative !important;
+      z-index: 1 !important;
+      overflow: hidden !important;
+    }
+
+    .inbound-right {
+      position: relative !important;
+      z-index: 0 !important;
+      overflow: hidden !important;
+      max-width: 100% !important;
+    }
+
+    .scanner-card {
+      overflow: hidden !important;
+    }
+
+    .scanner-window {
+      max-width: 100% !important;
+      overflow: hidden !important;
+    }
+
+    .manual-form input#entryCodeInput {
+      pointer-events: auto !important;
+      user-select: text !important;
+      -webkit-user-select: text !important;
+      caret-color: #073b59 !important;
+    }
+
+    .workflow-table-wrap {
+      position: relative !important;
+      z-index: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow: auto !important;
+      overscroll-behavior: contain !important;
+    }
+
+    .workflow-table {
+      min-width: 1080px !important;
+      width: max-content !important;
+    }
+
+    .workflow-table thead th {
+      position: sticky !important;
+      top: 0 !important;
+      z-index: 3 !important;
+      background: #eef7fb !important;
+    }
+
+    .table-toolbar {
+      position: relative !important;
+      z-index: 4 !important;
+    }
+
+    .table-pagination {
+      position: relative !important;
+      z-index: 4 !important;
+    }
+
+    /* Prevent any detail/result area from surfacing and pushing the scanner in narrow windows */
+    @media (max-width: 1180px) {
+      .inbound-workspace {
+        grid-template-columns: minmax(290px, 34vw) minmax(0, 1fr) !important;
+      }
+
+      .workflow-table {
+        min-width: 1020px !important;
+      }
+
+      #lookupResultPanel {
+        display: none !important;
+      }
+    }
+
+    @media (max-width: 860px) {
+      body {
+        overflow-y: auto !important;
+      }
+
+      .inbound-workspace {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        overflow: visible !important;
+      }
+
+      .inbound-left,
+      .inbound-right {
+        width: 100% !important;
+        overflow: hidden !important;
+      }
+
+      .workflow-table-wrap {
+        max-height: 48vh !important;
+      }
+
+      .workflow-table {
+        min-width: 960px !important;
+      }
+
+      .inbound-topbar {
+        overflow: hidden !important;
+      }
+    }
+  
+    /* Round 05 Hotfix 22 - keep camera visible and prevent table overlay */
+    .inbound-workspace {
+      overflow: visible !important;
+      align-items: start !important;
+    }
+
+    .inbound-left {
+      position: relative !important;
+      z-index: 10 !important;
+      overflow: visible !important;
+      min-height: 0 !important;
+    }
+
+    .inbound-right {
+      position: relative !important;
+      z-index: 1 !important;
+      min-width: 0 !important;
+      overflow: hidden !important;
+    }
+
+    .scanner-card,
+    .scanner-window,
+    .manual-form,
+    .scanner-actions {
+      position: relative !important;
+      z-index: 11 !important;
+      visibility: visible !important;
+    }
+
+    .scanner-window {
+      display: block !important;
+      width: 100% !important;
+      height: clamp(180px, 24vh, 285px) !important;
+      min-height: 180px !important;
+      max-height: 300px !important;
+      overflow: hidden !important;
+      flex: 0 0 auto !important;
+    }
+
+    .scanner-window video,
+    #inboundVideo {
+      display: block !important;
+      width: 100% !important;
+      height: 100% !important;
+      min-height: 180px !important;
+      object-fit: cover !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+
+    #lookupResultPanel,
+    #selectedRecordPanel {
+      display: none !important;
+    }
+
+    @media (max-width: 1120px) {
+      .inbound-workspace {
+        grid-template-columns: minmax(320px, 38vw) minmax(0, 1fr) !important;
+        overflow: visible !important;
+      }
+
+      .scanner-window {
+        height: 210px !important;
+        min-height: 210px !important;
+      }
+
+      .workflow-table-wrap {
+        max-height: calc(100vh - 330px) !important;
+        overflow: auto !important;
+      }
+
+      .workflow-table {
+        min-width: 980px !important;
+      }
+    }
+
+    @media (max-width: 760px) {
+      html,
+      body {
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+      }
+
+      .inbound-workspace {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+        overflow: visible !important;
+      }
+
+      .inbound-left {
+        order: 1 !important;
+        width: 100% !important;
+        overflow: visible !important;
+      }
+
+      .inbound-right {
+        order: 2 !important;
+        width: 100% !important;
+        overflow: hidden !important;
+      }
+
+      .scanner-card {
+        width: 100% !important;
+        overflow: visible !important;
+      }
+
+      .scanner-window {
+        display: block !important;
+        height: 220px !important;
+        min-height: 220px !important;
+      }
+
+      .scanner-window video,
+      #inboundVideo {
+        min-height: 220px !important;
+      }
+
+      .workflow-table-wrap {
+        max-height: 46vh !important;
+        overflow: auto !important;
+      }
+    }
+
+    @media (max-height: 720px) and (min-width: 761px) {
+      .scanner-window {
+        height: 175px !important;
+        min-height: 175px !important;
+      }
+
+      .scanner-window video,
+      #inboundVideo {
+        min-height: 175px !important;
+      }
+    }
+
+  
+    /* Round 05 Hotfix 24 - Fullscreen button */
+    .module-actions {
+      align-items: stretch !important;
+    }
+
+    #inboundFullscreenButton,
+    .button--fullscreen {
+      border-color: rgba(18, 155, 160, .35) !important;
+      background: linear-gradient(135deg, #e8fffb, #f3fbff) !important;
+      color: #07556a !important;
+      font-weight: 900 !important;
+    }
+
+    body.inbound-is-fullscreen .inbound-shell {
+      padding: 8px !important;
+      min-height: 100vh !important;
+    }
+
+    body.inbound-is-fullscreen .inbound-topbar {
+      min-height: 70px !important;
+    }
+
+    body.inbound-is-fullscreen .inbound-module-bar {
+      padding: 8px 10px !important;
+    }
+
+    body.inbound-is-fullscreen .inbound-workspace {
+      min-height: calc(100vh - 168px) !important;
+    }
+
+    body.inbound-is-fullscreen .scanner-window {
+      height: clamp(190px, 28vh, 320px) !important;
+    }
+
+    body.inbound-is-fullscreen #inboundFullscreenButton {
+      background: linear-gradient(135deg, #fff1f1, #fffafa) !important;
+      border-color: rgba(239, 68, 68, .35) !important;
+      color: #991b1b !important;
+    }
+
+    @media (max-width: 760px) {
+      #inboundFullscreenButton {
+        min-height: 44px !important;
+      }
+    }
+
+  
+    /* Round 06 Part 01 - SLA status colors */
+    .workflow-table tr[data-sla="WARNING"] {
+      background: #fff9e8 !important;
+    }
+
+    .workflow-table tr[data-sla="CRITICAL"] {
+      background: #fff1f2 !important;
+    }
+
+    .status-pill[data-sla="WARNING"] {
+      border: 1px solid #f59e0b !important;
+      background: #fef3c7 !important;
+      color: #92400e !important;
+    }
+
+    .status-pill[data-sla="CRITICAL"] {
+      border: 1px solid #ef4444 !important;
+      background: #fee2e2 !important;
+      color: #991b1b !important;
+    }
+
+    .sla-badge,
+    .sla-elapsed {
+      display: block;
+      margin-top: 3px;
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1.15;
+      opacity: .92;
+    }
+
+    .sla-badge[data-sla="NORMAL"] {
+      color: #047857;
+    }
+
+    .sla-badge[data-sla="WARNING"] {
+      color: #b45309;
+    }
+
+    .sla-badge[data-sla="CRITICAL"] {
+      color: #b91c1c;
+    }
+
+    .sla-elapsed {
+      color: #64748b;
+      font-weight: 700;
+    }
+
+  
+    /* Round 06 Part 03 - SLA progress bar, no full-row color */
+    .workflow-table tr[data-sla],
+    .workflow-table tr[data-sla="WARNING"],
+    .workflow-table tr[data-sla="CRITICAL"] {
+      background: transparent !important;
+    }
+
+    .workflow-table tr[data-sla="WARNING"] td:first-child {
+      box-shadow: inset 3px 0 0 #f59e0b;
+    }
+
+    .workflow-table tr[data-sla="CRITICAL"] td:first-child {
+      box-shadow: inset 3px 0 0 #ef4444;
+    }
+
+    .sla-cell {
+      display: grid;
+      gap: 4px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .sla-mini-progress {
+      display: block;
+      width: min(92px, 100%);
+      height: 5px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e5e7eb;
+    }
+
+    .sla-mini-progress > i {
+      display: block;
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: #10b981;
+    }
+
+    .sla-mini-progress[data-sla="WARNING"] > i {
+      background: #f59e0b;
+    }
+
+    .sla-mini-progress[data-sla="CRITICAL"] > i {
+      background: #ef4444;
+    }
+
+    .sla-badge,
+    .sla-elapsed {
+      display: none !important;
+    }
+
+    .status-pill[data-sla="WARNING"],
+    .status-pill[data-sla="CRITICAL"] {
+      max-width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+  </style>
+
+  <script src="./inbound.bundle.js?v=20260720-compact-material-bento-r1" defer></script>
+</head>
+
+<body class="inbound-page" data-page="inbound">
+  <div id="inboundLoading" class="inbound-loading" role="status" aria-live="polite">
+    <div class="inbound-spinner"></div>
+    <strong>กำลังเตรียมห้อง Inbound</strong>
+    <span>ตรวจสิทธิ์ โหลดข้อมูล และเตรียมช่องสแกน</span>
+  </div>
+
+  <main class="inbound-shell">
+    <header class="inbound-topbar" aria-label="แถบสถานะห้อง Inbound">
+      <div class="inbound-brand">
+        <small>INBOUND DOCUMENT CONTROL</small>
+        <h1>ห้อง Inbound</h1>
+        <p>สแกนหรือยิงรหัสแล้วบันทึกอัตโนมัติ · กดดูรายละเอียดใน SweetAlert และยกเลิกสถานะล่าสุดได้เมื่อจำเป็น</p>
+      </div>
+
+      <div class="status-strip" aria-label="จำนวนตามสถานะ">
+        <button type="button" data-status-filter="ALL" class="is-active">
+          <span>ทั้งหมด</span><strong id="countTotalWorkflow">0</strong>
+        </button>
+        <button type="button" data-status-filter="DOCUMENT_SUBMITTED">
+          <span>รอรับสินค้า</span><strong id="countWaitingReceiving">0</strong>
+        </button>
+        <button type="button" data-status-filter="RECEIVING_COMPLETED">
+          <span>รอรับเอกสารคืน</span><strong id="countReceivingCompleted">0</strong>
+        </button>
+        <button type="button" data-status-filter="DOCUMENT_RETURNED">
+          <span>คืนเอกสารแล้ว</span><strong id="countDocumentReturned">0</strong>
+        </button>
+        <button type="button" data-status-filter="CANCELLED">
+          <span>ยกเลิก</span><strong id="countCancelled">0</strong>
+        </button>
+      </div>
+
+      <div class="inbound-user-card">
+        <span id="inboundConnection" data-state="LOADING">กำลังตรวจสอบ</span>
+        <strong id="inboundDateTime">--/--/---- --:--:--</strong>
+        <small id="inboundUser">-</small>
+      </div>
+    </header>
+
+    <section class="inbound-module-bar" aria-label="เลือกโมดูล">
+      <label>
+        <span>Module</span>
+        <select id="inboundModuleSelect">
+          <option value="">กำลังโหลด Module...</option>
+        </select>
+      </label>
+
+      <div class="module-actions">
+        <button id="inboundFullscreenButton" type="button" class="button--fullscreen" title="เปิดเต็มจอ">เต็มจอ</button>
+          <button id="inboundRefreshButton" type="button">รีเฟรช</button>
+        <button id="inboundLogoutButton" type="button" class="button--logout">ออกจากระบบ</button>
+      </div>
+    </section>
+
+    <section class="inbound-network-bar" aria-label="สถานะ Fast Scan">
+      <div class="inbound-network-state">
+        <span id="inboundNetworkState" data-state="CHECKING">FAST SCAN · กำลังเตรียมระบบ</span>
+        <small id="inboundQueueDetail">ยิงรหัสแล้วรับรายการถัดไปได้ทันที</small>
+      </div>
+
+      <div class="inbound-queue-actions" hidden aria-hidden="true">
+        <button id="inboundQueueButton" type="button" class="button--queue" aria-label="เปิดรายการรอส่ง">
+          รอส่ง <strong id="inboundPendingCount">0</strong>
+        </button>
+        <button id="inboundFailedQueueButton" type="button" class="button--queue-failed" aria-label="เปิดรายการส่งไม่สำเร็จ" hidden>
+          ผิดพลาด <strong id="inboundFailedCount">0</strong>
+        </button>
+        <button id="inboundRetryQueueButton" type="button" class="button--queue-retry" hidden>ส่งใหม่ตอนนี้</button>
+      </div>
+    </section>
+
+    <section class="inbound-workspace">
+      <aside class="inbound-left" aria-label="พื้นที่สแกนและกรอกรหัส">
+        <section class="scanner-card">
+          <div class="scanner-card__head">
+            <div>
+              <small>SCAN AUTO ID</small>
+              <h2>ช่องรับรหัส</h2>
+            </div>
+            <span id="scannerStatus" data-state="IDLE">พร้อมรับรหัส</span>
+          </div>
+
+          <div class="scanner-window">
+            <video id="inboundVideo" playsinline muted></video>
+            <div class="scanner-frame" aria-hidden="true"></div>
+            <div class="scanner-hint">วาง QR / Barcode ในกรอบ</div>
+          </div>
+
+          <form id="manualLookupForm" class="manual-form" autocomplete="off">
+            <label>
+              <span>Auto ID / รหัสจาก Gate In</span>
+              <input
+                id="entryCodeInput"
+                type="text"
+                inputmode="latin"
+                autocomplete="off"
+                autocapitalize="characters"
+                spellcheck="false"
+                placeholder="ยิงเครื่องสแกนหรือกรอก Auto ID แล้วกด Enter"
+              >
+            </label>
+
+            <div class="manual-actions">
+              <button id="lookupCodeButton" type="submit" class="button button--primary">ส่งรหัส</button>
+              <button id="clearCodeButton" type="button" class="button button--ghost">ล้าง</button>
+            </div>
+          </form>
+
+          <div class="scanner-actions">
+            <button id="startCameraButton" type="button" class="button button--success">เปิดกล้อง</button>
+            <button id="stopCameraButton" type="button" class="button button--ghost">ปิดกล้อง</button>
+          </div>
+
+          <div id="scanMessage" class="scan-message" data-state="IDLE">
+            พร้อมสแกน · ยิงรหัสแล้วสแกนรายการถัดไปได้ทันที
+          </div>
+        </section>
+
+        <section id="lookupResultPanel" class="result-panel" hidden>
+          <div class="result-panel__head">
+            <div>
+              <small>LAST SCAN</small>
+              <h2 id="resultTitle">ผลการสแกนล่าสุด</h2>
+            </div>
+            <span id="resultStatusBadge">-</span>
+          </div>
+          <div id="resultBody" class="result-body"></div>
+        </section>
+      </aside>
+
+      <section class="inbound-right" aria-label="ตารางสถานะรถและตู้">
+        <div class="table-toolbar">
+          <div>
+            <small>WORKFLOW TABLE</small>
+            <h2>สถานะงานเอกสาร</h2>
+          </div>
+
+          <label>
+            <span class="sr-only">ค้นหา</span>
+            <input id="workflowSearchInput" type="search" autocomplete="off" placeholder="ค้นหาเลขนัดหมาย / บริษัท / พขร. / ทะเบียน / โทร / Auto ID">
+          </label>
+        </div>
+
+        <div class="workflow-table-wrap" id="workflowTableWrap">
+          <table class="workflow-table">
+            <thead>
+              <tr>
+                <th>เลขนัดหมาย</th>
+                <th>ชื่อบริษัท</th>
+                <th>ชื่อ พขร.</th>
+                <th>ทะเบียนรถ / จังหวัด</th>
+                <th>เบอร์โทร</th>
+                <th>สถานะ</th>
+                <th>เวลาล่าสุด</th>
+                <th>Auto ID</th>
+                <th>ดู</th>
+              </tr>
+            </thead>
+            <tbody id="workflowTableBody">
+              <tr>
+                <td colspan="9" class="table-empty">กำลังโหลดข้อมูล...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <footer class="table-pagination" aria-label="แบ่งหน้าตารางงานเอกสาร">
+          <div class="table-pagination__summary" id="workflowTablePageSummary">
+            แสดง 0 รายการ
+          </div>
+
+          <div class="table-pagination__controls">
+            <label>
+              <span>แถวต่อหน้า</span>
+              <select id="workflowPageSizeSelect">
+                <option value="AUTO" selected>อัตโนมัติตามจอ</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </label>
+
+            <button id="workflowPrevPage" type="button">ก่อนหน้า</button>
+            <strong id="workflowPageIndicator">หน้า 1 / 1</strong>
+            <button id="workflowNextPage" type="button">ถัดไป</button>
+          </div>
+        </footer>
+
+        <!-- รายละเอียดรายการจะแสดงผ่าน SweetAlert เท่านั้น เพื่อคงทุกอย่างไว้ในหน้าหลักและไม่เพิ่มพื้นที่ด้านล่าง -->
+      </section>
+    </section>
+  </main>
+</body>
+</html>

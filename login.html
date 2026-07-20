@@ -1,0 +1,342 @@
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <!-- Consolidated bundle build: 20260720-compact-material-bento-r1; original: login(9).html -->
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+
+  <meta
+    name="theme-color"
+    content="#0f3d5e"
+  >
+
+  <meta
+    name="color-scheme"
+    content="light"
+  >
+
+  <meta
+    name="mobile-web-app-capable"
+    content="yes"
+  >
+
+  <meta
+    name="apple-mobile-web-app-capable"
+    content="yes"
+  >
+
+  <meta
+    name="apple-mobile-web-app-status-bar-style"
+    content="default"
+  >
+
+  <meta
+    name="apple-mobile-web-app-title"
+    content="Alert Vendor"
+  >
+
+  <title>
+    เข้าสู่ระบบ | ระบบติดตามสถานะรถและตู้สินค้า
+  </title>
+
+  <!-- PWA Manifest -->
+  <link
+    rel="manifest"
+    href="./manifest.webmanifest"
+  >
+
+  <!-- Browser favicon -->
+  <link
+    rel="icon"
+    type="image/png"
+    sizes="64x64"
+    href="./icons/favicon-64.png?v=20260628"
+  >
+
+  <link
+    rel="icon"
+    type="image/png"
+    sizes="32x32"
+    href="./icons/favicon-32.png?v=20260628"
+  >
+
+  <!-- iPhone / iPad Home Screen -->
+  <link
+    rel="apple-touch-icon"
+    sizes="180x180"
+    href="./icons/apple-touch-icon.png?v=20260628"
+  >
+  <link rel="stylesheet" href="./core.bundle.css?v=20260720-compact-material-bento-r1">
+<script
+    src="https://cdn.jsdelivr.net/npm/sweetalert2@11"
+    defer
+  ></script>
+
+  
+
+
+<style>
+    /* Round 05 Hotfix 28 - Login logo center + clock visibility */
+    .login-card {
+      text-align: center;
+    }
+
+    .login-app-icon {
+      width: 122px;
+      height: 122px;
+      margin: 0 auto 8px;
+      display: grid;
+      place-items: center;
+    }
+
+    .login-app-icon img {
+      display: block;
+      width: 112px;
+      height: 112px;
+      margin: 0 auto;
+      object-fit: contain;
+    }
+
+    .login-header {
+      text-align: center;
+    }
+
+    .date-time-panel {
+      text-align: left;
+    }
+
+    .date-time-panel strong {
+      min-width: 155px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    @media (max-width: 480px) {
+      .login-app-icon {
+        width: 110px;
+        height: 110px;
+      }
+
+      .login-app-icon img {
+        width: 104px;
+        height: 104px;
+      }
+
+      .date-time-panel {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .date-time-panel strong {
+        width: 100%;
+        min-width: 0;
+        text-align: left;
+      }
+    }
+  </style>
+
+  <script src="./core-login.bundle.js?v=20260720-compact-material-bento-r1" defer></script>
+</head>
+
+<body
+  data-page="login"
+  class="login-page"
+>
+  <main class="login-layout">
+    <section
+      class="login-card"
+      aria-labelledby="loginTitle"
+    >
+      <!-- ไอคอนระบบจริง -->
+     <div class="login-app-icon">
+  <img
+    src="./icons/icon-192.png?v=20260628-2"
+    alt="ไอคอนระบบติดตามสถานะรถและตู้สินค้า"
+    width="112"
+    height="112"
+    loading="eager"
+    decoding="async"
+  >
+</div>
+
+      <header class="login-header">
+        <p class="eyebrow">
+          WAREHOUSE VEHICLE STATUS
+        </p>
+
+        <h1 id="loginTitle">
+          ระบบติดตามสถานะรถและตู้สินค้า
+        </h1>
+
+        <p>
+          กรุณาเข้าสู่ระบบเพื่อดูสถานะรถในพื้นที่คลัง
+        </p>
+      </header>
+
+      <div class="date-time-panel">
+        <span>
+          วันที่และเวลาปัจจุบัน
+        </span>
+
+        <strong id="currentDateTime">
+          --/--/---- --:--:--
+        </strong>
+      </div>
+
+      <form
+        id="loginForm"
+        class="login-form"
+        method="post"
+        action="./login.html"
+        autocomplete="on"
+        novalidate
+      >
+        <label class="form-field">
+          <span class="form-label">
+            ชื่อผู้ใช้
+          </span>
+
+          <input
+            id="username"
+            name="username"
+            type="text"
+            inputmode="text"
+            autocomplete="username"
+            autocapitalize="none"
+            spellcheck="false"
+            maxlength="80"
+            placeholder="กรอกชื่อผู้ใช้"
+            required
+          >
+        </label>
+
+        <label class="form-field">
+          <span class="form-label">
+            รหัสผ่าน
+          </span>
+
+          <span class="password-control">
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              maxlength="128"
+              placeholder="กรอกรหัสผ่าน"
+              required
+            >
+
+            <button
+              id="togglePassword"
+              class="password-toggle"
+              type="button"
+              aria-label="แสดงหรือซ่อนรหัสผ่าน"
+              aria-pressed="false"
+            >
+              แสดง
+            </button>
+          </span>
+        </label>
+
+        <button
+          id="loginButton"
+          class="button button--primary button--login"
+          type="submit"
+        >
+          เข้าสู่ระบบ
+        </button>
+      </form>
+
+      <footer class="login-footer">
+        <span class="security-dot"></span>
+        เชื่อมต่อผ่านระบบยืนยันตัวตนที่ปลอดภัย
+      </footer>
+    </section>
+  </main>
+
+  <noscript>
+    <div class="noscript-message">
+      กรุณาเปิดใช้งาน JavaScript เพื่อใช้งานระบบ
+    </div>
+  </noscript>
+
+  <script>
+    /*
+     * Round 05 Hotfix 28
+     * Clock fallback สำหรับหน้า Login
+     * ทำงานแยกจาก auth.js เพื่อให้วันที่เวลาไม่หาย แม้ไฟล์ auth cache/โหลดช้า
+     */
+    (function () {
+      'use strict';
+
+      function pad(value) {
+        return String(value).padStart(2, '0');
+      }
+
+      function formatBangkokDateTime(date) {
+        try {
+          var formatter = new Intl.DateTimeFormat('en-GB', {
+            timeZone: 'Asia/Bangkok',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hourCycle: 'h23'
+          });
+
+          var parts = {};
+          formatter.formatToParts(date).forEach(function (part) {
+            parts[part.type] = part.value;
+          });
+
+          return parts.day + '/' + parts.month + '/' + parts.year + ' ' +
+            parts.hour + ':' + parts.minute + ':' + parts.second;
+
+        } catch (error) {
+          var now = new Date();
+          return pad(now.getDate()) + '/' + pad(now.getMonth() + 1) + '/' +
+            now.getFullYear() + ' ' + pad(now.getHours()) + ':' +
+            pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+        }
+      }
+
+      function updateLoginClock() {
+        var el = document.getElementById('currentDateTime');
+        if (!el) return;
+        el.textContent = formatBangkokDateTime(new Date());
+      }
+
+      function cleanEmptyLoginQuery() {
+        try {
+          var url = new URL(window.location.href);
+          if (
+            url.pathname.toLowerCase().indexOf('/login.html') >= 0 &&
+            (
+              url.searchParams.has('username') ||
+              url.searchParams.has('password')
+            )
+          ) {
+            window.history.replaceState(null, document.title, url.origin + url.pathname);
+          }
+        } catch (error) {}
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        cleanEmptyLoginQuery();
+        updateLoginClock();
+        window.setInterval(updateLoginClock, 1000);
+      });
+    })();
+  </script>
+
+</body>
+</html>
+

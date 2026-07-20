@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+  <!-- Consolidated bundle build: 20260720-compact-material-bento-r1; original: index(27).html -->
   <meta charset="UTF-8">
 
   <meta
@@ -21,35 +22,18 @@
 
   <link
     rel="manifest"
-    href="./manifest.webmanifest?v=20260710-r05-hotfix29-restore-index-route"
+    href="./manifest.webmanifest"
   >
-
-  <link
-    rel="stylesheet"
-    href="./styles.css?v=20260710-r05-hotfix31-admin-inbound-button"
-  >
-
-  <script
+  <link rel="stylesheet" href="./core.bundle.css?v=20260720-compact-material-bento-r1">
+<script
     src="https://cdn.jsdelivr.net/npm/sweetalert2@11"
     defer
   ></script>
 
-  <script
-    src="./config.js?v=20260710-r05-hotfix31-admin-inbound-button"
-    defer
-  ></script>
+  
 
-  <script
-    src="./api.js?v=20260712-r08-workflow-server-sync"
-    defer
-  ></script>
 
-  <script
-    src="./auth.js?v=20260710-r05-hotfix31-admin-inbound-button"
-    defer
-  ></script>
-
-  <style>
+<style>
     /* Round 05 Hotfix 31 - Admin shortcut to Inbound */
     .button--inbound {
       color: #065f46;
@@ -74,6 +58,7 @@
     }
   </style>
 
+  <script src="./core-login.bundle.js?v=20260720-compact-material-bento-r1" defer></script>
 </head>
 
 <body
@@ -124,7 +109,7 @@
         <a
           id="adminInboundButton"
           class="button button--inbound button--compact is-hidden"
-          href="https://smartdcs2026.github.io/alertvendor/inbound.html"
+          href="./inbound.html"
           title="เปิดห้อง Inbound สำหรับผู้ดูแลระบบ"
         >
           ห้อง Inbound

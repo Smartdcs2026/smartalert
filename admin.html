@@ -1,0 +1,2520 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <!-- Consolidated bundle build: 20260720-compact-material-bento-r1; original: admin(9).html -->
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+
+  <meta
+    name="theme-color"
+    content="#0f3d5e"
+  >
+
+  <title>
+    จัดการระบบ | ระบบติดตามสถานะรถและตู้สินค้า
+  </title>
+  <link rel="stylesheet" href="./admin.bundle.css?v=20260720-compact-material-bento-r1">
+
+<script
+    src="https://cdn.jsdelivr.net/npm/sweetalert2@11"
+    defer
+  ></script>
+
+  
+
+
+
+<style>
+    /* Round 06 Part 07 - Admin Inbound Export */
+    .admin-export-controls {
+      display: grid;
+      grid-template-columns: minmax(220px, 1.2fr) minmax(170px, .8fr) minmax(240px, 1fr);
+      gap: 12px;
+      margin: 14px 0;
+    }
+
+    .admin-export-summary {
+      padding: 10px 12px;
+      border: 1px solid #dbe7ee;
+      border-radius: 12px;
+      background: #f8fafc;
+      color: #334155;
+      font-size: .9rem;
+      font-weight: 700;
+    }
+
+    .admin-export-preview {
+      margin-top: 12px;
+      display: grid;
+      gap: 8px;
+      max-height: 360px;
+      overflow: auto;
+    }
+
+    .admin-export-row {
+      display: grid;
+      grid-template-columns: 1.1fr 1.2fr 1fr .9fr;
+      gap: 8px;
+      padding: 9px 10px;
+      border: 1px solid #e5edf4;
+      border-radius: 12px;
+      background: #ffffff;
+      font-size: .82rem;
+    }
+
+    .admin-export-row strong {
+      color: #0f3d5e;
+    }
+
+    .admin-export-row small {
+      color: #64748b;
+    }
+
+    @media (max-width: 760px) {
+      .admin-export-controls,
+      .admin-export-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+
+
+  <style>
+    /* PHASE 5 R2 HOTFIX 03 — SIMPLE SECURE EXPORT */
+    .admin-simple-export-card {
+      display: grid;
+      gap: 16px;
+    }
+
+    .admin-simple-export-heading h3 {
+      margin: 3px 0 6px;
+      color: #0d3952;
+      font-size: 1.18rem;
+    }
+
+    .admin-simple-export-heading p {
+      margin: 0;
+      color: #5f7480;
+      line-height: 1.55;
+    }
+
+    .admin-simple-export-grid {
+      display: grid;
+      grid-template-columns:
+        minmax(220px, 1fr)
+        minmax(180px, .65fr);
+      gap: 12px;
+    }
+
+    .admin-simple-period {
+      display: grid;
+      gap: 8px;
+    }
+
+    .admin-simple-period-buttons {
+      display: grid;
+      grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .admin-simple-period-buttons button {
+      min-height: 44px;
+      border: 1px solid #cbdce4;
+      border-radius: 10px;
+      background: #fff;
+      color: #325367;
+      font: inherit;
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    .admin-simple-period-buttons button.is-active {
+      border-color: #0b6f92;
+      background: #0b5877;
+      color: #fff;
+      box-shadow: 0 7px 18px rgba(11, 88, 119, .18);
+    }
+
+    .admin-simple-export-options {
+      display: grid;
+      grid-template-columns:
+        minmax(220px, 1fr)
+        minmax(240px, .72fr);
+      align-items: center;
+      gap: 12px;
+    }
+
+    .admin-simple-checkbox {
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 13px;
+      border: 1px solid #d4e2e8;
+      border-radius: 11px;
+      background: #f7fbfd;
+      color: #36596a;
+      font-weight: 850;
+    }
+
+    .admin-simple-checkbox input {
+      width: 19px;
+      height: 19px;
+    }
+
+    .admin-simple-download-button {
+      min-height: 50px;
+      font-size: 1rem;
+      font-weight: 950;
+    }
+
+    .admin-simple-source-note {
+      padding: 10px 13px;
+      border-left: 4px solid #0b8e82;
+      border-radius: 8px;
+      background: #f2fbf9;
+      color: #365f61;
+      font-size: .84rem;
+      font-weight: 750;
+      line-height: 1.5;
+    }
+
+
+    .admin-management-history-item button {
+      flex: 0 0 auto;
+    }
+
+    @media (max-width: 760px) {
+      .admin-simple-export-grid,
+      .admin-simple-export-options {
+        grid-template-columns: 1fr;
+      }
+
+      .admin-simple-period-buttons {
+        grid-template-columns: 1fr;
+      }
+
+      .admin-simple-download-button {
+        width: 100%;
+      }
+    }
+  </style>
+
+  <style>
+    /* ROUND 08 — Monthly Data Control Center */
+    .admin-monthly-action-stack { display:grid; grid-template-columns:minmax(180px,.75fr) minmax(240px,1fr); gap:10px; }
+    .admin-monthly-overview { display:grid; grid-template-columns:repeat(6,minmax(120px,1fr)); gap:10px; margin-top:16px; }
+    .admin-monthly-overview article { padding:12px; border:1px solid #dbe7ee; border-radius:12px; background:#f8fbfd; }
+    .admin-monthly-overview span { display:block; color:#64748b; font-size:.78rem; font-weight:800; }
+    .admin-monthly-overview strong { display:block; margin-top:5px; color:#0f3d5e; font-size:1.18rem; }
+    .admin-data-control-note { display:grid; gap:4px; margin-top:14px; padding:12px 14px; border-left:4px solid #d97706; border-radius:10px; background:#fff8e7; color:#7c4a03; }
+    .admin-monthly-package-list { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; }
+    .admin-monthly-package-item { padding:10px 12px; border:1px solid #dbe7ee; border-radius:11px; background:#fff; }
+    .admin-monthly-package-item strong { display:block; color:#0f4f68; }
+    .admin-monthly-package-item span { display:block; margin-top:4px; color:#64748b; font-size:.8rem; line-height:1.45; }
+    .admin-monthly-cleanup-preview { display:grid; gap:8px; }
+    .admin-cleanup-preview-row { display:grid; grid-template-columns:1.3fr .8fr .8fr 1.5fr; gap:8px; padding:9px 10px; border:1px solid #e2e8f0; border-radius:10px; background:#fff; font-size:.82rem; }
+    .admin-sheet-registry { overflow:auto; }
+    .admin-sheet-registry table { width:100%; border-collapse:collapse; min-width:980px; }
+    .admin-sheet-registry th, .admin-sheet-registry td { padding:9px 10px; border-bottom:1px solid #e5edf4; text-align:left; vertical-align:top; font-size:.8rem; }
+    .admin-sheet-registry th { position:sticky; top:0; background:#eef6fa; color:#0f3d5e; z-index:1; }
+    .admin-sheet-registry [data-category="SOURCE_READ_ONLY"] { color:#991b1b; font-weight:900; }
+    .admin-sheet-registry [data-category="PERMANENT_CONFIG"] { color:#6b21a8; font-weight:900; }
+    .admin-sheet-registry [data-category="BUSINESS_EVIDENCE"] { color:#92400e; font-weight:900; }
+    .admin-sheet-registry [data-category="DERIVED_REBUILDABLE"] { color:#0369a1; font-weight:900; }
+    .admin-sheet-registry [data-category="OPERATION_LOG"] { color:#475569; font-weight:900; }
+    @media (max-width:1000px) { .admin-monthly-overview { grid-template-columns:repeat(3,minmax(0,1fr)); } .admin-monthly-package-list { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (max-width:760px) { .admin-monthly-action-stack, .admin-monthly-overview, .admin-monthly-package-list, .admin-cleanup-preview-row { grid-template-columns:1fr; } }
+  </style>
+
+  <!-- ROUND 10 HOTFIX 2 — Admin Data-Dense UI only -->
+  <script src="./admin.bundle.js?v=20260720-compact-material-bento-r1" defer></script>
+</head>
+
+<body
+  data-page="admin"
+  class="admin-page"
+>
+  <div
+    id="adminPageLoading"
+    class="page-loading"
+  >
+    <div class="spinner"></div>
+
+    <span>
+      กำลังตรวจสอบสิทธิ์ผู้ดูแลระบบ
+    </span>
+  </div>
+
+  <header class="admin-header">
+    <div class="admin-header__inner">
+      <div class="admin-header__brand">
+        <a
+          class="icon-text-button"
+          href="./index.html"
+        >
+          ← หน้าหลัก
+        </a>
+
+        <div>
+          <p class="eyebrow">
+            ADMIN CONTROL CENTER
+          </p>
+
+          <h1>
+            จัดการระบบรถและ Vendor
+          </h1>
+        </div>
+      </div>
+
+      <div class="admin-header__actions">
+        <span id="adminCurrentUser">
+          กำลังโหลด...
+        </span>
+
+        <button
+          id="adminRefreshButton"
+          class="button button--secondary button--compact"
+          type="button"
+        >
+          รีเฟรช
+        </button>
+
+        <button
+          id="adminLogoutButton"
+          class="button button--danger-ghost button--compact"
+          type="button"
+        >
+          ออกจากระบบ
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="admin-container">
+    <section class="admin-hero">
+      <div>
+        <p class="eyebrow">
+          ระบบกลางสำหรับทุก Vendor
+        </p>
+
+        <h2>
+          บริหารโมดูล ผู้ใช้งาน และเงื่อนไขจากหน้าเดียว
+        </h2>
+
+        <p>
+          Makro เป็นโมดูลแรกของระบบ และสามารถสร้างโมดูลสำหรับ Vendor หรือประเภทรถอื่นได้โดยไม่ต้องแก้โค้ดหลัก
+        </p>
+      </div>
+
+      <div class="admin-hero__time">
+        <span>
+          วันที่และเวลาปัจจุบัน
+        </span>
+
+        <strong id="adminCurrentDateTime">
+          --/--/---- --:--:--
+        </strong>
+
+        <small id="adminGeneratedAt">
+          ยังไม่ได้โหลดข้อมูล
+        </small>
+      </div>
+    </section>
+
+    <nav
+      class="admin-tabs"
+      aria-label="เมนูหลังบ้าน"
+    >
+      <button
+        class="admin-tab is-active"
+        type="button"
+        data-admin-tab="overview"
+      >
+        ภาพรวม
+      </button>
+
+      <button
+        class="admin-tab"
+        type="button"
+        data-admin-tab="modules"
+      >
+        โมดูล
+      </button>
+
+      <button
+        class="admin-tab"
+        type="button"
+        data-admin-tab="users"
+      >
+        ผู้ใช้งาน
+      </button>
+
+      <button
+        class="admin-tab"
+        type="button"
+        data-admin-tab="settings"
+      >
+        ตั้งค่า
+      </button>
+
+      <button
+        class="admin-tab"
+        type="button"
+        data-admin-tab="sla"
+      >
+        เกณฑ์เวลา
+      </button>
+
+      <button
+        class="admin-tab"
+        type="button"
+        data-admin-tab="shifts"
+      >
+        กะทำงาน
+      </button>
+
+      <button
+        class="admin-tab"
+        type="button"
+        data-admin-tab="exports"
+      >
+        ข้อมูลรายเดือน
+      </button>
+
+      <button
+        class="admin-tab"
+        type="button"
+        data-admin-tab="audit"
+      >
+        ประวัติ
+      </button>
+
+      <button
+        class="admin-tab"
+        type="button"
+        data-admin-tab="system"
+      >
+        ตรวจระบบ
+      </button>
+    </nav>
+
+    <section
+      id="adminPanelOverview"
+      class="admin-panel"
+      data-admin-panel="overview"
+    >
+      <div class="admin-summary-grid">
+        <article class="admin-summary-card">
+          <span>
+            โมดูลทั้งหมด
+          </span>
+
+          <strong id="adminModuleCount">
+            0
+          </strong>
+
+          <small>
+            รายการ
+          </small>
+        </article>
+
+        <article class="admin-summary-card">
+          <span>
+            เปิดใช้งาน
+          </span>
+
+          <strong id="adminPublishedCount">
+            0
+          </strong>
+
+          <small>
+            โมดูล
+          </small>
+        </article>
+
+        <article class="admin-summary-card">
+          <span>
+            ผู้ใช้งาน
+          </span>
+
+          <strong id="adminUserCount">
+            0
+          </strong>
+
+          <small>
+            บัญชี
+          </small>
+        </article>
+
+        <article class="admin-summary-card">
+          <span>
+            โครงสร้างระบบ
+          </span>
+
+          <strong id="adminStructureStatus">
+            -
+          </strong>
+
+          <small>
+            สถานะ
+          </small>
+        </article>
+      </div>
+
+      <div class="admin-overview-grid">
+        <article class="admin-card">
+          <div class="admin-card__header">
+            <div>
+              <p class="eyebrow">
+                SYSTEM STRUCTURE
+              </p>
+
+              <h3>
+                ชีตหลังบ้าน
+              </h3>
+            </div>
+
+            <button
+              id="adminValidateQuickButton"
+              class="button button--secondary button--compact"
+              type="button"
+            >
+              ตรวจสอบ
+            </button>
+          </div>
+
+          <div
+            id="adminStructureList"
+            class="admin-status-list"
+          ></div>
+        </article>
+
+        <article class="admin-card">
+          <div class="admin-card__header">
+            <div>
+              <p class="eyebrow">
+                RECENT ACTIVITY
+              </p>
+
+              <h3>
+                รายการล่าสุด
+              </h3>
+            </div>
+
+            <button
+              class="button button--secondary button--compact"
+              type="button"
+              data-go-tab="audit"
+            >
+              ดูทั้งหมด
+            </button>
+          </div>
+
+          <div
+            id="adminRecentAudit"
+            class="admin-audit-list"
+          ></div>
+        </article>
+      </div>
+    </section>
+
+    <section
+      id="adminPanelModules"
+      class="admin-panel is-hidden"
+      data-admin-panel="modules"
+    >
+      <div class="admin-section-heading">
+        <div>
+          <p class="eyebrow">
+            MODULE MANAGEMENT
+          </p>
+
+          <h2>
+            โมดูล Vendor และประเภทรถ
+          </h2>
+
+          <p>
+            แยกเงื่อนไข แหล่งข้อมูล เวลา และฟิลด์แสดงผลของแต่ละกลุ่มได้อย่างอิสระ
+          </p>
+        </div>
+
+        <button
+          id="adminCreateModuleButton"
+          class="button button--primary"
+          type="button"
+        >
+          สร้างโมดูลใหม่
+        </button>
+      </div>
+
+      <div
+        id="adminModuleList"
+        class="admin-module-grid"
+      ></div>
+    </section>
+
+    <section
+      id="adminPanelUsers"
+      class="admin-panel is-hidden"
+      data-admin-panel="users"
+    >
+      <div class="admin-section-heading">
+        <div>
+          <p class="eyebrow">
+            USER MANAGEMENT
+          </p>
+
+          <h2>
+            ผู้ใช้งานและสิทธิ์
+          </h2>
+
+          <p>
+            สร้างบัญชี เปิดหรือปิดใช้งาน รีเซ็ตรหัสผ่าน และปลดล็อกบัญชี
+          </p>
+        </div>
+
+        <button
+          id="adminCreateUserButton"
+          class="button button--primary"
+          type="button"
+        >
+          สร้างผู้ใช้งาน
+        </button>
+      </div>
+
+      <div
+        id="adminUserList"
+        class="admin-user-list"
+      ></div>
+    </section>
+
+    <section
+      id="adminPanelSettings"
+      class="admin-panel is-hidden"
+      data-admin-panel="settings"
+    >
+      <div class="admin-section-heading">
+        <div>
+          <p class="eyebrow">
+            SYSTEM SETTINGS
+          </p>
+
+          <h2>
+            การตั้งค่าระบบกลาง
+          </h2>
+
+          <p>
+            ค่าความปลอดภัยและพฤติกรรมเริ่มต้นของระบบทั้งหมด
+            ทุกการเปลี่ยนแปลงจะบันทึก Revision ผู้แก้ เวลาเริ่มใช้ และเหตุผล
+          </p>
+        </div>
+      </div>
+
+      <form
+        id="adminSettingsForm"
+        class="admin-card admin-settings-form"
+      >
+        <div
+          id="adminSettingsFields"
+          class="admin-settings-grid"
+        ></div>
+
+        <div class="admin-form-actions">
+          <button
+            class="button button--primary"
+            type="submit"
+          >
+            บันทึกการตั้งค่า
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section
+      id="adminPanelSla"
+      class="admin-panel is-hidden"
+      data-admin-panel="sla"
+    >
+      <div class="admin-section-heading admin-sla-heading">
+        <div>
+          <p class="eyebrow">
+            SLA &amp; ALERT CONTROL
+          </p>
+
+          <h2>
+            เกณฑ์เวลาและการแจ้งเตือนรายขั้นตอน
+          </h2>
+
+          <p>
+            กำหนดเฝ้าระวัง เกินเวลา การแจ้งเตือน และระยะเวลาแจ้งซ้ำ
+            แยกตาม Module ตั้งแต่ Gate In จนถึง Gate Out
+          </p>
+        </div>
+
+        <div class="admin-sla-heading__actions">
+          <button
+            id="adminSlaSetupButton"
+            class="button button--secondary"
+            type="button"
+          >
+            เตรียมตารางเกณฑ์
+          </button>
+
+          <button
+            id="adminSlaReloadButton"
+            class="button button--secondary"
+            type="button"
+          >
+            โหลดใหม่
+          </button>
+        </div>
+      </div>
+
+      <article class="admin-card admin-sla-card">
+        <div class="admin-sla-toolbar">
+          <label class="admin-field admin-sla-module-field">
+            <span>
+              ใช้เกณฑ์สำหรับ
+            </span>
+
+            <select id="adminSlaModuleSelect">
+              <option value="">
+                กำลังโหลด Module...
+              </option>
+            </select>
+
+            <small>
+              DEFAULT ใช้เป็นค่ากลางเมื่อ Module ยังไม่มีค่าของตนเอง
+            </small>
+          </label>
+
+          <div class="admin-sla-status-box">
+            <span>
+              สถานะการตั้งค่า
+            </span>
+
+            <strong
+              id="adminSlaStatus"
+              data-status="IDLE"
+            >
+              รอโหลดข้อมูล
+            </strong>
+          </div>
+
+          <div class="admin-sla-status-box">
+            <span>
+              ครบถ้วน
+            </span>
+
+            <strong id="adminSlaConfiguredCount">
+              0 / 4 ช่วง
+            </strong>
+          </div>
+
+          <div class="admin-sla-status-box">
+            <span>
+              แก้ไขล่าสุด
+            </span>
+
+            <strong id="adminSlaUpdatedAt">
+              -
+            </strong>
+          </div>
+        </div>
+
+        <div class="admin-sla-notice">
+          <strong>
+            ลำดับกระบวนการมาตรฐาน
+          </strong>
+
+          <span>
+            Gate In → ยื่นเอกสาร Inbound → รับสินค้าเสร็จ →
+            รับเอกสารคืน → Gate Out
+          </span>
+
+          <small>
+            Dashboard กระบวนการและระบบประเมิน SLA จะอ่านค่าจากตารางนี้
+            ไม่ใช้ค่าตายตัวในหน้าจอ และทุกครั้งที่บันทึกจะสร้าง Revision ใหม่แบบมีประวัติ
+          </small>
+        </div>
+
+        <section class="admin-alert-engine" aria-labelledby="adminAlertEngineTitle">
+          <header>
+            <div>
+              <span class="eyebrow">ALERT ENGINE</span>
+              <h3 id="adminAlertEngineTitle">สถานะเครื่องแจ้งเตือนและประวัติการส่ง</h3>
+              <p>ประเมินเกณฑ์รายขั้นตอน ป้องกันส่งซ้ำ และบันทึก Delivery Log กลาง</p>
+            </div>
+            <div class="admin-alert-engine__actions">
+              <button id="adminAlertEngineSetupButton" class="button button--secondary" type="button">เตรียมระบบ</button>
+              <button id="adminAlertEngineToggleButton" class="button button--secondary" type="button">เปิดใช้งาน</button>
+              <button id="adminAlertEngineRunButton" class="button button--primary" type="button">ประมวลผลตอนนี้</button>
+              <button id="adminAlertEngineRefreshButton" class="button button--secondary" type="button">รีเฟรช</button>
+            </div>
+          </header>
+          <div class="admin-alert-engine__metrics">
+            <div><span>สถานะ</span><strong id="adminAlertEngineStatus" data-status="IDLE">รอโหลด</strong></div>
+            <div><span>Trigger</span><strong id="adminAlertEngineTrigger">-</strong></div>
+            <div><span>Alert Active</span><strong id="adminAlertEngineActive">0</strong></div>
+            <div><span>เกินเวลา</span><strong id="adminAlertEngineOverdue">0</strong></div>
+            <div><span>ส่งทั้งหมด</span><strong id="adminAlertEngineDeliveryCount">0</strong></div>
+            <div><span>รอบล่าสุด</span><strong id="adminAlertEngineLastRun">-</strong></div>
+          </div>
+          <div class="admin-alert-engine__notice" id="adminAlertEngineNotice">In-App พร้อมใช้งาน · Webhook ตั้งผ่าน Script Properties</div>
+          <div class="admin-alert-delivery-list" id="adminAlertDeliveryList"><div class="admin-sla-loading">กำลังโหลดประวัติการส่ง...</div></div>
+        </section>
+
+        <div
+          id="adminSlaRuleGrid"
+          class="admin-sla-rule-grid"
+        >
+          <div class="admin-sla-loading">
+            เลือก Module เพื่อโหลดเกณฑ์เวลา
+          </div>
+        </div>
+
+        <div class="admin-sla-validation">
+          <div>
+            <span>
+              หลักการตรวจสอบ
+            </span>
+
+            <strong>
+              สีแดงต้องมากกว่าสีเหลือง
+            </strong>
+          </div>
+
+          <div>
+            <span>
+              การแจ้งซ้ำ
+            </span>
+
+            <strong>
+              ใช้เฉพาะช่วงที่เปิดแจ้งเตือน
+            </strong>
+          </div>
+
+          <div>
+            <span>
+              แหล่งข้อมูล
+            </span>
+
+            <strong>
+              กฎเวลาแจ้งเตือนงานเอกสาร
+            </strong>
+          </div>
+        </div>
+
+        <div class="admin-form-actions admin-sla-save-actions">
+          <span id="adminSlaSaveHint">
+            บันทึกครั้งเดียวทั้ง 4 ขั้นตอน
+          </span>
+
+          <button
+            id="adminSlaSaveButton"
+            class="button button--primary"
+            type="button"
+          >
+            บันทึกเกณฑ์และการแจ้งเตือน
+          </button>
+        </div>
+      </article>
+    </section>
+
+    <section
+      id="adminPanelShifts"
+      class="admin-panel is-hidden"
+      data-admin-panel="shifts"
+    >
+      <div class="admin-section-heading admin-shift-heading">
+        <div>
+          <p class="eyebrow">
+            SHIFT MANAGEMENT
+          </p>
+
+          <h2>
+            กะทำงานและการบันทึกสถิติ
+          </h2>
+
+          <p>
+            เปิดหรือปิดระบบกะ กำหนดเวลาแยกแต่ละ Module และตรวจสอบ Snapshot จากหน้า Admin โดยตรง
+          </p>
+        </div>
+
+        <div class="admin-shift-heading__actions">
+          <button
+            id="adminShiftSetupButton"
+            class="button button--secondary"
+            type="button"
+          >
+            เตรียมชีทระบบกะ
+          </button>
+
+          <a
+            class="button button--secondary"
+            href="./shift-admin.html"
+            target="_blank"
+            rel="noopener"
+          >
+            เปิดหน้าเต็ม
+          </a>
+        </div>
+      </div>
+
+      <div
+        id="adminShiftMessage"
+        class="admin-shift-message"
+        hidden
+      >
+        <span id="adminShiftMessageText"></span>
+
+        <button
+          id="adminShiftMessageRetry"
+          class="button button--secondary button--compact"
+          type="button"
+          hidden
+        >
+          ลองโหลดใหม่
+        </button>
+      </div>
+
+      <article class="admin-card admin-shift-config-card">
+        <div class="admin-shift-toolbar">
+          <label class="admin-field admin-shift-module-field">
+            <span>
+              เลือก Module
+            </span>
+
+            <select id="adminShiftModuleSelect">
+              <option value="">
+                กำลังโหลด Module...
+              </option>
+            </select>
+          </label>
+
+          <div class="admin-shift-current-status">
+            <span>
+              สถานะระบบกะ
+            </span>
+
+            <strong
+              id="adminShiftStatusBadge"
+              data-status="LOADING"
+            >
+              กำลังโหลด
+            </strong>
+          </div>
+
+          <div class="admin-shift-current-status">
+            <span>
+              เวอร์ชันที่ใช้งาน
+            </span>
+
+            <strong id="adminShiftVersion">
+              -
+            </strong>
+          </div>
+
+          <button
+            id="adminShiftReloadButton"
+            class="button button--secondary"
+            type="button"
+          >
+            โหลดใหม่
+          </button>
+        </div>
+
+        <div class="admin-shift-config-header">
+          <div>
+            <p class="eyebrow">
+              MODULE SHIFT CONFIGURATION
+            </p>
+
+            <h3>
+              การคำนวณข้อมูลตามกะ
+            </h3>
+
+            <p>
+              การเปิดใช้งานมีผลเฉพาะ Module ที่เลือก ไม่กระทบ Module อื่น
+            </p>
+          </div>
+
+          <label class="admin-shift-enable">
+            <input
+              id="adminShiftEnabled"
+              type="checkbox"
+            >
+
+            <span>
+              เปิดใช้งานระบบกะ
+            </span>
+          </label>
+        </div>
+
+        <div class="admin-shift-general-grid">
+          <label class="admin-field">
+            <span>
+              เขตเวลา
+            </span>
+
+            <input
+              id="adminShiftTimezone"
+              type="text"
+              value="Asia/Bangkok"
+            >
+          </label>
+
+          <label class="admin-field">
+            <span>
+              เวลาเริ่มวันปฏิบัติงาน
+            </span>
+
+            <input
+              id="adminShiftBusinessStart"
+              type="time"
+              value="06:00"
+            >
+
+            <small>
+              ใช้แบ่งสถิติรายวัน เช่น 06:00–06:00 ของวันถัดไป
+            </small>
+          </label>
+
+          <label class="admin-field">
+            <span>
+              วันที่เริ่มใช้
+            </span>
+
+            <input
+              id="adminShiftEffectiveDate"
+              type="date"
+            >
+
+            <small>
+              ระบบเก็บเวอร์ชันเดิมไว้สำหรับข้อมูลย้อนหลัง
+            </small>
+          </label>
+        </div>
+
+        <div class="admin-shift-list-heading">
+          <div>
+            <strong>
+              ตารางกะทำงาน
+            </strong>
+
+            <span>
+              กำหนดได้ 2–4 กะ และรองรับกะข้ามวัน
+            </span>
+          </div>
+
+          <button
+            id="adminShiftAddButton"
+            class="button button--secondary button--compact"
+            type="button"
+          >
+            + เพิ่มกะ
+          </button>
+        </div>
+
+        <div
+          id="adminShiftRows"
+          class="admin-shift-rows"
+        >
+          <div class="admin-shift-loading">
+            กำลังโหลดการตั้งค่ากะ
+          </div>
+        </div>
+
+        <div class="admin-shift-validation">
+          <div>
+            <span>
+              ความครอบคลุมของเวลา
+            </span>
+
+            <strong id="adminShiftCoverage">
+              -
+            </strong>
+          </div>
+
+          <div>
+            <span>
+              การตรวจสอบช่วงเวลา
+            </span>
+
+            <strong
+              id="adminShiftValidationStatus"
+              data-status="IDLE"
+            >
+              รอตรวจสอบ
+            </strong>
+          </div>
+
+          <div>
+            <span>
+              แก้ไขล่าสุด
+            </span>
+
+            <strong id="adminShiftUpdatedAt">
+              -
+            </strong>
+          </div>
+        </div>
+
+        <div class="admin-form-actions admin-shift-save-actions">
+          <span id="adminShiftSaveHint">
+            บันทึกแล้วระบบจะสร้างเวอร์ชันกะใหม่
+          </span>
+
+          <button
+            id="adminShiftSaveButton"
+            class="button button--primary"
+            type="button"
+          >
+            บันทึกการตั้งค่ากะ
+          </button>
+        </div>
+      </article>
+
+      <article class="admin-card admin-shift-statistics-card">
+        <div class="admin-card__header">
+          <div>
+            <p class="eyebrow">
+              SHIFT SNAPSHOT
+            </p>
+
+            <h3>
+              สถิติที่ระบบบันทึกไว้
+            </h3>
+
+            <p>
+              สรุปประจำกะจะถูก Upsert ด้วย Key จึงไม่สร้างรายการกะเดิมซ้ำ
+            </p>
+          </div>
+
+          <div class="admin-shift-stat-actions">
+            <button
+              id="adminShiftSnapshotButton"
+              class="button button--primary button--compact"
+              type="button"
+            >
+              บันทึก Snapshot ตอนนี้
+            </button>
+
+            <button
+              id="adminShiftStatsRefreshButton"
+              class="button button--secondary button--compact"
+              type="button"
+            >
+              รีเฟรชสถิติ
+            </button>
+          </div>
+        </div>
+
+        <div class="admin-shift-summary-grid">
+          <div>
+            <span>
+              Snapshot ทั้งหมด
+            </span>
+
+            <strong id="adminShiftSnapshotCount">
+              0
+            </strong>
+          </div>
+
+          <div>
+            <span>
+              ปิดกะสมบูรณ์
+            </span>
+
+            <strong id="adminShiftFinalCount">
+              0
+            </strong>
+          </div>
+
+          <div>
+            <span>
+              วันที่ล่าสุด
+            </span>
+
+            <strong id="adminShiftLatestDate">
+              -
+            </strong>
+          </div>
+
+          <div>
+            <span>
+              กะล่าสุด
+            </span>
+
+            <strong id="adminShiftLatestCode">
+              -
+            </strong>
+          </div>
+        </div>
+
+        <div class="admin-shift-table-wrap">
+          <table class="admin-shift-table">
+            <thead>
+              <tr>
+                <th>
+                  วันปฏิบัติงาน
+                </th>
+
+                <th>
+                  กะ
+                </th>
+
+                <th>
+                  สถานะ
+                </th>
+
+                <th>
+                  Gate In
+                </th>
+
+                <th>
+                  Gate Out
+                </th>
+
+                <th>
+                  Auto Close
+                </th>
+
+                <th>
+                  คงค้าง
+                </th>
+
+                <th>
+                  เกิน SLA
+                </th>
+
+                <th>
+                  SLA ผ่าน
+                </th>
+
+                <th>
+                  เวลาเฉลี่ย
+                </th>
+              </tr>
+            </thead>
+
+            <tbody id="adminShiftStatsBody">
+              <tr>
+                <td colspan="10">
+                  เลือก Module เพื่อดูสถิติ
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section
+      id="adminPanelExports"
+      class="admin-panel is-hidden"
+      data-admin-panel="exports"
+    >
+      <div class="admin-section-heading">
+        <div>
+          <p class="eyebrow">
+            MONTHLY DATA CONTROL · SAFE ARCHIVE
+          </p>
+
+          <h2>
+            ส่งออกสิ้นเดือนและดูแลข้อมูลระบบ
+          </h2>
+
+          <p>
+            Admin เลือกเดือน สร้าง Excel สำรองข้อมูล และเคลียร์เฉพาะรายการที่ปิดงานแล้วโดยไม่แตะชีตต้นทาง
+          </p>
+        </div>
+
+        <div class="admin-management-actions">
+          <button
+            id="adminInboundExportRefreshButton"
+            class="button button--secondary"
+            type="button"
+          >
+            รีเฟรช
+          </button>
+
+          <button
+            id="adminManagementCleanupButton"
+            class="button button--secondary"
+            type="button"
+          >
+            ล้างไฟล์หมดอายุ
+          </button>
+        </div>
+      </div>
+
+      <article
+        class="admin-card admin-simple-export-card"
+      >
+        <div class="admin-simple-export-heading">
+          <div>
+            <p class="eyebrow">
+              ONE MONTH · ONE EXCEL · ALL DATA
+            </p>
+
+            <h3>
+              ไฟล์ข้อมูลรถและตู้ประจำเดือน
+            </h3>
+
+            <p>
+              รวมรถ/ตู้ที่เข้าในเดือน กิจกรรมที่เกิดในเดือน งานค้าง ผิด SLA ยกเลิก ซ่อมข้อมูล และบัญชีชีตระบบในไฟล์เดียว
+            </p>
+          </div>
+        </div>
+
+        <input
+          id="adminManagementReportType"
+          type="hidden"
+          value="MONTHLY_DATA_PACKAGE"
+        >
+
+        <input
+          id="adminManagementDateMode"
+          type="hidden"
+          value="MONTH"
+        >
+
+        <div class="admin-simple-export-grid">
+          <label class="form-field">
+            <span class="form-label">
+              ข้อมูลของ Module
+            </span>
+
+            <select id="adminInboundExportModuleSelect">
+              <option value="">
+                กำลังโหลด Module...
+              </option>
+            </select>
+          </label>
+
+          <label
+            id="adminManagementFileFormatField"
+            class="form-field"
+          >
+            <span class="form-label">
+              รูปแบบไฟล์
+            </span>
+
+            <select id="adminManagementFileFormat">
+              <option value="XLSX" selected>
+                Excel (.xlsx) — ไฟล์ประจำเดือน
+              </option>
+
+              <option value="CSV">
+                CSV (.csv) — เร็วที่สุด
+              </option>
+            </select>
+          </label>
+        </div>
+
+        <div class="admin-simple-period">
+          <span class="form-label">
+            เลือกช่วงข้อมูล
+          </span>
+
+          <div
+            class="admin-simple-period-buttons"
+            role="group"
+            aria-label="เลือกช่วงข้อมูล"
+          >
+            <button
+              type="button"
+              data-export-date-mode="TODAY"
+            >
+              วันนี้
+            </button>
+
+            <button
+              type="button"
+              data-export-date-mode="RANGE"
+            >
+              เลือกช่วงวันที่
+            </button>
+
+            <button
+              class="is-active"
+              type="button"
+              data-export-date-mode="MONTH"
+            >
+              เลือกเดือน
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="adminManagementRangeFields"
+          class="admin-management-range-fields is-hidden"
+        >
+          <label class="form-field">
+            <span class="form-label">
+              วันที่เริ่มต้น
+            </span>
+
+            <input
+              id="adminManagementStartDate"
+              type="date"
+            >
+          </label>
+
+          <label class="form-field">
+            <span class="form-label">
+              วันที่สิ้นสุด
+            </span>
+
+            <input
+              id="adminManagementEndDate"
+              type="date"
+            >
+          </label>
+        </div>
+
+        <label
+          id="adminManagementMonthField"
+          class="form-field"
+        >
+          <span class="form-label">
+            เดือน
+          </span>
+
+          <input
+            id="adminManagementMonth"
+            type="month"
+          >
+        </label>
+
+        <div class="admin-simple-export-options">
+          <label class="admin-simple-checkbox">
+            <input
+              id="adminManagementIncludeActive"
+              type="checkbox"
+              checked
+            >
+
+            <span>
+              รวมรถที่ยังดำเนินงานอยู่
+            </span>
+          </label>
+
+          <div class="admin-monthly-action-stack">
+            <button
+              id="adminMonthlyPreviewButton"
+              class="button button--secondary"
+              type="button"
+            >
+              ตรวจข้อมูลเดือนนี้ก่อน
+            </button>
+
+            <button
+              id="adminInboundExportButton"
+              class="button button--primary admin-simple-download-button"
+              type="button"
+            >
+              สร้างไฟล์ Excel ประจำเดือน
+            </button>
+          </div>
+        </div>
+
+        <div class="admin-management-selection-note">
+          ไฟล์มี 2 มุมมอง: รถ/ตู้ที่ Gate In ในเดือน และทุกกิจกรรมที่เกิดขึ้นในเดือน แม้รถจะเริ่มงานจากเดือนก่อน
+        </div>
+
+        <div
+          id="adminManagementSources"
+          class="admin-simple-source-note"
+        >
+          กำลังตรวจสอบชีตที่ใช้สร้างไฟล์...
+        </div>
+
+        <div
+          id="adminInboundExportSummary"
+          class="admin-export-summary"
+        >
+          พร้อมส่งออก
+        </div>
+
+        <div
+          id="adminInboundExportPreview"
+          class="admin-management-result"
+        ></div>
+
+        <section class="admin-monthly-overview" aria-label="สรุปข้อมูลประจำเดือน">
+          <article><span>รถ/ตู้เข้าเดือนนี้</span><strong id="adminMonthlyStartedCount">-</strong></article>
+          <article><span>ปิดงานแล้ว</span><strong id="adminMonthlyClosedCount">-</strong></article>
+          <article><span>ยังดำเนินงาน</span><strong id="adminMonthlyActiveCount">-</strong></article>
+          <article><span>กิจกรรมในเดือน</span><strong id="adminMonthlyActivityCount">-</strong></article>
+          <article><span>แถวที่เตรียมเก็บถาวร</span><strong id="adminMonthlyCleanupCandidateCount">-</strong></article>
+          <article><span>รายการที่ห้ามเคลียร์</span><strong id="adminMonthlyBlockedCount">-</strong></article>
+        </section>
+
+        <section class="admin-data-control-note">
+          <strong>ลบข้อมูลแบบปลอดภัย 2 ขั้นตอน</strong>
+          <span>ต้องมี Excel ประจำเดือนก่อน จากนั้นระบบจะสร้าง Backup ทั้งไฟล์ แล้วให้ Admin พิมพ์ข้อความยืนยันก่อนลบเฉพาะรถ/ตู้ที่ปิดงานแล้ว</span>
+        </section>
+
+        <section>
+          <div class="admin-card__header">
+            <div>
+              <p class="eyebrow">WORKBOOK CONTENTS</p>
+              <h3>ข้อมูลที่จะอยู่ในไฟล์ Excel</h3>
+            </div>
+          </div>
+          <div id="adminMonthlyPackageContents" class="admin-monthly-package-list"></div>
+        </section>
+
+        <section>
+          <div class="admin-card__header">
+            <div>
+              <p class="eyebrow">CLEANUP PREVIEW</p>
+              <h3>ข้อมูลที่เตรียมเก็บถาวร</h3>
+            </div>
+          </div>
+          <div id="adminMonthlyCleanupPreview" class="admin-monthly-cleanup-preview">กด “ตรวจข้อมูลเดือนนี้ก่อน” เพื่อดูรายการ</div>
+        </section>
+
+        <section class="admin-card" aria-label="เก็บถาวรและเคลียร์ข้อมูลประจำเดือน">
+          <div class="admin-card__header">
+            <div>
+              <p class="eyebrow">SAFE MONTHLY ARCHIVE</p>
+              <h3>สำรองและเคลียร์ข้อมูลเดือนเก่า</h3>
+              <p>ใช้ได้เฉพาะเดือนก่อนหน้า ระบบไม่ลบเดือนปัจจุบัน รถที่ยังไม่ปิดงาน หรือรายการที่มีข้อมูลขัดแย้ง</p>
+            </div>
+          </div>
+
+          <div class="admin-monthly-action-stack">
+            <button id="adminMonthlyCleanupPreviewButton" class="button button--secondary" type="button">
+              ตรวจความพร้อมก่อนเคลียร์
+            </button>
+            <button id="adminMonthlyPrepareCleanupButton" class="button button--danger-ghost" type="button" disabled>
+              สำรองและเคลียร์เดือนนี้
+            </button>
+          </div>
+
+          <div id="adminSafeCleanupStatus" class="admin-export-summary">
+            กรุณาสร้างไฟล์ Excel ของเดือนนั้นก่อน
+          </div>
+          <div id="adminSafeCleanupResult" class="admin-management-result"></div>
+        </section>
+      </article>
+
+      <article class="admin-card" aria-label="ล้าง Log ระบบเก่า">
+        <div class="admin-card__header">
+          <div>
+            <p class="eyebrow">LOG RETENTION</p>
+            <h3>ดูแลประวัติระบบอัตโนมัติ</h3>
+            <p>หยุดสร้างรายการ Auto Close ที่ไม่มีการเปลี่ยนข้อมูล และสำรองเป็น CSV ก่อนลบทุกวันประมาณ 02:30 น.</p>
+          </div>
+        </div>
+
+        <section class="admin-data-control-note">
+          <strong>ข้อมูลสำคัญไม่ถูกลบอัตโนมัติ</strong>
+          <span>รายการของผู้ใช้งาน, Admin, การตั้งค่า, ยกเลิก, ส่งออก และ Auto Close ที่ปิดรถจริงจะถูกเก็บไว้</span>
+        </section>
+
+        <div class="admin-monthly-action-stack">
+          <button id="adminAutoLogRetentionStatusButton" class="button button--secondary" type="button">
+            ตรวจสถานะ
+          </button>
+          <button id="adminAutoLogRetentionEnableButton" class="button button--primary" type="button">
+            เปิดอัตโนมัติ
+          </button>
+          <button id="adminAutoLogRetentionRunButton" class="button button--secondary" type="button">
+            สำรองและล้างตอนนี้
+          </button>
+          <button id="adminAutoLogRetentionDisableButton" class="button button--danger-ghost" type="button">
+            หยุดอัตโนมัติ
+          </button>
+        </div>
+
+        <div id="adminAutoLogRetentionStatus" class="admin-export-summary">กำลังตรวจสถานะ...</div>
+        <div id="adminAutoLogRetentionResult" class="admin-management-result"></div>
+
+        <hr style="border:0;border-top:1px solid #e2e8f0;margin:18px 0">
+
+        <div class="admin-card__header">
+          <div>
+            <p class="eyebrow">MANUAL CLEANUP</p>
+            <h3>ล้าง Log เก่าด้วยตนเอง</h3>
+            <p>ใช้เมื่อต้องการเลือกระยะเก็บเอง ระบบจะสำรอง Spreadsheet ทั้งไฟล์ก่อนลบทุกครั้ง</p>
+          </div>
+        </div>
+
+        <div class="admin-simple-export-grid">
+          <label class="form-field">
+            <span class="form-label">เก็บ Log ย้อนหลัง</span>
+            <select id="adminLogRetentionDays">
+              <option value="90">90 วัน</option>
+              <option value="180" selected>180 วัน</option>
+              <option value="365">365 วัน</option>
+              <option value="730">730 วัน</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="admin-monthly-action-stack">
+          <button id="adminLogCleanupPreviewButton" class="button button--secondary" type="button">
+            ตรวจ Log เก่า
+          </button>
+          <button id="adminLogCleanupExecuteButton" class="button button--danger-ghost" type="button" disabled>
+            สำรองและล้าง Log เก่า
+          </button>
+        </div>
+
+        <div id="adminLogCleanupStatus" class="admin-export-summary">ยังไม่ได้ตรวจ Log</div>
+        <div id="adminLogCleanupResult" class="admin-management-result"></div>
+      </article>
+
+      <article class="admin-card">
+        <div class="admin-card__header">
+          <div>
+            <p class="eyebrow">SHEET REGISTRY</p>
+            <h3>บัญชีชีตทั้งหมดที่ระบบใช้งาน</h3>
+            <p>Admin ไม่ต้องจำชื่อชีตเอง ระบบระบุว่าชีตใดห้ามแตะ เก็บถาวร หรือสร้างใหม่ได้</p>
+          </div>
+        </div>
+        <div id="adminDataSheetRegistry" class="admin-sheet-registry"></div>
+      </article>
+
+      <article class="admin-card">
+        <div class="admin-card__header">
+          <div>
+            <p class="eyebrow">
+              RECENT EXPORTS
+            </p>
+
+            <h3>
+              ไฟล์ที่สร้างล่าสุด
+            </h3>
+
+            <p>
+              ดาวน์โหลดผ่านระบบ Admin โดยตรง
+              ไม่เปิดลิงก์ Google Drive Private
+            </p>
+          </div>
+        </div>
+
+        <div
+          id="adminManagementExportHistory"
+          class="admin-management-history"
+        ></div>
+      </article>
+    </section>
+
+    <section
+      id="adminPanelAudit"
+      class="admin-panel is-hidden"
+      data-admin-panel="audit"
+    >
+      <div class="admin-section-heading">
+        <div>
+          <p class="eyebrow">
+            AUDIT LOG
+          </p>
+
+          <h2>
+            ประวัติการทำรายการ
+          </h2>
+
+          <p>
+            ตรวจสอบว่าใครแก้ข้อมูลอะไร เมื่อใด และผลลัพธ์เป็นอย่างไร
+          </p>
+        </div>
+      </div>
+
+      <form
+        id="adminAuditFilterForm"
+        class="admin-audit-filters"
+      >
+        <input
+          id="adminAuditUsername"
+          type="text"
+          placeholder="ชื่อผู้ใช้"
+        >
+
+        <input
+          id="adminAuditModuleId"
+          type="text"
+          placeholder="รหัสโมดูล"
+        >
+
+        <input
+          id="adminAuditAction"
+          type="text"
+          placeholder="การกระทำ"
+        >
+
+        <select id="adminAuditLimit">
+          <option value="30">
+            30 รายการ
+          </option>
+
+          <option value="50" selected>
+            50 รายการ
+          </option>
+
+          <option value="100">
+            100 รายการ
+          </option>
+
+          <option value="200">
+            200 รายการ
+          </option>
+        </select>
+
+        <button
+          class="button button--primary button--compact"
+          type="submit"
+        >
+          ค้นหา
+        </button>
+      </form>
+
+      <div
+        id="adminAuditList"
+        class="admin-audit-list admin-audit-list--full"
+      ></div>
+    </section>
+
+    <section
+      id="adminPanelSystem"
+      class="admin-panel is-hidden"
+      data-admin-panel="system"
+    >
+      <div class="admin-section-heading">
+        <div>
+          <p class="eyebrow">
+            SYSTEM VALIDATION
+          </p>
+
+          <h2>
+            ตรวจสอบความพร้อมของระบบ
+          </h2>
+
+          <p>
+            ตรวจ Fast Scan, Queue Recovery, Worker Build, Apps Script, Idempotency, SLA, Auto Close, Cache และ Export
+          </p>
+        </div>
+
+        <div class="admin-diagnostic-actions">
+          <button id="adminDiagnosticsQuickButton" class="button button--secondary" type="button">ตรวจแบบเร็ว</button>
+          <button id="adminValidateSystemButton" class="button button--primary" type="button">ตรวจแบบละเอียด</button>
+          <button id="adminAcceptanceButton" class="button button--primary" type="button">ทดสอบ Acceptance</button>
+          <button id="adminDiagnosticsExportButton" class="button button--secondary" type="button" disabled>ส่งออกรายงาน</button>
+        </div>
+      </div>
+
+      <section
+        id="adminDiagnosticSummary"
+        class="admin-diagnostic-summary"
+      >
+        <article class="admin-diagnostic-stat">
+          <span>ผลรวม</span>
+          <strong id="adminDiagnosticStatus">ยังไม่ได้ตรวจ</strong>
+        </article>
+
+        <article class="admin-diagnostic-stat admin-diagnostic-stat--pass">
+          <span>ผ่าน</span>
+          <strong id="adminDiagnosticPassed">0</strong>
+        </article>
+
+        <article class="admin-diagnostic-stat admin-diagnostic-stat--warn">
+          <span>คำเตือน</span>
+          <strong id="adminDiagnosticWarnings">0</strong>
+        </article>
+
+        <article class="admin-diagnostic-stat admin-diagnostic-stat--fail">
+          <span>ไม่ผ่าน</span>
+          <strong id="adminDiagnosticFailed">0</strong>
+        </article>
+      </section>
+
+      <section class="admin-diagnostic-meta-grid">
+        <article><span>Module ที่ตรวจ</span><strong id="adminDiagnosticModuleId">-</strong></article>
+        <article><span>Data Revision</span><strong id="adminDiagnosticDataRevision">-</strong></article>
+        <article><span>Rules Revision</span><strong id="adminDiagnosticRulesRevision">-</strong></article>
+        <article><span>Alert / Trigger</span><strong id="adminDiagnosticAlertStatus">-</strong></article>
+        <article><span>Offline Queue</span><strong id="adminDiagnosticQueueStatus">-</strong></article>
+        <article><span>Export Contract</span><strong id="adminDiagnosticExportStatus">-</strong></article>
+        <article><span>Worker Build</span><strong id="adminDiagnosticWorkerBuild">-</strong></article>
+        <article><span>Foreground Write P95</span><strong id="adminDiagnosticClientP95">-</strong></article>
+        <article><span>Fast Scan Transaction</span><strong id="adminDiagnosticFastScanStatus">-</strong></article>
+        <article><span>Deprecated Fallback</span><strong id="adminDiagnosticFallbackStatus">-</strong></article>
+      </section>
+
+      <section class="admin-card" aria-labelledby="adminVcwCleanupTitle">
+        <div class="admin-section-heading">
+          <div>
+            <p class="eyebrow">SAFE CLEANUP</p>
+            <h3 id="adminVcwCleanupTitle">Central Router Strict Mode</h3>
+            <p>เปิดหลัง Acceptance ผ่าน เพื่อหยุด Direct Fallback โดยยังสามารถย้อนกลับได้ทันที</p>
+          </div>
+          <div class="admin-diagnostic-actions">
+            <button id="adminVcwCleanupRefreshButton" class="button button--secondary" type="button">ตรวจสถานะ</button>
+            <button id="adminVcwFallbackResetButton" class="button button--secondary" type="button">รีเซ็ต Counter</button>
+            <button id="adminVcwStrictEnableButton" class="button button--primary" type="button">เปิด Strict Mode</button>
+            <button id="adminVcwStrictDisableButton" class="button button--secondary" type="button">กลับ Compatibility</button>
+          </div>
+        </div>
+        <section class="admin-diagnostic-meta-grid">
+          <article><span>Router Mode</span><strong id="adminVcwRouterMode">ยังไม่ได้ตรวจ</strong></article>
+          <article><span>Strict Mode</span><strong id="adminVcwStrictMode">-</strong></article>
+          <article><span>Fallback Count</span><strong id="adminVcwFallbackCount">-</strong></article>
+          <article><span>Fallback ล่าสุด</span><strong id="adminVcwFallbackLastUsed">-</strong></article>
+          <article><span>Action ที่ขาด</span><strong id="adminVcwMissingActions">-</strong></article>
+          <article><span>พร้อมลบ Legacy จริง</span><strong id="adminVcwPhysicalRemoval">ยังไม่พร้อม</strong></article>
+        </section>
+        <p id="adminVcwCleanupRecommendation">กดตรวจสถานะก่อนเปิด Strict Mode</p>
+      </section>
+
+      <div
+        id="adminValidationResult"
+        class="admin-validation-result"
+      >
+        <div class="empty-state">
+          <strong>
+            ยังไม่ได้ตรวจสอบระบบ
+          </strong>
+
+          <span>
+            กดปุ่มเริ่มตรวจสอบเพื่อดูผลลัพธ์ล่าสุด
+          </span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div
+    id="adminModuleEditor"
+    class="admin-editor is-hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="adminModuleEditorTitle"
+  >
+    <div
+      id="adminEditorBackdrop"
+      class="admin-editor__backdrop"
+    ></div>
+
+    <section class="admin-editor__panel">
+      <header class="admin-editor__header">
+        <div>
+          <p class="eyebrow">
+            MODULE EDITOR
+          </p>
+
+          <h2 id="adminModuleEditorTitle">
+            ตั้งค่าโมดูล
+          </h2>
+
+          <span id="adminModuleEditorStatus">
+            -
+          </span>
+        </div>
+
+        <button
+          id="adminCloseModuleEditorButton"
+          class="icon-text-button"
+          type="button"
+        >
+          ปิด
+        </button>
+      </header>
+
+      <form
+        id="adminModuleForm"
+        class="admin-editor__body"
+        novalidate
+      >
+        <input
+          id="adminExpectedUpdatedAt"
+          type="hidden"
+        >
+
+        <section class="admin-editor-section">
+          <div class="admin-editor-section__title">
+            <span>1</span>
+
+            <div>
+              <h3>
+                ข้อมูลโมดูล
+              </h3>
+
+              <p>
+                ชื่อ สถานะ และลำดับที่จะแสดงแก่ผู้ใช้งาน
+              </p>
+            </div>
+          </div>
+
+          <div class="admin-form-grid">
+            <label class="admin-field">
+              <span>
+                รหัสโมดูล
+              </span>
+
+              <input
+                id="adminModuleId"
+                type="text"
+                maxlength="80"
+                placeholder="เช่น makro หรือ vendor-a"
+                required
+              >
+            </label>
+
+            <label class="admin-field admin-field--wide">
+              <span>
+                ชื่อโมดูล
+              </span>
+
+              <input
+                id="adminModuleName"
+                type="text"
+                maxlength="200"
+                required
+              >
+            </label>
+
+            <label class="admin-field admin-field--full">
+              <span>
+                คำอธิบาย
+              </span>
+
+              <textarea
+                id="adminModuleDescription"
+                rows="3"
+                maxlength="2000"
+              ></textarea>
+            </label>
+
+            <label class="admin-field">
+              <span>
+                สถานะโมดูล
+              </span>
+
+              <select id="adminModuleStatus">
+                <option value="DRAFT">
+                  ฉบับร่าง
+                </option>
+
+                <option value="ADMIN_ONLY">
+                  เฉพาะ Admin
+                </option>
+
+                <option value="PUBLISHED">
+                  เปิดใช้งาน
+                </option>
+              </select>
+            </label>
+
+            <label class="admin-field">
+              <span>
+                ลำดับแสดง
+              </span>
+
+              <input
+                id="adminModuleDisplayOrder"
+                type="number"
+                min="1"
+                max="9999"
+                value="100"
+              >
+            </label>
+          </div>
+        </section>
+
+        <section class="admin-editor-section">
+          <div class="admin-editor-section__title">
+            <span>2</span>
+
+            <div>
+              <h3>
+                แหล่งข้อมูล
+              </h3>
+
+              <p>
+                กำหนด Spreadsheet ชีต และคอลัมน์เวลาเข้าออก
+              </p>
+            </div>
+          </div>
+
+          <div class="admin-form-grid">
+            <label class="admin-field admin-field--full">
+              <span>
+                Google Spreadsheet ID ต้นทาง
+              </span>
+
+              <input
+                id="adminSourceSpreadsheetId"
+                type="text"
+                autocomplete="off"
+                required
+              >
+            </label>
+
+            <label class="admin-field admin-field--wide">
+              <span>
+                ชื่อชีตต้นทาง
+              </span>
+
+              <input
+                id="adminSourceSheetName"
+                type="text"
+                list="adminSourceSheetOptions"
+                autocomplete="off"
+                required
+              >
+            </label>
+
+            <label class="admin-field">
+              <span>
+                แถวหัวตาราง
+              </span>
+
+              <input
+                id="adminHeaderRow"
+                type="number"
+                min="1"
+                max="100"
+                value="1"
+              >
+            </label>
+
+            <div class="admin-field admin-field--full">
+              <span>
+                ตรวจสอบแหล่งข้อมูล
+              </span>
+
+              <button
+                id="adminInspectSourceButton"
+                class="button button--secondary"
+                type="button"
+              >
+                อ่านรายชื่อชีตและหัวคอลัมน์
+              </button>
+
+              <small id="adminSourceInspectStatus">
+                ยังไม่ได้ตรวจสอบ
+              </small>
+            </div>
+
+            <label class="admin-field">
+              <span>
+                คอลัมน์เวลาเข้า
+              </span>
+
+              <input
+                id="adminTimestampInColumn"
+                type="text"
+                list="adminSourceColumnOptions"
+                maxlength="3"
+                required
+              >
+            </label>
+
+            <label class="admin-field">
+              <span>
+                คอลัมน์เวลาออก
+              </span>
+
+              <input
+                id="adminTimestampOutColumn"
+                type="text"
+                list="adminSourceColumnOptions"
+                maxlength="3"
+              >
+            </label>
+
+            <label class="admin-field">
+              <span>
+                คอลัมน์ระยะเวลา
+              </span>
+
+              <input
+                id="adminDurationColumn"
+                type="text"
+                list="adminSourceColumnOptions"
+                maxlength="3"
+              >
+            </label>
+
+            <label class="admin-field">
+              <span>
+                คอลัมน์ผู้บันทึกออก
+              </span>
+
+              <input
+                id="adminCheckoutUserColumn"
+                type="text"
+                list="adminSourceColumnOptions"
+                maxlength="3"
+              >
+            </label>
+          </div>
+        </section>
+
+        <section class="admin-editor-section">
+          <div class="admin-editor-section__title">
+            <span>3</span>
+
+            <div>
+              <h3>
+                สถานะและเวลา
+              </h3>
+
+              <p>
+                กำหนดวิธีตรวจรถที่ยังอยู่ในพื้นที่และช่วงเวลาแจ้งเตือน
+              </p>
+            </div>
+          </div>
+
+          <div class="admin-form-grid">
+            <label class="admin-field admin-field--wide">
+              <span>
+                วิธีตรวจสถานะปัจจุบัน
+              </span>
+
+              <select id="adminCurrentStatusMethod">
+                <option value="TIMESTAMP_OUT_EMPTY_AND_DURATION_EMPTY">
+                  เวลาออกและระยะเวลาต้องว่าง
+                </option>
+
+                <option value="TIMESTAMP_OUT_EMPTY">
+                  เวลาออกต้องว่าง
+                </option>
+
+                <option value="CUSTOM">
+                  เงื่อนไขกำหนดเอง
+                </option>
+              </select>
+            </label>
+
+            <label class="admin-field">
+              <span>
+                คอลัมน์สถานะกำหนดเอง
+              </span>
+
+              <input
+                id="adminCustomStatusColumn"
+                type="text"
+                list="adminSourceColumnOptions"
+                maxlength="3"
+              >
+            </label>
+
+            <label class="admin-field">
+              <span>
+                ตัวดำเนินการสถานะ
+              </span>
+
+              <select id="adminCustomStatusOperator">
+                <option value="">
+                  ไม่กำหนด
+                </option>
+
+                <option value="EQUALS">
+                  เท่ากับ
+                </option>
+
+                <option value="NOT_EQUALS">
+                  ไม่เท่ากับ
+                </option>
+
+                <option value="CONTAINS">
+                  มีคำว่า
+                </option>
+
+                <option value="NOT_CONTAINS">
+                  ไม่มีคำว่า
+                </option>
+
+                <option value="IS_EMPTY">
+                  ว่าง
+                </option>
+
+                <option value="IS_NOT_EMPTY">
+                  ไม่ว่าง
+                </option>
+              </select>
+            </label>
+
+            <label class="admin-field">
+              <span>
+                ค่าสถานะกำหนดเอง
+              </span>
+
+              <input
+                id="adminCustomStatusValue"
+                type="text"
+              >
+            </label>
+
+            <label class="admin-field">
+              <span>
+                นาทีเริ่มสีเขียว
+              </span>
+
+              <input
+                id="adminGreenStartMinutes"
+                type="number"
+                min="0"
+                value="0"
+              >
+            </label>
+
+            <label class="admin-field">
+              <span>
+                นาทีเริ่มสีส้ม
+              </span>
+
+              <input
+                id="adminWarningStartMinutes"
+                type="number"
+                min="0"
+                value="45"
+              >
+            </label>
+
+            <label class="admin-field">
+              <span>
+                นาทีเริ่มสีแดง
+              </span>
+
+              <input
+                id="adminRedStartMinutes"
+                type="number"
+                min="1"
+                value="60"
+              >
+            </label>
+
+            <label class="admin-field">
+              <span>
+                แจ้งเตือนซ้ำทุกกี่นาที
+              </span>
+
+              <input
+                id="adminAlertRepeatMinutes"
+                type="number"
+                min="1"
+                max="1440"
+                value="10"
+              >
+            </label>
+
+            <label class="admin-field">
+              <span>
+                รีเฟรชทุกกี่วินาที
+              </span>
+
+              <input
+                id="adminRefreshSeconds"
+                type="number"
+                min="10"
+                max="3600"
+                value="30"
+              >
+            </label>
+          </div>
+        </section>
+
+        <section class="admin-editor-section">
+          <div class="admin-editor-section__title">
+            <span>4</span>
+
+            <div>
+              <h3>
+                เงื่อนไขกรองข้อมูล
+              </h3>
+
+              <p>
+                ตัวอย่าง Makro: คอลัมน์ K มีคำว่า “ส่งสินค้าMakro”
+              </p>
+            </div>
+          </div>
+
+          <div class="admin-dynamic-toolbar">
+            <span id="adminFilterCount">
+              0 เงื่อนไข
+            </span>
+
+            <button
+              id="adminAddFilterButton"
+              class="button button--secondary button--compact"
+              type="button"
+            >
+              เพิ่มเงื่อนไข
+            </button>
+          </div>
+
+          <div
+            id="adminFilterRows"
+            class="admin-dynamic-list"
+          ></div>
+        </section>
+
+        <section class="admin-editor-section">
+          <div class="admin-editor-section__title">
+            <span>5</span>
+
+            <div>
+              <h3>
+                ฟิลด์ที่แสดงบนการ์ด
+              </h3>
+
+              <p>
+                รวมหลายคอลัมน์ได้ เช่น คำนำหน้า + ชื่อ + สกุล หรือทะเบียน + จังหวัด
+              </p>
+            </div>
+          </div>
+
+          <div class="admin-dynamic-toolbar">
+            <span id="adminFieldCount">
+              0 ฟิลด์
+            </span>
+
+            <button
+              id="adminAddFieldButton"
+              class="button button--secondary button--compact"
+              type="button"
+            >
+              เพิ่มฟิลด์
+            </button>
+          </div>
+
+          <div
+            id="adminFieldRows"
+            class="admin-dynamic-list"
+          ></div>
+        </section>
+
+        <section class="admin-editor-section">
+          <div class="admin-editor-section__title">
+            <span>6</span>
+
+            <div>
+              <h3>
+                การเปิดใช้งาน
+              </h3>
+
+              <p>
+                ควบคุมการแสดงผล ปฏิทิน การบันทึกออก เสียง และการสั่น
+              </p>
+            </div>
+          </div>
+
+          <div class="admin-toggle-grid">
+            <label class="admin-toggle">
+              <input
+                id="adminAlertEnabled"
+                type="checkbox"
+              >
+
+              <span>
+                เปิดแจ้งเตือน
+              </span>
+            </label>
+
+            <label class="admin-toggle">
+              <input
+                id="adminCheckoutEnabled"
+                type="checkbox"
+              >
+
+              <span>
+                เปิดบันทึกออก
+              </span>
+            </label>
+
+
+            <label class="admin-toggle admin-toggle--feature">
+              <input
+                id="adminReceivingEnabled"
+                type="checkbox"
+              >
+
+              <span>
+                <strong>
+                  เปิดหน้าบันทึกรับสินค้าเสร็จ
+                </strong>
+
+                <small>
+                  เมื่อเปิด User และ Admin ที่เข้าถึง Module นี้จะเห็น Receiving Flow และปุ่มบันทึก
+                </small>
+              </span>
+            </label>
+
+            <label class="admin-toggle">
+              <input
+                id="adminShowToUsers"
+                type="checkbox"
+              >
+
+              <span>
+                แสดงแก่ User
+              </span>
+            </label>
+
+            <label class="admin-toggle">
+              <input
+                id="adminHistoryEnabled"
+                type="checkbox"
+              >
+
+              <span>
+                เปิดประวัติ
+              </span>
+            </label>
+
+            <label class="admin-toggle">
+              <input
+                id="adminCalendarEnabled"
+                type="checkbox"
+              >
+
+              <span>
+                เปิดปฏิทิน
+              </span>
+            </label>
+
+            <label class="admin-toggle">
+              <input
+                id="adminShowCalendarToUsers"
+                type="checkbox"
+              >
+
+              <span>
+                แสดงปฏิทินแก่ User
+              </span>
+            </label>
+
+            <label class="admin-toggle">
+              <input
+                id="adminDailySummaryEnabled"
+                type="checkbox"
+              >
+
+              <span>
+                เปิดสรุปรายวัน
+              </span>
+            </label>
+
+            <label class="admin-toggle">
+              <input
+                id="adminSoundEnabled"
+                type="checkbox"
+              >
+
+              <span>
+                เปิดเสียง
+              </span>
+            </label>
+
+            <label class="admin-toggle">
+              <input
+                id="adminVibrationEnabled"
+                type="checkbox"
+              >
+
+              <span>
+                เปิดการสั่น
+              </span>
+            </label>
+          </div>
+
+          <div class="admin-form-grid admin-form-grid--compact">
+            <label class="admin-field">
+              <span>
+                เดือนย้อนหลัง
+              </span>
+
+              <input
+                id="adminHistoryMonths"
+                type="number"
+                min="1"
+                max="120"
+                value="12"
+              >
+            </label>
+
+            <label class="admin-field">
+              <span>
+                จัดกลุ่มปฏิทินตาม
+              </span>
+
+              <select id="adminCalendarGroupBy">
+                <option value="TIMESTAMP_IN">
+                  เวลาเข้า
+                </option>
+
+                <option value="TIMESTAMP_OUT">
+                  เวลาออก
+                </option>
+              </select>
+            </label>
+
+            <label class="admin-field">
+              <span>
+                คอลัมน์สถานะหลังออก
+              </span>
+
+              <input
+                id="adminAfterCheckoutStatusColumn"
+                type="text"
+                list="adminSourceColumnOptions"
+                maxlength="3"
+              >
+            </label>
+
+            <label class="admin-field">
+              <span>
+                ค่าสถานะหลังออก
+              </span>
+
+              <input
+                id="adminAfterCheckoutStatusValue"
+                type="text"
+              >
+            </label>
+          </div>
+        </section>
+
+        <footer class="admin-editor__footer">
+          <button
+            id="adminCancelModuleButton"
+            class="button button--secondary"
+            type="button"
+          >
+            ยกเลิก
+          </button>
+
+          <button
+            id="adminSaveModuleButton"
+            class="button button--primary"
+            type="submit"
+          >
+            บันทึกโมดูล
+          </button>
+        </footer>
+      </form>
+    </section>
+  </div>
+
+  <datalist id="adminSourceSheetOptions"></datalist>
+  <datalist id="adminSourceColumnOptions"></datalist>
+
+  <footer class="app-footer">
+    ระบบหลังบ้านใช้เขตเวลา Asia/Bangkok และรูปแบบวันที่
+    dd/MM/yyyy HH:mm:ss
+  </footer>
+</body>
+</html>
