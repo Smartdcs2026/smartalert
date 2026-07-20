@@ -1,3 +1,7 @@
+/* SMARTALERT BASELINE 1 — Canonical Workflow Status Compatibility
+ * Build: 2026.07.21-baseline1
+ */
+
 /*
  * AlertVendor Consolidated Bundle
  * Output: github-pages/inbound.bundle.js
@@ -7245,9 +7249,9 @@
       };
     }
 
-    if (!status || status === 'GATE_IN_ONLY') {
+    if (!status || status === 'GATE_IN_ONLY' || status === 'WAITING_DOCUMENT_SUBMISSION') {
       return {
-        expectedStatusCode: status || 'GATE_IN_ONLY',
+        expectedStatusCode: status || 'WAITING_DOCUMENT_SUBMISSION',
         expectedActionCode: 'SUBMIT_DOCUMENT'
       };
     }
@@ -9098,7 +9102,7 @@
     }
 
     const baseTime =
-      statusCode === 'GATE_IN_ONLY'
+      (statusCode === 'GATE_IN_ONLY' || statusCode === 'WAITING_DOCUMENT_SUBMISSION')
         ? item.gateInAt || item.updatedAt
         : statusCode === 'DOCUMENT_SUBMITTED'
           ? item.documentSubmittedAt || item.updatedAt || item.gateInAt
@@ -9177,7 +9181,7 @@
     if (value === 'DOCUMENT_RETURNED') return 'คืนเอกสารแล้ว';
     if (value === 'GATE_OUT_COMPLETED') return 'ออกคลังแล้ว';
     if (value === 'CANCELLED') return 'ยกเลิก';
-    if (value === 'GATE_IN_ONLY') return 'รอยื่นเอกสาร';
+    if (value === 'GATE_IN_ONLY' || value === 'WAITING_DOCUMENT_SUBMISSION') return 'รอยื่นเอกสาร';
     return value || 'รอยื่นเอกสาร';
   }
 
