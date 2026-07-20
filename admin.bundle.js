@@ -9148,18 +9148,44 @@
       'polite'
     );
 
-    const firstContent =
+    /*
+     * Module Editor รุ่นใหม่มี .admin-editor__scroll
+     * เป็นลูกตรงของ form และ Section ทั้งหมดอยู่ภายในกล่องนี้
+     *
+     * ห้าม form.insertBefore(summary, firstContent) เมื่อ firstContent
+     * ไม่ใช่ลูกตรงของ form เพราะ Browser จะ throw NotFoundError
+     */
+    const contentContainer =
       form.querySelector(
-        '.module-editor-top-grid, .admin-editor-section'
+        '.admin-editor__scroll'
+      ) ||
+      form;
+
+    const directChildren =
+      Array.from(
+        contentContainer.children
       );
 
-    if (firstContent) {
-      form.insertBefore(
+    const firstContent =
+      directChildren.find(
+        (element) =>
+          element.matches(
+            '.module-editor-top-grid, .admin-editor-section'
+          )
+      ) ||
+      contentContainer.firstElementChild;
+
+    if (
+      firstContent &&
+      firstContent.parentNode ===
+        contentContainer
+    ) {
+      contentContainer.insertBefore(
         summary,
         firstContent
       );
     } else {
-      form.appendChild(
+      contentContainer.prepend(
         summary
       );
     }
