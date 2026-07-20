@@ -9132,6 +9132,18 @@
       return summary;
     }
 
+    /*
+     * Fallback only:
+     * admin.html รุ่นนี้มี summary อยู่แล้วตั้งแต่โหลดหน้า
+     * หาก HTML ถูกแก้หรือ element หาย ให้สร้างใหม่และ prepend
+     * เข้า container จริงโดยไม่ใช้ legacy DOM insertion
+     */
+    const contentContainer =
+      form.querySelector(
+        '.admin-editor__scroll'
+      ) ||
+      form;
+
     summary =
       document.createElement(
         'section'
@@ -9148,47 +9160,9 @@
       'polite'
     );
 
-    /*
-     * Module Editor รุ่นใหม่มี .admin-editor__scroll
-     * เป็นลูกตรงของ form และ Section ทั้งหมดอยู่ภายในกล่องนี้
-     *
-     * ห้าม form.insertBefore(summary, firstContent) เมื่อ firstContent
-     * ไม่ใช่ลูกตรงของ form เพราะ Browser จะ throw NotFoundError
-     */
-    const contentContainer =
-      form.querySelector(
-        '.admin-editor__scroll'
-      ) ||
-      form;
-
-    const directChildren =
-      Array.from(
-        contentContainer.children
-      );
-
-    const firstContent =
-      directChildren.find(
-        (element) =>
-          element.matches(
-            '.module-editor-top-grid, .admin-editor-section'
-          )
-      ) ||
-      contentContainer.firstElementChild;
-
-    if (
-      firstContent &&
-      firstContent.parentNode ===
-        contentContainer
-    ) {
-      contentContainer.insertBefore(
-        summary,
-        firstContent
-      );
-    } else {
-      contentContainer.prepend(
-        summary
-      );
-    }
+    contentContainer.prepend(
+      summary
+    );
 
     return summary;
   }
