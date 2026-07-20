@@ -21841,230 +21841,295 @@ body.admin-page .app-footer {
   .shift-admin-config-grid{grid-template-columns:1fr!important;}
 }
 /* ============================================================
- * SMARTALERT MODULE EDITOR — CLEAN REBUILD
- * Build: 2026.07.20-clean-editor-rebuild-r2
+ * SMARTALERT MODULE EDITOR — STRUCTURAL REBUILD
+ * Build: 2026.07.20-structural-editor-r1
  *
- * โครงสร้าง:
- * panel = header / form
- * form = scroll area / footer
- * ไม่มี section ใดใช้ absolute, fixed หรือ transform
+ * โครงสร้างนี้จับคู่กับ admin.html/admin.bundle.js โดยตรง
+ * ไม่มี section แบบ absolute/fixed และไม่มี nth-of-type layout
  * ============================================================ */
+
+#adminModuleEditor,
+#adminModuleEditor *,
+#adminModuleEditor *::before,
+#adminModuleEditor *::after {
+  box-sizing: border-box;
+}
 
 body.admin-page.admin-editor-open {
   overflow: hidden !important;
 }
 
-body.admin-page .admin-editor:not(.is-hidden) {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 9000 !important;
-  display: block !important;
-  padding: 0 !important;
-  overflow: hidden !important;
-  background: #eef6f8 !important;
-}
-
-body.admin-page .admin-editor__backdrop {
+#adminModuleEditor.admin-editor.is-hidden {
   display: none !important;
 }
 
-body.admin-page .admin-editor__panel {
-  position: relative !important;
-  inset: auto !important;
+#adminModuleEditor.admin-editor:not(.is-hidden) {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10000 !important;
+  display: block !important;
   width: 100vw !important;
   height: 100vh !important;
+  overflow: hidden !important;
+  background: #edf5f7 !important;
+}
+
+#adminModuleEditor .admin-editor__backdrop {
+  display: none !important;
+}
+
+#adminModuleEditor .admin-editor__panel {
+  position: relative !important;
+  inset: auto !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  width: 100% !important;
+  height: 100% !important;
   max-width: none !important;
   max-height: none !important;
   margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
   border: 0 !important;
   border-radius: 0 !important;
+  background: #edf5f7 !important;
   box-shadow: none !important;
-  display: grid !important;
-  grid-template-rows: auto minmax(0, 1fr) !important;
-  overflow: hidden !important;
-  background: #eef6f8 !important;
 }
 
-body.admin-page .admin-editor__header {
+#adminModuleEditor .admin-editor__header {
+  position: relative !important;
+  z-index: 2 !important;
   min-height: 72px !important;
-  padding: 12px clamp(14px, 1.6vw, 26px) !important;
+  margin: 0 !important;
+  padding: 12px 24px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
   gap: 18px !important;
-  border-bottom: 1px solid #d8e2e8 !important;
+  border-bottom: 1px solid #d7e2e7 !important;
   background: #ffffff !important;
-  box-shadow: 0 3px 14px rgba(15, 23, 42, .055) !important;
+  box-shadow: 0 3px 14px rgba(15, 23, 42, .06) !important;
 }
 
-body.admin-page .admin-editor__header h2 {
-  margin: 1px 0 0 !important;
-  font-size: clamp(20px, 1.5vw, 26px) !important;
-  line-height: 1.15 !important;
-}
-
-body.admin-page .admin-editor__header .eyebrow {
-  margin: 0 !important;
-  font-size: 10px !important;
-  letter-spacing: .14em !important;
-}
-
-body.admin-page .admin-editor__header #adminModuleEditorStatus {
-  display: block !important;
-  margin-top: 4px !important;
-  color: #64748b !important;
-  font-size: 11px !important;
-}
-
-body.admin-page #adminModuleForm.admin-editor__body {
-  min-height: 0 !important;
-  height: 100% !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  display: grid !important;
-  grid-template-rows: minmax(0, 1fr) auto !important;
-  overflow: hidden !important;
-  background: #eef6f8 !important;
-}
-
-body.admin-page .admin-editor__scroll {
-  min-height: 0 !important;
-  overflow: auto !important;
-  overscroll-behavior: contain !important;
-  padding: 16px clamp(14px, 1.6vw, 26px) 28px !important;
-  display: grid !important;
-  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
-  align-content: start !important;
-  align-items: start !important;
-  gap: 14px !important;
-  background:
-    radial-gradient(circle at 12% 0%, rgba(14, 165, 233, .075), transparent 30%),
-    #eef6f8 !important;
-}
-
-body.admin-page .admin-editor__scroll > input[type="hidden"] {
-  display: none !important;
-}
-
-body.admin-page .admin-editor-section {
-  position: static !important;
-  inset: auto !important;
-  z-index: auto !important;
-  transform: none !important;
-  float: none !important;
-  clear: none !important;
-  width: auto !important;
+#adminModuleEditor .admin-editor__header > div {
   min-width: 0 !important;
-  max-width: none !important;
-  min-height: 0 !important;
-  max-height: none !important;
-  overflow: visible !important;
-  margin: 0 !important;
-  padding: 14px !important;
-  border: 1px solid #d6e1e7 !important;
-  border-radius: 17px !important;
-  background: #ffffff !important;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, .055) !important;
 }
 
-body.admin-page .admin-editor-section--identity,
-body.admin-page .admin-editor-section--source,
-body.admin-page .admin-editor-section--status {
-  grid-column: span 4 !important;
-}
-
-body.admin-page .admin-editor-section--filters,
-body.admin-page .admin-editor-section--fields,
-body.admin-page .admin-editor-section--features {
-  grid-column: 1 / -1 !important;
-}
-
-body.admin-page .admin-editor-section__title {
-  margin: 0 0 12px !important;
-  padding: 0 !important;
-  display: grid !important;
-  grid-template-columns: 32px minmax(0, 1fr) !important;
-  align-items: center !important;
-  gap: 10px !important;
-}
-
-body.admin-page .admin-editor-section__title > span {
-  width: 32px !important;
-  height: 32px !important;
-  display: grid !important;
-  place-items: center !important;
-  border-radius: 11px !important;
-  background: #0f4c70 !important;
-  color: #ffffff !important;
-  font-size: 13px !important;
+#adminModuleEditor .admin-editor__header .eyebrow {
+  margin: 0 0 3px !important;
+  color: #087f73 !important;
+  font-size: 11px !important;
   font-weight: 800 !important;
+  letter-spacing: .13em !important;
 }
 
-body.admin-page .admin-editor-section__title h3 {
+#adminModuleEditor .admin-editor__header h2 {
   margin: 0 !important;
-  font-size: 15px !important;
+  color: #102a43 !important;
+  font-size: clamp(21px, 1.55vw, 28px) !important;
   line-height: 1.15 !important;
 }
 
-body.admin-page .admin-editor-section__title p {
-  margin: 3px 0 0 !important;
+#adminModuleEditor .admin-editor__header #adminModuleEditorStatus {
+  display: block !important;
+  margin-top: 3px !important;
   color: #64748b !important;
   font-size: 11px !important;
   line-height: 1.3 !important;
 }
 
-body.admin-page #adminModuleForm .admin-form-grid {
+#adminModuleEditor #adminModuleForm.admin-editor__body {
+  position: relative !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: grid !important;
+  grid-template-rows: minmax(0, 1fr) auto !important;
+  overflow: hidden !important;
+  background: #edf5f7 !important;
+}
+
+#adminModuleEditor #adminExpectedUpdatedAt {
+  display: none !important;
+}
+
+#adminModuleEditor .admin-editor__scroll {
+  position: relative !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  width: 100% !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 16px 20px 28px !important;
+  display: block !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  scrollbar-gutter: stable !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(14, 165, 233, .07), transparent 28%),
+    #edf5f7 !important;
+}
+
+#adminModuleEditor .module-editor-top-grid {
+  width: 100% !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+  align-items: start !important;
+  margin: 0 0 14px !important;
+}
+
+#adminModuleEditor .admin-editor-section {
+  position: relative !important;
+  inset: auto !important;
+  z-index: 1 !important;
+  float: none !important;
+  clear: both !important;
+  transform: none !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin: 0 0 14px !important;
+  padding: 14px !important;
+  display: block !important;
+  overflow: visible !important;
+  border: 1px solid #d4e0e6 !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .055) !important;
+}
+
+#adminModuleEditor .module-editor-top-grid > .admin-editor-section {
+  margin-bottom: 0 !important;
+  align-self: stretch !important;
+}
+
+#adminModuleEditor .admin-editor-section__title {
+  width: 100% !important;
+  margin: 0 0 12px !important;
+  padding: 0 !important;
+  display: grid !important;
+  grid-template-columns: 34px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+#adminModuleEditor .admin-editor-section__title > span {
+  width: 34px !important;
+  height: 34px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 11px !important;
+  color: #ffffff !important;
+  background: #0f4c70 !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+}
+
+#adminModuleEditor .admin-editor-section__title h3 {
+  margin: 0 !important;
+  color: #17324d !important;
+  font-size: 15px !important;
+  line-height: 1.2 !important;
+}
+
+#adminModuleEditor .admin-editor-section__title p {
+  margin: 3px 0 0 !important;
+  color: #64748b !important;
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+}
+
+#adminModuleEditor .admin-form-grid {
+  width: 100% !important;
   display: grid !important;
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   gap: 10px !important;
   align-items: start !important;
 }
 
-body.admin-page .admin-editor-section--status .admin-form-grid {
+#adminModuleEditor .admin-editor-section--status .admin-form-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
 }
 
-body.admin-page #adminModuleForm .admin-field {
+#adminModuleEditor .admin-field,
+#adminModuleEditor .row-field,
+#adminModuleEditor .admin-dynamic-row label {
   min-width: 0 !important;
+  width: auto !important;
+  margin: 0 !important;
+  display: grid !important;
+  align-content: start !important;
   gap: 5px !important;
 }
 
-body.admin-page #adminModuleForm .admin-field > span,
-body.admin-page #adminModuleForm .admin-field small,
-body.admin-page #adminModuleForm .admin-dynamic-row label > span {
-  font-size: 11px !important;
-  line-height: 1.25 !important;
-}
-
-body.admin-page #adminModuleForm input,
-body.admin-page #adminModuleForm select,
-body.admin-page #adminModuleForm textarea {
-  width: 100% !important;
-  min-width: 0 !important;
-  max-width: 100% !important;
-  min-height: 38px !important;
-  padding: 8px 10px !important;
-  box-sizing: border-box !important;
-  border-radius: 10px !important;
-  font-size: 13px !important;
-  line-height: 1.25 !important;
-}
-
-body.admin-page #adminModuleForm textarea {
-  min-height: 76px !important;
-  resize: vertical !important;
-}
-
-body.admin-page #adminModuleForm .admin-field--wide {
+#adminModuleEditor .admin-field--wide {
   grid-column: span 2 !important;
 }
 
-body.admin-page #adminModuleForm .admin-field--full {
+#adminModuleEditor .admin-field--full {
   grid-column: 1 / -1 !important;
 }
 
-body.admin-page #adminModuleForm .admin-dynamic-toolbar {
+#adminModuleEditor .admin-field > span,
+#adminModuleEditor .row-field > span,
+#adminModuleEditor .admin-dynamic-row label > span {
+  color: #344054 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+  white-space: normal !important;
+  writing-mode: horizontal-tb !important;
+}
+
+#adminModuleEditor input:not([type="checkbox"]):not([type="radio"]),
+#adminModuleEditor select,
+#adminModuleEditor textarea {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  min-height: 39px !important;
+  margin: 0 !important;
+  padding: 8px 10px !important;
+  border: 1px solid #ccd9e0 !important;
+  border-radius: 10px !important;
+  color: #102a43 !important;
+  background: #ffffff !important;
+  font: inherit !important;
+  font-size: 12px !important;
+  line-height: 1.3 !important;
+}
+
+#adminModuleEditor textarea {
+  min-height: 78px !important;
+  resize: vertical !important;
+}
+
+#adminModuleEditor input[type="checkbox"],
+#adminModuleEditor input[type="radio"] {
+  appearance: auto !important;
+  -webkit-appearance: auto !important;
+  width: 19px !important;
+  height: 19px !important;
+  min-width: 19px !important;
+  max-width: 19px !important;
+  min-height: 19px !important;
+  max-height: 19px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  flex: 0 0 19px !important;
+}
+
+#adminModuleEditor .admin-dynamic-toolbar {
   min-height: 40px !important;
+  width: 100% !important;
   margin: 0 0 10px !important;
   padding: 0 !important;
   display: flex !important;
@@ -22073,371 +22138,372 @@ body.admin-page #adminModuleForm .admin-dynamic-toolbar {
   gap: 12px !important;
 }
 
-body.admin-page #adminModuleForm .admin-dynamic-list {
+#adminModuleEditor .admin-dynamic-list {
+  position: relative !important;
+  width: 100% !important;
   min-width: 0 !important;
+  height: auto !important;
   display: grid !important;
-  gap: 9px !important;
+  grid-template-columns: 1fr !important;
+  gap: 10px !important;
+  overflow: visible !important;
 }
 
-body.admin-page #adminModuleForm .admin-dynamic-row {
-  position: static !important;
+#adminModuleEditor .admin-dynamic-row {
+  position: relative !important;
   inset: auto !important;
-  transform: none !important;
+  z-index: 1 !important;
+  width: 100% !important;
   min-width: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
   margin: 0 !important;
-  padding: 10px !important;
+  padding: 11px !important;
+  transform: none !important;
   display: grid !important;
+  gap: 9px !important;
   align-items: end !important;
-  gap: 8px !important;
-  border: 1px solid #dbe5ea !important;
+  overflow: visible !important;
+  border: 1px solid #dae4e9 !important;
   border-radius: 13px !important;
   background: #f8fbfc !important;
 }
 
-body.admin-page #adminModuleForm .admin-filter-row {
-  grid-template-columns:
-    34px
-    minmax(100px, .8fr)
-    minmax(150px, 1fr)
-    minmax(190px, 1.6fr)
-    minmax(90px, .65fr)
-    minmax(250px, 1.25fr)
-    auto !important;
+#adminModuleEditor .admin-filter-row {
+  grid-template-columns: 34px minmax(110px, .8fr) minmax(150px, 1fr) minmax(240px, 1.8fr) minmax(100px, .7fr) auto !important;
 }
 
-body.admin-page #adminModuleForm .admin-field-row {
-  grid-template-columns:
-    34px
-    minmax(120px, .85fr)
-    minmax(140px, 1fr)
-    minmax(230px, 1.65fr)
-    minmax(110px, .7fr)
-    minmax(110px, .7fr)
-    minmax(90px, .55fr)
-    minmax(300px, 1.4fr)
-    auto !important;
+#adminModuleEditor .admin-filter-row .admin-dynamic-checks {
+  grid-column: 2 / -2 !important;
 }
 
-body.admin-page #adminModuleForm .admin-dynamic-row__number {
+#adminModuleEditor .admin-filter-row .admin-remove-row {
+  grid-column: -2 / -1 !important;
+  grid-row: 2 !important;
+}
+
+#adminModuleEditor .admin-field-row {
+  grid-template-columns: 34px repeat(4, minmax(0, 1fr)) auto !important;
+}
+
+#adminModuleEditor .admin-field-row .row-field--field-id {
+  grid-column: 2 !important;
+}
+
+#adminModuleEditor .admin-field-row .row-field--field-name {
+  grid-column: 3 !important;
+}
+
+#adminModuleEditor .admin-field-row .row-field--field-columns {
+  grid-column: 4 / 6 !important;
+}
+
+#adminModuleEditor .admin-field-row .row-field--field-type {
+  grid-column: 2 !important;
+  grid-row: 2 !important;
+}
+
+#adminModuleEditor .admin-field-row .row-field--field-position {
+  grid-column: 3 !important;
+  grid-row: 2 !important;
+}
+
+#adminModuleEditor .admin-field-row .row-field--field-separator {
+  grid-column: 4 !important;
+  grid-row: 2 !important;
+}
+
+#adminModuleEditor .admin-field-row .admin-dynamic-checks {
+  grid-column: 5 !important;
+  grid-row: 2 !important;
+}
+
+#adminModuleEditor .admin-field-row .admin-remove-row {
+  grid-column: 6 !important;
+  grid-row: 1 / span 2 !important;
   align-self: center !important;
+}
+
+#adminModuleEditor .admin-dynamic-row__number {
   width: 30px !important;
   height: 30px !important;
   display: grid !important;
   place-items: center !important;
+  align-self: center !important;
   border-radius: 9px !important;
-  background: #64748b !important;
   color: #ffffff !important;
+  background: #64748b !important;
+  font-size: 12px !important;
   font-weight: 800 !important;
 }
 
-body.admin-page #adminModuleForm .admin-dynamic-row label {
+#adminModuleEditor .admin-dynamic-checks {
   min-width: 0 !important;
-}
-
-body.admin-page #adminModuleForm .admin-dynamic-checks {
-  min-width: 0 !important;
-  align-self: end !important;
   display: flex !important;
-  align-items: center !important;
   flex-wrap: wrap !important;
+  align-items: center !important;
   gap: 7px 12px !important;
-  padding: 7px 8px !important;
+  padding: 7px 9px !important;
   border-radius: 10px !important;
-  background: #eef4f7 !important;
+  background: #edf3f6 !important;
 }
 
-body.admin-page #adminModuleForm .admin-dynamic-checks label,
-body.admin-page #adminModuleForm .admin-dynamic-checks .mini-check {
+#adminModuleEditor .admin-dynamic-checks label,
+#adminModuleEditor .mini-check {
   width: auto !important;
   min-width: 0 !important;
   display: inline-flex !important;
+  flex-direction: row !important;
   align-items: center !important;
-  gap: 5px !important;
+  gap: 6px !important;
   white-space: nowrap !important;
-  font-size: 11px !important;
 }
 
-body.admin-page #adminModuleForm .admin-dynamic-checks input[type="checkbox"] {
-  width: 18px !important;
-  height: 18px !important;
-  min-height: 18px !important;
-  padding: 0 !important;
-}
-
-body.admin-page #adminModuleForm .admin-remove-row {
-  align-self: end !important;
+#adminModuleEditor .admin-remove-row {
+  min-width: 58px !important;
   min-height: 38px !important;
-  padding: 7px 12px !important;
+  padding: 8px 12px !important;
   border-radius: 10px !important;
 }
 
-body.admin-page #adminModuleForm .admin-toggle-grid {
+#adminModuleEditor .admin-toggle-grid {
+  width: 100% !important;
   display: grid !important;
-  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-  gap: 9px !important;
-}
-
-body.admin-page #adminModuleForm .admin-toggle {
-  position: static !important;
-  min-width: 0 !important;
-  min-height: 48px !important;
-  margin: 0 !important;
-  padding: 10px 11px !important;
-  border-radius: 12px !important;
-}
-
-body.admin-page #adminModuleForm .admin-toggle--feature {
-  grid-column: span 2 !important;
-}
-
-body.admin-page #adminModuleForm .admin-form-grid--compact {
-  margin-top: 10px !important;
   grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-}
-
-body.admin-page .admin-editor__footer {
-  position: static !important;
-  inset: auto !important;
-  z-index: auto !important;
-  min-height: 68px !important;
-  margin: 0 !important;
-  padding: 11px clamp(14px, 1.6vw, 26px) calc(11px + var(--safe-bottom)) !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: flex-end !important;
   gap: 10px !important;
-  border-top: 1px solid #d8e2e8 !important;
-  background: #ffffff !important;
-  box-shadow: 0 -3px 14px rgba(15, 23, 42, .055) !important;
 }
 
-body.admin-page .admin-editor__footer .button,
-body.admin-page .admin-editor__header .button,
-body.admin-page .admin-editor__header .icon-text-button {
-  min-height: 40px !important;
-  padding: 9px 15px !important;
-  border-radius: 12px !important;
-  font-size: 13px !important;
-}
-
-@media (max-width: 1380px) {
-  body.admin-page .admin-editor__scroll {
-    grid-template-columns: repeat(8, minmax(0, 1fr)) !important;
-  }
-
-  body.admin-page .admin-editor-section--identity,
-  body.admin-page .admin-editor-section--source,
-  body.admin-page .admin-editor-section--status {
-    grid-column: span 4 !important;
-  }
-
-  body.admin-page .admin-editor-section--filters,
-  body.admin-page .admin-editor-section--fields,
-  body.admin-page .admin-editor-section--features {
-    grid-column: 1 / -1 !important;
-  }
-
-  body.admin-page #adminModuleForm .admin-filter-row,
-  body.admin-page #adminModuleForm .admin-field-row {
-    grid-template-columns: 34px repeat(3, minmax(120px, 1fr)) !important;
-    align-items: start !important;
-  }
-
-  body.admin-page #adminModuleForm .admin-dynamic-checks,
-  body.admin-page #adminModuleForm .admin-remove-row {
-    grid-column: auto !important;
-  }
-
-  body.admin-page #adminModuleForm .admin-toggle-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  }
-}
-
-@media (max-width: 900px) {
-  body.admin-page .admin-editor__scroll {
-    grid-template-columns: 1fr !important;
-    padding: 12px 12px 22px !important;
-  }
-
-  body.admin-page .admin-editor-section--identity,
-  body.admin-page .admin-editor-section--source,
-  body.admin-page .admin-editor-section--status,
-  body.admin-page .admin-editor-section--filters,
-  body.admin-page .admin-editor-section--fields,
-  body.admin-page .admin-editor-section--features {
-    grid-column: 1 !important;
-  }
-
-  body.admin-page #adminModuleForm .admin-form-grid,
-  body.admin-page .admin-editor-section--status .admin-form-grid,
-  body.admin-page #adminModuleForm .admin-form-grid--compact,
-  body.admin-page #adminModuleForm .admin-toggle-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-
-  body.admin-page #adminModuleForm .admin-filter-row,
-  body.admin-page #adminModuleForm .admin-field-row {
-    grid-template-columns: 34px repeat(2, minmax(0, 1fr)) !important;
-  }
-}
-
-@media (max-width: 580px) {
-  body.admin-page .admin-editor__header {
-    min-height: 66px !important;
-    padding: 10px !important;
-  }
-
-  body.admin-page #adminModuleForm .admin-form-grid,
-  body.admin-page .admin-editor-section--status .admin-form-grid,
-  body.admin-page #adminModuleForm .admin-form-grid--compact,
-  body.admin-page #adminModuleForm .admin-toggle-grid,
-  body.admin-page #adminModuleForm .admin-filter-row,
-  body.admin-page #adminModuleForm .admin-field-row {
-    grid-template-columns: 1fr !important;
-  }
-
-  body.admin-page #adminModuleForm .admin-dynamic-row__number {
-    justify-self: start !important;
-  }
-
-  body.admin-page #adminModuleForm .admin-field--wide,
-  body.admin-page #adminModuleForm .admin-field--full,
-  body.admin-page #adminModuleForm .admin-toggle--feature {
-    grid-column: 1 !important;
-  }
-
-  body.admin-page .admin-editor__footer {
-    padding: 10px !important;
-  }
-}
-
-/* ============================================================
- * SMARTALERT MODULE EDITOR FINAL CHECKBOX + FOOTER FIX
- * Build: 2026.07.20-editor-checkbox-footer-r1
- * สาเหตุเดิม: กฎ input ทั่วไป width:100% ไปครอบ checkbox
- * ============================================================ */
-body.admin-page #adminModuleForm input[type="checkbox"],
-body.admin-page #adminModuleForm .admin-toggle input[type="checkbox"],
-body.admin-page #adminModuleForm .admin-dynamic-checks input[type="checkbox"] {
-  appearance: auto !important;
-  -webkit-appearance: checkbox !important;
-  display: inline-block !important;
-  width: 20px !important;
-  height: 20px !important;
-  min-width: 20px !important;
-  max-width: 20px !important;
-  min-height: 20px !important;
-  max-height: 20px !important;
+#adminModuleEditor .admin-toggle {
+  position: relative !important;
+  min-width: 0 !important;
+  min-height: 50px !important;
   margin: 0 !important;
-  padding: 0 !important;
-  flex: 0 0 20px !important;
-  box-sizing: border-box !important;
-}
-
-body.admin-page #adminModuleForm .admin-toggle-grid {
-  grid-template-columns: repeat(5, minmax(180px, 1fr)) !important;
-  align-items: stretch !important;
-}
-
-body.admin-page #adminModuleForm .admin-toggle {
+  padding: 10px 12px !important;
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
-  justify-content: flex-start !important;
-  gap: 10px !important;
-  width: auto !important;
-  min-width: 0 !important;
-  min-height: 52px !important;
-  height: auto !important;
-  padding: 10px 12px !important;
-  overflow: hidden !important;
+  gap: 9px !important;
+  overflow: visible !important;
+  border: 1px solid #d6e1e7 !important;
+  border-radius: 12px !important;
+  background: #f8fafc !important;
 }
 
-body.admin-page #adminModuleForm .admin-toggle > span {
-  display: block !important;
+#adminModuleEditor .admin-toggle--feature {
+  grid-column: span 2 !important;
+  border-color: #87cfc5 !important;
+  background: #e9f8f5 !important;
+}
+
+#adminModuleEditor .admin-toggle > span,
+#adminModuleEditor .admin-toggle strong,
+#adminModuleEditor .admin-toggle small {
   min-width: 0 !important;
-  width: auto !important;
-  max-width: 100% !important;
+  display: block !important;
   color: #1e293b !important;
-  font-size: 12px !important;
-  font-weight: 700 !important;
-  line-height: 1.3 !important;
   white-space: normal !important;
   word-break: normal !important;
   overflow-wrap: anywhere !important;
   writing-mode: horizontal-tb !important;
 }
 
-body.admin-page #adminModuleForm .admin-toggle--feature > span {
-  display: grid !important;
-  gap: 3px !important;
-}
-
-body.admin-page #adminModuleForm .admin-toggle--feature strong,
-body.admin-page #adminModuleForm .admin-toggle--feature small {
-  display: block !important;
-  min-width: 0 !important;
-  white-space: normal !important;
-  word-break: normal !important;
-  writing-mode: horizontal-tb !important;
-}
-
-body.admin-page #adminModuleForm .admin-toggle--feature strong {
+#adminModuleEditor .admin-toggle > span,
+#adminModuleEditor .admin-toggle strong {
   font-size: 12px !important;
-  line-height: 1.25 !important;
+  font-weight: 700 !important;
+  line-height: 1.3 !important;
 }
 
-body.admin-page #adminModuleForm .admin-toggle--feature small {
+#adminModuleEditor .admin-toggle small {
+  margin-top: 2px !important;
   color: #64748b !important;
   font-size: 10px !important;
   line-height: 1.35 !important;
 }
 
-body.admin-page #adminModuleForm .admin-dynamic-checks {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  align-items: center !important;
-  gap: 8px 14px !important;
+#adminModuleEditor .admin-form-grid--compact {
+  margin-top: 12px !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
 }
 
-body.admin-page #adminModuleForm .admin-dynamic-checks label {
-  display: inline-flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  gap: 6px !important;
-  width: auto !important;
-  min-width: 0 !important;
-  white-space: nowrap !important;
-}
-
-body.admin-page .admin-editor__footer {
-  grid-column: 1 / -1 !important;
+#adminModuleEditor .admin-editor__footer {
+  position: relative !important;
+  inset: auto !important;
+  z-index: 5 !important;
   width: 100% !important;
-  min-width: 0 !important;
   max-width: none !important;
-  justify-self: stretch !important;
-  align-self: stretch !important;
-  box-sizing: border-box !important;
+  min-height: 70px !important;
+  margin: 0 !important;
+  padding: 12px 22px calc(12px + var(--safe-bottom)) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  border-top: 1px solid #d7e2e7 !important;
+  background: #ffffff !important;
+  box-shadow: 0 -4px 18px rgba(15, 23, 42, .07) !important;
 }
 
-@media (max-width: 1380px) {
-  body.admin-page #adminModuleForm .admin-toggle-grid {
-    grid-template-columns: repeat(3, minmax(180px, 1fr)) !important;
+#adminModuleEditor .admin-editor__footer .button,
+#adminModuleEditor .admin-editor__header .button,
+#adminModuleEditor .admin-editor__header .icon-text-button {
+  min-height: 40px !important;
+  padding: 9px 16px !important;
+  border-radius: 11px !important;
+  font-size: 13px !important;
+}
+
+@media (max-width: 1280px) {
+  #adminModuleEditor .module-editor-top-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  #adminModuleEditor .admin-editor-section--status {
+    grid-column: 1 / -1 !important;
+  }
+
+  #adminModuleEditor .admin-field-row {
+    grid-template-columns: 34px repeat(3, minmax(0, 1fr)) auto !important;
+  }
+
+  #adminModuleEditor .admin-field-row .row-field--field-columns {
+    grid-column: 4 !important;
+  }
+
+  #adminModuleEditor .admin-field-row .row-field--field-type {
+    grid-column: 2 !important;
+    grid-row: 2 !important;
+  }
+
+  #adminModuleEditor .admin-field-row .row-field--field-position {
+    grid-column: 3 !important;
+    grid-row: 2 !important;
+  }
+
+  #adminModuleEditor .admin-field-row .row-field--field-separator {
+    grid-column: 4 !important;
+    grid-row: 2 !important;
+  }
+
+  #adminModuleEditor .admin-field-row .admin-dynamic-checks {
+    grid-column: 2 / 5 !important;
+    grid-row: 3 !important;
+  }
+
+  #adminModuleEditor .admin-field-row .admin-remove-row {
+    grid-column: 5 !important;
+    grid-row: 1 / span 3 !important;
   }
 }
 
 @media (max-width: 900px) {
-  body.admin-page #adminModuleForm .admin-toggle-grid {
+  #adminModuleEditor .admin-editor__header {
+    min-height: 66px !important;
+    padding: 10px 12px !important;
+  }
+
+  #adminModuleEditor .admin-editor__scroll {
+    padding: 12px 12px 22px !important;
+  }
+
+  #adminModuleEditor .module-editor-top-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  #adminModuleEditor .admin-editor-section--status {
+    grid-column: auto !important;
+  }
+
+  #adminModuleEditor .admin-form-grid,
+  #adminModuleEditor .admin-editor-section--status .admin-form-grid,
+  #adminModuleEditor .admin-form-grid--compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  #adminModuleEditor .admin-filter-row,
+  #adminModuleEditor .admin-field-row {
+    grid-template-columns: 34px repeat(2, minmax(0, 1fr)) auto !important;
+  }
+
+  #adminModuleEditor .admin-filter-row .row-field--value,
+  #adminModuleEditor .admin-filter-row .admin-dynamic-checks,
+  #adminModuleEditor .admin-field-row .row-field--field-columns,
+  #adminModuleEditor .admin-field-row .admin-dynamic-checks {
+    grid-column: 2 / 4 !important;
+  }
+
+  #adminModuleEditor .admin-filter-row .admin-remove-row,
+  #adminModuleEditor .admin-field-row .admin-remove-row {
+    grid-column: 4 !important;
+    grid-row: 1 / span 4 !important;
+  }
+
+  #adminModuleEditor .admin-field-row .row-field--field-id,
+  #adminModuleEditor .admin-field-row .row-field--field-type {
+    grid-column: 2 !important;
+  }
+
+  #adminModuleEditor .admin-field-row .row-field--field-name,
+  #adminModuleEditor .admin-field-row .row-field--field-position {
+    grid-column: 3 !important;
+  }
+
+  #adminModuleEditor .admin-field-row .row-field--field-columns {
+    grid-row: 2 !important;
+  }
+
+  #adminModuleEditor .admin-field-row .row-field--field-type,
+  #adminModuleEditor .admin-field-row .row-field--field-position {
+    grid-row: 3 !important;
+  }
+
+  #adminModuleEditor .admin-field-row .row-field--field-separator {
+    grid-column: 2 !important;
+    grid-row: 4 !important;
+  }
+
+  #adminModuleEditor .admin-field-row .admin-dynamic-checks {
+    grid-row: 5 !important;
+  }
+
+  #adminModuleEditor .admin-toggle-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
 
 @media (max-width: 580px) {
-  body.admin-page #adminModuleForm .admin-toggle-grid {
+  #adminModuleEditor .admin-editor__header {
+    align-items: flex-start !important;
+  }
+
+  #adminModuleEditor .admin-form-grid,
+  #adminModuleEditor .admin-editor-section--status .admin-form-grid,
+  #adminModuleEditor .admin-form-grid--compact,
+  #adminModuleEditor .admin-toggle-grid,
+  #adminModuleEditor .admin-filter-row,
+  #adminModuleEditor .admin-field-row {
     grid-template-columns: 1fr !important;
   }
 
-  body.admin-page #adminModuleForm .admin-toggle--feature {
+  #adminModuleEditor .admin-field--wide,
+  #adminModuleEditor .admin-field--full,
+  #adminModuleEditor .admin-toggle--feature,
+  #adminModuleEditor .admin-filter-row > *,
+  #adminModuleEditor .admin-field-row > * {
     grid-column: 1 !important;
+    grid-row: auto !important;
+  }
+
+  #adminModuleEditor .admin-dynamic-row__number {
+    justify-self: start !important;
+  }
+
+  #adminModuleEditor .admin-remove-row {
+    width: 100% !important;
+  }
+
+  #adminModuleEditor .admin-editor__footer {
+    padding: 10px 10px calc(10px + var(--safe-bottom)) !important;
   }
 }
