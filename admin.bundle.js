@@ -1,7 +1,7 @@
 /*
  * AlertVendor Consolidated Bundle
  * Output: github-pages/admin.bundle.js
- * Build: 20260720-clean-editor-rebuild-r2
+ * Build: 20260720-structural-editor-r1-clean-editor-rebuild-r2
  * Generated: 2026-07-20 00:02:45
  * Mode: concatenate-only / no business logic rewrite
  */
@@ -7503,10 +7503,10 @@
 
     row.innerHTML = `
       <div class="admin-dynamic-row__number"></div>
-      <label><span>คอลัมน์</span><input data-filter-column list="adminSourceColumnOptions" maxlength="3" value="${escapeHtml(filter.column || '')}"></label>
-      <label><span>ตัวดำเนินการ</span><select data-filter-operator>${operatorOptions(filter.operator || 'EQUALS')}</select></label>
-      <label class="admin-dynamic-row__wide"><span>ค่าที่ใช้กรอง</span><input data-filter-value value="${escapeHtml(filter.value || '')}"></label>
-      <label><span>เชื่อมด้วย</span><select data-filter-connector><option value="AND" ${filter.connector !== 'OR' ? 'selected' : ''}>AND</option><option value="OR" ${filter.connector === 'OR' ? 'selected' : ''}>OR</option></select></label>
+      <label class="row-field row-field--column"><span>คอลัมน์</span><input data-filter-column list="adminSourceColumnOptions" maxlength="3" value="${escapeHtml(filter.column || '')}"></label>
+      <label class="row-field row-field--operator"><span>ตัวดำเนินการ</span><select data-filter-operator>${operatorOptions(filter.operator || 'EQUALS')}</select></label>
+      <label class="row-field row-field--value"><span>ค่าที่ใช้กรอง</span><input data-filter-value value="${escapeHtml(filter.value || '')}"></label>
+      <label class="row-field row-field--connector"><span>เชื่อมด้วย</span><select data-filter-connector><option value="AND" ${filter.connector !== 'OR' ? 'selected' : ''}>AND</option><option value="OR" ${filter.connector === 'OR' ? 'selected' : ''}>OR</option></select></label>
       <div class="admin-dynamic-checks">
         ${miniCheck('ไม่สนตัวพิมพ์', 'data-filter-ignore-case', filter.ignoreCase !== false)}
         ${miniCheck('ตัดช่องว่าง', 'data-filter-trim', filter.trim !== false)}
@@ -7530,12 +7530,12 @@
 
     row.innerHTML = `
       <div class="admin-dynamic-row__number"></div>
-      <label><span>รหัสฟิลด์</span><input data-field-id maxlength="100" value="${escapeHtml(field.fieldId || '')}"></label>
-      <label><span>ชื่อที่แสดง</span><input data-field-name maxlength="150" value="${escapeHtml(field.displayName || '')}"></label>
-      <label class="admin-dynamic-row__wide"><span>คอลัมน์ต้นทาง (คั่นด้วย ,)</span><input data-field-columns list="adminSourceColumnOptions" value="${escapeHtml((field.sourceColumns || []).join(','))}"></label>
-      <label><span>ประเภท</span><select data-field-type>${fieldTypeOptions(field.type || 'TEXT')}</select></label>
-      <label><span>ตำแหน่ง</span><select data-field-position>${fieldPositionOptions(field.position || 'BODY')}</select></label>
-      <label><span>ตัวคั่น</span><input data-field-separator maxlength="20" value="${escapeHtml(field.separator ?? ' ')}"></label>
+      <label class="row-field row-field--field-id"><span>รหัสฟิลด์</span><input data-field-id maxlength="100" value="${escapeHtml(field.fieldId || '')}"></label>
+      <label class="row-field row-field--field-name"><span>ชื่อที่แสดง</span><input data-field-name maxlength="150" value="${escapeHtml(field.displayName || '')}"></label>
+      <label class="row-field row-field--field-columns"><span>คอลัมน์ต้นทาง (คั่นด้วย ,)</span><input data-field-columns list="adminSourceColumnOptions" value="${escapeHtml((field.sourceColumns || []).join(','))}"></label>
+      <label class="row-field row-field--field-type"><span>ประเภท</span><select data-field-type>${fieldTypeOptions(field.type || 'TEXT')}</select></label>
+      <label class="row-field row-field--field-position"><span>ตำแหน่ง</span><select data-field-position>${fieldPositionOptions(field.position || 'BODY')}</select></label>
+      <label class="row-field row-field--field-separator"><span>ตัวคั่น</span><input data-field-separator maxlength="20" value="${escapeHtml(field.separator ?? ' ')}"></label>
       <div class="admin-dynamic-checks">
         ${miniCheck('แสดงผล', 'data-field-visible', field.visible !== false)}
         ${miniCheck('เฉพาะ Admin', 'data-field-admin-only', Boolean(field.adminOnly))}
