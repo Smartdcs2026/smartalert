@@ -8161,7 +8161,7 @@
   const CONFIG = window.APP_CONFIG || {};
   const API = window.VehicleAPI;
   const CHECKOUT_PENDING_PREFIX =
-    'alertvendor:checkout-pending:v2:';
+    'smartalert:checkout-pending:v1:';
   const CHECKOUT_VERIFY_ATTEMPTS = 3;
   const RECEIVING_COMMITTED_OVERLAY_PREFIX =
     'smartalert:receiving-handoff:v1:';
@@ -8171,7 +8171,7 @@
   let receivingCommittedOverlayCacheKey = '';
 
   const OPERATIONAL_ALERT_STORAGE_PREFIX =
-    'alertvendor:operational-alert:v1';
+    'smartalert:operational-alert:v1';
 
   const OVERDUE_BADGE_ICON_URL =
     './icons/icon-192.png';
@@ -8180,7 +8180,7 @@
     64;
 
   const OPERATIONAL_BOARD_CACHE_PREFIX =
-    'alertvendor:module-board:phase3a';
+    'smartalert:module-board:phase1';
   const OPERATIONAL_BOARD_CACHE_MAX_AGE_MS =
     15 * 60 * 1000;
   const OPERATIONAL_BOARD_STALE_AFTER_MS =
