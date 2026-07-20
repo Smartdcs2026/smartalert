@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f3d5e">
+  <meta name="color-scheme" content="light">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="SmartAlert">
+  <title>Dashboard | SmartAlert Vendor Workflow</title>
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="64x64" href="../icons/favicon-64.png?v=20260628">
+  <link rel="stylesheet" href="../core.bundle.css?v=20260720-smartalert-hotfix-r1">
+  <link rel="stylesheet" href="./dashboard.bundle.css?v=20260720-smartalert-hotfix-r1">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
+  <script src="./dashboard.bundle.js?v=20260720-smartalert-hotfix-r1" defer></script>
+</head>
+
+<body data-page="dashboard" class="dashboard-page">
+  <div id="dashboardLoading" class="dashboard-loading" aria-live="polite">
+    <div class="dashboard-loading__box">
+      <div class="dashboard-loading__spinner"></div>
+      <strong>กำลังโหลด Dashboard...</strong>
+      <span>กำลังตรวจสอบข้อมูลล่าสุด</span>
+    </div>
+  </div>
+
+  <header class="dashboard-header app-shell-header">
+    <div class="dashboard-header__left">
+      <button id="dashboardBackButton" type="button" class="button button--ghost">← กลับ Module</button>
+      <div>
+        <p class="eyebrow">SMARTALERT DASHBOARD</p>
+        <h1 id="dashboardModuleTitle">Vendor / Receiving</h1>
+        <p id="dashboardModuleDescription">ภาพรวมรถและตู้สินค้า</p>
+      </div>
+    </div>
+
+    <div class="dashboard-header__right">
+      <div class="dashboard-user">
+        <strong id="dashboardUserName">ผู้ใช้งาน</strong>
+        <span id="dashboardUserRole">DASHBOARD</span>
+      </div>
+      <div class="dashboard-clock">
+        <span id="dashboardConnection">กำลังเชื่อมต่อ</span>
+        <strong id="dashboardCurrentDateTime">--/--/---- --:--:--</strong>
+      </div>
+      <button id="dashboardRefreshButton" type="button" class="button button--primary">รีเฟรช</button>
+      <button id="dashboardFullscreenButton" type="button" class="button button--ghost" data-fullscreen-label>เต็มจอ</button>
+    </div>
+  </header>
+
+  <main class="dashboard-shell">
+    <section id="dashboardSnapshotBanner" class="dashboard-card dashboard-snapshot-state">
+      <div>
+        <p class="eyebrow">SNAPSHOT</p>
+        <h2 id="dashboardSnapshotState">กำลังตรวจสอบข้อมูล</h2>
+        <p id="dashboardSnapshotQuality">รอข้อมูลจากระบบ</p>
+      </div>
+      <div class="dashboard-snapshot-meta">
+        <span id="dashboardSnapshotId">-</span>
+        <span id="dashboardSnapshotReconciliation">-</span>
+        <span id="dashboardLastUpdated">-</span>
+      </div>
+    </section>
+
+    <section class="dashboard-kpi-grid">
+      <article class="dashboard-card metric-card" data-metric-info="total">
+        <span>รายการทั้งหมด</span>
+        <strong id="dashboardRecordTotal">0</strong>
+      </article>
+      <article class="dashboard-card metric-card" data-metric-info="action">
+        <span>Action Queue</span>
+        <strong id="dashboardActionCount">0</strong>
+      </article>
+      <article class="dashboard-card metric-card" data-metric-info="warning">
+        <span>เตือนสีเหลือง</span>
+        <strong id="dashboardWarningThreshold">60</strong>
+      </article>
+      <article class="dashboard-card metric-card" data-metric-info="overdue">
+        <span>เตือนสีแดง</span>
+        <strong id="dashboardOverdueThreshold">120</strong>
+      </article>
+      <article class="dashboard-card metric-card" data-metric-info="autoclose">
+        <span>Auto Close</span>
+        <strong id="dashboardAutoCloseThreshold">36</strong>
+      </article>
+      <article class="dashboard-card metric-card">
+        <span>ช่วง Flow</span>
+        <strong id="dashboardFlowPeriodLabel">LIVE</strong>
+      </article>
+    </section>
+
+    <section id="dashboardSituation" class="dashboard-card situation-card">
+      <div>
+        <p class="eyebrow">EXECUTIVE SITUATION</p>
+        <h2 id="dashboardSituationLabel">กำลังประเมินสถานการณ์</h2>
+        <p id="dashboardSituationMessage">รอข้อมูลล่าสุด</p>
+      </div>
+      <strong id="dashboardSituationCount">0</strong>
+    </section>
+
+    <section id="dashboardViewToolbar" class="dashboard-card dashboard-toolbar">
+      <div id="dashboardPeriodGroup" class="chip-group" role="group" aria-label="ช่วงข้อมูล">
+        <button type="button" class="chip is-active" data-period="LIVE">Live</button>
+        <button type="button" class="chip" data-period="TODAY">วันนี้</button>
+        <button type="button" class="chip" data-period="ROLLING_24">24 ชม.</button>
+      </div>
+      <input id="dashboardSearchInput" type="search" placeholder="ค้นหา Auto ID / บริษัท / ทะเบียน">
+      <select id="dashboardStatusFilter" data-status-filter>
+        <option value="">ทุกสถานะ</option>
+        <option value="ACTIVE">อยู่ในพื้นที่</option>
+        <option value="COMPLETED">ออกแล้ว</option>
+        <option value="OVERDUE">เกินเวลา</option>
+      </select>
+      <select id="dashboardStageFilter" data-stage-filter>
+        <option value="">ทุกขั้นตอน</option>
+        <option value="WAITING_INBOUND_DOCUMENT">รอยื่นเอกสาร</option>
+        <option value="WAITING_RECEIVING">รอรับสินค้า</option>
+        <option value="WAITING_DOCUMENT_RETURN">รอคืนเอกสาร</option>
+        <option value="WAITING_GATE_OUT">รอ Gate Out</option>
+      </select>
+      <button id="dashboardResetFilters" type="button" class="button button--ghost">ล้างตัวกรอง</button>
+    </section>
+
+    <section class="dashboard-grid">
+      <article class="dashboard-card">
+        <div class="card-header">
+          <h2>สัดส่วนสถานะ</h2>
+        </div>
+        <canvas id="statusDistributionChart" height="220"></canvas>
+      </article>
+
+      <article class="dashboard-card">
+        <div class="card-header">
+          <h2>เคลื่อนไหวรายชั่วโมง</h2>
+        </div>
+        <canvas id="hourlyMovementChart" height="220"></canvas>
+        <p id="hourlyMovementEmpty" class="empty-state">ยังไม่มีข้อมูลรายชั่วโมง</p>
+      </article>
+
+      <article class="dashboard-card">
+        <div class="card-header">
+          <h2>แนวโน้ม Active</h2>
+        </div>
+        <canvas id="activeTrendChart" height="220"></canvas>
+      </article>
+
+      <article class="dashboard-card">
+        <div class="card-header">
+          <h2>รอนานที่สุด</h2>
+        </div>
+        <canvas id="longestWaitingChart" height="220"></canvas>
+      </article>
+
+      <article class="dashboard-card">
+        <div class="card-header">
+          <h2>SLA กระบวนการ</h2>
+        </div>
+        <canvas id="processSlaChart" height="220"></canvas>
+      </article>
+
+      <article class="dashboard-card">
+        <div class="card-header">
+          <h2>เวลาแต่ละช่วง</h2>
+        </div>
+        <canvas id="processTimeShareChart" height="220"></canvas>
+      </article>
+    </section>
+
+    <section class="dashboard-grid">
+      <article class="dashboard-card">
+        <div class="card-header">
+          <h2>Action Queue</h2>
+        </div>
+        <div id="dashboardActionQueue" class="dashboard-list"></div>
+      </article>
+
+      <article class="dashboard-card">
+        <div class="card-header">
+          <h2>รายการเกินเวลา</h2>
+          <span id="dashboardOverdueListCount">0</span>
+        </div>
+        <div id="dashboardOverdueList" class="dashboard-list"></div>
+      </article>
+    </section>
+
+    <section id="dashboardReceivingSection" class="dashboard-card">
+      <div class="card-header">
+        <h2>ขั้นตอนรับสินค้า</h2>
+      </div>
+      <div id="mobileAnalyticsTabs" class="mobile-tabs" data-mobile-view="records"></div>
+      <div id="mobileRecordCounter" class="mobile-counter">0 รายการ</div>
+      <div id="mobileRecordGrid" class="mobile-record-grid"></div>
+      <p id="mobileRecordEmpty" class="empty-state">ยังไม่มีรายการ</p>
+      <button id="mobileLoadMoreRecords" type="button" class="button button--ghost">โหลดเพิ่ม</button>
+    </section>
+
+    <section class="dashboard-card table-card">
+      <div class="card-header">
+        <h2>รายการทั้งหมด</h2>
+      </div>
+      <div class="table-scroll">
+        <table class="dashboard-table">
+          <thead>
+            <tr>
+              <th>Auto ID</th>
+              <th>เลขนัดหมาย</th>
+              <th>บริษัท</th>
+              <th>ทะเบียน</th>
+              <th>สถานะ</th>
+              <th>เวลาเข้า</th>
+            </tr>
+          </thead>
+          <tbody id="dashboardRecordTableBody"></tbody>
+        </table>
+      </div>
+      <p id="dashboardRecordEmpty" class="empty-state">ยังไม่มีข้อมูลตามเงื่อนไข</p>
+    </section>
+
+    <section id="dashboardShiftWorkspace" class="dashboard-card">
+      <div class="card-header">
+        <h2>บริบทกะทำงาน</h2>
+        <div id="dashboardShiftDateControls">
+          <button id="dashboardShiftPreviousDate" type="button" class="button button--ghost">ก่อนหน้า</button>
+          <input id="dashboardShiftDate" type="date">
+          <button id="dashboardShiftToday" type="button" class="button button--ghost">วันนี้</button>
+          <button id="dashboardShiftNextDate" type="button" class="button button--ghost">ถัดไป</button>
+          <button id="dashboardShiftCalendarButton" type="button" class="button button--ghost">ปฏิทิน</button>
+        </div>
+      </div>
+      <p id="dashboardShiftDateDisplay">-</p>
+      <button id="retryShiftDashboard" type="button" class="button button--ghost">ลองโหลดข้อมูลกะอีกครั้ง</button>
+      <div class="dashboard-grid">
+        <canvas id="dailyShiftHistoryChart" height="180"></canvas>
+        <canvas id="shiftFlowComparisonChart" height="180"></canvas>
+        <canvas id="shiftSlaComparisonChart" height="180"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <noscript>
+    <div class="noscript-message">กรุณาเปิดใช้งาน JavaScript เพื่อใช้งาน Dashboard</div>
+  </noscript>
+</body>
+</html>
