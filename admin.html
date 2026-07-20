@@ -17,7 +17,7 @@
   <title>
     จัดการระบบ | ระบบติดตามสถานะรถและตู้สินค้า
   </title>
-  <link rel="stylesheet" href="./admin.bundle.css?v=20260720-clean-editor-no-overlap-r1">
+  <link rel="stylesheet" href="./admin.bundle.css?v=20260720-clean-editor-rebuild-r2">
 
 <script
     src="https://cdn.jsdelivr.net/npm/sweetalert2@11"
@@ -233,7 +233,7 @@
   </style>
 
   <!-- ROUND 10 HOTFIX 2 — Admin Data-Dense UI only -->
-  <script src="./admin.bundle.js?v=20260720-clean-editor-no-overlap-r1" defer></script>
+  <script src="./admin.bundle.js?v=20260720-clean-editor-rebuild-r2" defer></script>
 </head>
 
 <body
@@ -1841,7 +1841,9 @@
           type="hidden"
         >
 
-        <section class="admin-editor-section">
+        <div class="admin-editor__scroll">
+
+        <section class="admin-editor-section admin-editor-section--identity">
           <div class="admin-editor-section__title">
             <span>1</span>
 
@@ -1932,7 +1934,7 @@
           </div>
         </section>
 
-        <section class="admin-editor-section">
+        <section class="admin-editor-section admin-editor-section--source">
           <div class="admin-editor-section__title">
             <span>2</span>
 
@@ -2062,7 +2064,7 @@
           </div>
         </section>
 
-        <section class="admin-editor-section">
+        <section class="admin-editor-section admin-editor-section--status">
           <div class="admin-editor-section__title">
             <span>3</span>
 
@@ -2227,7 +2229,7 @@
           </div>
         </section>
 
-        <section class="admin-editor-section">
+        <section class="admin-editor-section admin-editor-section--filters">
           <div class="admin-editor-section__title">
             <span>4</span>
 
@@ -2262,7 +2264,7 @@
           ></div>
         </section>
 
-        <section class="admin-editor-section">
+        <section class="admin-editor-section admin-editor-section--fields">
           <div class="admin-editor-section__title">
             <span>5</span>
 
@@ -2297,7 +2299,7 @@
           ></div>
         </section>
 
-        <section class="admin-editor-section">
+        <section class="admin-editor-section admin-editor-section--features">
           <div class="admin-editor-section__title">
             <span>6</span>
 
@@ -2487,6 +2489,8 @@
             </label>
           </div>
         </section>
+
+                </div>
 
         <footer class="admin-editor__footer">
           <button
