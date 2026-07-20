@@ -1,3 +1,8 @@
+/* SMARTALERT MODULE VALIDATION INLINE-ONLY PATCH
+ * Build: 2026.07.20-module-validation-inline-only-r1
+ * Validation errors stay inside Module Editor; no duplicate SweetAlert.
+ */
+
 /*
  * AlertVendor Consolidated Bundle
  * Output: github-pages/admin.bundle.js
@@ -6499,18 +6504,43 @@
       );
 
     } catch (error) {
-      await showValidationErrors(
+      const messages =
         collectErrorMessages(
           error
-        ),
-        'ข้อมูลโมดูลยังไม่ครบ'
-      );
+        );
 
-      focusValidationTarget(
+      const target =
         error &&
         error.focusTarget
           ? error.focusTarget
-          : ''
+          : '#adminModuleId';
+
+      const inlineValidation = {
+        valid: false,
+        errors: messages,
+        warnings: [],
+        issues: messages.map(
+          (message) => ({
+            severity: 'error',
+            message: String(message || 'ข้อมูลโมดูลไม่ถูกต้อง'),
+            target
+          })
+        ),
+        firstTarget: target
+      };
+
+      state.moduleValidationTouched =
+        true;
+
+      applyModuleValidationFeedback(
+        inlineValidation,
+        {
+          force: true
+        }
+      );
+
+      focusValidationTarget(
+        target
       );
 
       return;
@@ -6520,11 +6550,6 @@
       validation.errors.length >
       0
     ) {
-      await showValidationErrors(
-        validation.errors,
-        `พบจุดที่ต้องแก้ ${validation.errors.length} จุด`
-      );
-
       focusValidationTarget(
         validation.firstTarget
       );
@@ -6565,11 +6590,6 @@
         }
       );
 
-      await showValidationErrors(
-        sourceError.errors,
-        'ตรวจสอบแหล่งข้อมูลไม่สำเร็จ'
-      );
-
       focusValidationTarget(
         sourceError.firstTarget
       );
@@ -6600,11 +6620,6 @@
       validation.errors.length >
       0
     ) {
-      await showValidationErrors(
-        validation.errors,
-        `แหล่งข้อมูลไม่ตรงกับการตั้งค่า ${validation.errors.length} จุด`
-      );
-
       focusValidationTarget(
         validation.firstTarget
       );
