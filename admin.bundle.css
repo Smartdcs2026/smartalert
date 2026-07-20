@@ -21840,3 +21840,194 @@ body.admin-page .app-footer {
   .admin-module-grid,.admin-user-list{grid-template-columns:1fr!important;}
   .shift-admin-config-grid{grid-template-columns:1fr!important;}
 }
+
+
+/* SMARTALERT MODULE EDITOR DATA-DENSE PATCH
+   Build: 2026.07.20-module-create-datadense-r1
+   เป้าหมาย: ทำพื้นที่สร้าง/แก้ไข Module ให้กระชับ ใช้พื้นที่คุ้ม ลดการเลื่อน
+*/
+body.admin-page.admin-editor-open { overflow: hidden !important; }
+
+body.admin-page .admin-editor:not(.is-hidden) {
+  display: grid !important;
+  grid-template-columns: minmax(280px, 34vw) minmax(640px, 1fr) !important;
+  align-items: stretch !important;
+  background: rgba(15, 23, 42, .46) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+body.admin-page .admin-editor__backdrop {
+  grid-column: 1 / 2 !important;
+  position: static !important;
+  background: linear-gradient(180deg, rgba(8, 47, 73, .18), rgba(15, 23, 42, .22)) !important;
+}
+
+body.admin-page .admin-editor__panel {
+  grid-column: 2 / 3 !important;
+  width: 100% !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: 100vh !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  display: grid !important;
+  grid-template-rows: auto 1fr auto !important;
+  overflow: hidden !important;
+  box-shadow: -18px 0 42px rgba(15, 23, 42, .20) !important;
+}
+
+body.admin-page .admin-editor__header {
+  min-height: 58px !important;
+  padding: 10px 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  border-bottom: 1px solid rgba(148, 163, 184, .28) !important;
+}
+
+body.admin-page .admin-editor__header h2 {
+  font-size: 18px !important;
+  line-height: 1.15 !important;
+  margin: 0 !important;
+}
+
+body.admin-page .admin-editor__header .eyebrow,
+body.admin-page .admin-editor__header > div > span {
+  font-size: 10px !important;
+  letter-spacing: .10em !important;
+}
+
+body.admin-page #adminModuleForm.admin-editor__body {
+  padding: 10px !important;
+  display: grid !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  align-content: start !important;
+  gap: 8px !important;
+  overflow: auto !important;
+  background: #eef7f9 !important;
+}
+
+body.admin-page #adminModuleForm > input[type="hidden"] { display: none !important; }
+
+body.admin-page #adminModuleForm > .admin-editor-section {
+  min-height: 0 !important;
+  padding: 10px !important;
+  border-radius: 14px !important;
+  background: rgba(255, 255, 255, .94) !important;
+  border: 1px solid rgba(203, 213, 225, .82) !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, .055) !important;
+}
+
+body.admin-page #adminModuleForm > .admin-editor-section:nth-of-type(1),
+body.admin-page #adminModuleForm > .admin-editor-section:nth-of-type(2),
+body.admin-page #adminModuleForm > .admin-editor-section:nth-of-type(3),
+body.admin-page #adminModuleForm > .admin-editor-section:nth-of-type(6) {
+  grid-column: span 6 !important;
+}
+
+body.admin-page #adminModuleForm > .admin-editor-section:nth-of-type(4),
+body.admin-page #adminModuleForm > .admin-editor-section:nth-of-type(5) {
+  grid-column: span 12 !important;
+}
+
+body.admin-page #adminModuleForm .admin-editor-section__title {
+  min-height: 0 !important;
+  margin-bottom: 8px !important;
+  display: grid !important;
+  grid-template-columns: 28px 1fr !important;
+  gap: 8px !important;
+  align-items: center !important;
+}
+
+body.admin-page #adminModuleForm .admin-editor-section__title > span {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 9px !important;
+  font-size: 12px !important;
+}
+
+body.admin-page #adminModuleForm .admin-editor-section__title h3 {
+  font-size: 14px !important;
+  line-height: 1.1 !important;
+  margin: 0 !important;
+}
+
+body.admin-page #adminModuleForm .admin-editor-section__title p {
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+  margin: 2px 0 0 !important;
+}
+
+body.admin-page #adminModuleForm .admin-form-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+body.admin-page #adminModuleForm .admin-field { gap: 4px !important; }
+
+body.admin-page #adminModuleForm .admin-field > span {
+  font-size: 11px !important;
+  line-height: 1.15 !important;
+  color: #475569 !important;
+}
+
+body.admin-page #adminModuleForm input,
+body.admin-page #adminModuleForm select,
+body.admin-page #adminModuleForm textarea {
+  min-height: 34px !important;
+  padding: 7px 9px !important;
+  border-radius: 10px !important;
+  font-size: 12px !important;
+}
+
+body.admin-page #adminModuleForm textarea { min-height: 66px !important; }
+body.admin-page #adminModuleForm .admin-field--wide { grid-column: span 2 !important; }
+body.admin-page #adminModuleForm .admin-field--full { grid-column: 1 / -1 !important; }
+
+body.admin-page #adminModuleForm .admin-toggle-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+body.admin-page #adminModuleForm .admin-toggle {
+  min-height: 38px !important;
+  padding: 8px 9px !important;
+  border-radius: 12px !important;
+  gap: 7px !important;
+}
+
+body.admin-page #adminModuleForm .admin-toggle strong { font-size: 12px !important; }
+body.admin-page #adminModuleForm .admin-toggle small { font-size: 10px !important; line-height: 1.18 !important; }
+
+body.admin-page #adminModuleForm .admin-dynamic-toolbar {
+  min-height: 36px !important;
+  padding: 6px !important;
+  margin-bottom: 6px !important;
+}
+
+body.admin-page #adminModuleForm .admin-dynamic-list { gap: 6px !important; }
+
+body.admin-page .admin-editor__footer {
+  min-height: 56px !important;
+  padding: 8px 12px !important;
+  border-top: 1px solid rgba(148, 163, 184, .28) !important;
+}
+
+body.admin-page .admin-editor__footer .button,
+body.admin-page .admin-editor__header .button {
+  min-height: 34px !important;
+  padding: 7px 12px !important;
+  border-radius: 11px !important;
+  font-size: 12px !important;
+}
+
+@media (max-width: 980px) {
+  body.admin-page .admin-editor:not(.is-hidden) { grid-template-columns: 1fr !important; }
+  body.admin-page .admin-editor__backdrop { display: none !important; }
+  body.admin-page .admin-editor__panel { grid-column: 1 !important; }
+  body.admin-page #adminModuleForm.admin-editor__body { grid-template-columns: 1fr !important; }
+  body.admin-page #adminModuleForm > .admin-editor-section,
+  body.admin-page #adminModuleForm > .admin-editor-section:nth-of-type(n) { grid-column: 1 !important; }
+  body.admin-page #adminModuleForm .admin-form-grid,
+  body.admin-page #adminModuleForm .admin-toggle-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
