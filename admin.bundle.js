@@ -4264,7 +4264,10 @@
     alertEngineData: null,
     diagnosticsRunning: false,
     vcwCleanupStatus: null,
-    diagnosticsResult: null
+    diagnosticsResult: null,
+    moduleValidationTouched: false,
+    moduleValidationTimer: null,
+    moduleValidationRunning: false
   };
 
   const LABELS = {
@@ -4596,7 +4599,29 @@
     byId('adminCloseModuleEditorButton')?.addEventListener('click', closeModuleEditor);
     byId('adminCancelModuleButton')?.addEventListener('click', closeModuleEditor);
     byId('adminEditorBackdrop')?.addEventListener('click', closeModuleEditor);
-    byId('adminModuleForm')?.addEventListener('submit', saveModule);
+    const moduleForm =
+      byId('adminModuleForm');
+
+    moduleForm?.addEventListener(
+      'submit',
+      saveModule
+    );
+
+    moduleForm?.addEventListener(
+      'input',
+      handleModuleValidationInput
+    );
+
+    moduleForm?.addEventListener(
+      'change',
+      handleModuleValidationInput
+    );
+
+    moduleForm?.addEventListener(
+      'click',
+      handleModuleValidationSummaryClick
+    );
+
     byId('adminAddFilterButton')?.addEventListener('click', () => addFilterRow());
     byId('adminAddFieldButton')?.addEventListener('click', () => addFieldRow());
     byId('adminInspectSourceButton')?.addEventListener('click', inspectSource);
@@ -6377,6 +6402,21 @@
 
     updateDynamicCounts();
 
+    state.moduleValidationTouched =
+      false;
+
+    if (state.moduleValidationTimer) {
+      window.clearTimeout(
+        state.moduleValidationTimer
+      );
+
+      state.moduleValidationTimer =
+        null;
+    }
+
+    ensureModuleValidationSummary();
+    clearModuleValidationFeedback();
+
     byId('adminModuleEditor')?.classList.remove('is-hidden');
     document.body.classList.add('admin-editor-open');
 
@@ -6406,6 +6446,21 @@
   function closeModuleEditor() {
     byId('adminModuleEditor')?.classList.add('is-hidden');
     document.body.classList.remove('admin-editor-open');
+
+    if (state.moduleValidationTimer) {
+      window.clearTimeout(
+        state.moduleValidationTimer
+      );
+
+      state.moduleValidationTimer =
+        null;
+    }
+
+    clearModuleValidationFeedback();
+
+    state.moduleValidationTouched =
+      false;
+
     state.currentBundle = null;
     state.sourceMetadata = null;
   }
@@ -6432,6 +6487,17 @@
           payload
         );
 
+      state.moduleValidationTouched =
+        true;
+
+      applyModuleValidationFeedback(
+        validation,
+        {
+          force:
+            true
+        }
+      );
+
     } catch (error) {
       await showValidationErrors(
         collectErrorMessages(
@@ -6456,7 +6522,87 @@
     ) {
       await showValidationErrors(
         validation.errors,
-        'ข้อมูลโมดูลยังไม่ครบ'
+        `พบจุดที่ต้องแก้ ${validation.errors.length} จุด`
+      );
+
+      focusValidationTarget(
+        validation.firstTarget
+      );
+
+      return;
+    }
+
+    let sourceValidation;
+
+    setButtonLoading(
+      saveButton,
+      true,
+      'กำลังตรวจสอบแหล่งข้อมูล...'
+    );
+
+    try {
+      sourceValidation =
+        await validateModuleSourceBeforeSave(
+          payload
+        );
+
+    } catch (error) {
+      setButtonLoading(
+        saveButton,
+        false
+      );
+
+      const sourceError =
+        createSourceValidationFailure(
+          error
+        );
+
+      applyModuleValidationFeedback(
+        sourceError,
+        {
+          force:
+            true
+        }
+      );
+
+      await showValidationErrors(
+        sourceError.errors,
+        'ตรวจสอบแหล่งข้อมูลไม่สำเร็จ'
+      );
+
+      focusValidationTarget(
+        sourceError.firstTarget
+      );
+
+      return;
+    }
+
+    setButtonLoading(
+      saveButton,
+      false
+    );
+
+    validation =
+      mergeModuleValidationResults(
+        validation,
+        sourceValidation
+      );
+
+    applyModuleValidationFeedback(
+      validation,
+      {
+        force:
+          true
+      }
+    );
+
+    if (
+      validation.errors.length >
+      0
+    ) {
+      await showValidationErrors(
+        validation.errors,
+        `แหล่งข้อมูลไม่ตรงกับการตั้งค่า ${validation.errors.length} จุด`
       );
 
       focusValidationTarget(
@@ -6729,6 +6875,7 @@
 
     const errors = [];
     const warnings = [];
+    const issues = [];
 
     let firstTarget = '';
 
@@ -6736,9 +6883,27 @@
       message,
       target
     ) => {
+      const cleanMessage =
+        String(
+          message || ''
+        ).trim();
+
       errors.push(
-        String(message)
+        cleanMessage
       );
+
+      issues.push({
+        severity:
+          'error',
+
+        message:
+          cleanMessage,
+
+        target:
+          String(
+            target || ''
+          )
+      });
 
       if (
         !firstTarget &&
@@ -6750,11 +6915,30 @@
     };
 
     const addWarning = (
-      message
+      message,
+      target
     ) => {
+      const cleanMessage =
+        String(
+          message || ''
+        ).trim();
+
       warnings.push(
-        String(message)
+        cleanMessage
       );
+
+      issues.push({
+        severity:
+          'warning',
+
+        message:
+          cleanMessage,
+
+        target:
+          String(
+            target || ''
+          )
+      });
     };
 
     const limits =
@@ -7400,6 +7584,7 @@
 
       errors,
       warnings,
+      issues,
       firstTarget
     };
   }
@@ -7667,6 +7852,13 @@
       'adminFieldCount',
       document.querySelectorAll('#adminFieldRows [data-field-row]').length + ' ฟิลด์'
     );
+
+    if (
+      state.moduleValidationTouched &&
+      !state.moduleValidationRunning
+    ) {
+      scheduleModuleValidation();
+    }
   }
 
   async function duplicateModule(moduleId) {
@@ -8841,6 +9033,1053 @@
         'ตกลง'
     });
   }
+
+
+  function handleModuleValidationInput(
+    event
+  ) {
+    if (
+      !event ||
+      event.target?.closest(
+        '[data-validation-target]'
+      )
+    ) {
+      return;
+    }
+
+    state.moduleValidationTouched =
+      true;
+
+    scheduleModuleValidation();
+  }
+
+
+  function scheduleModuleValidation() {
+    if (state.moduleValidationTimer) {
+      window.clearTimeout(
+        state.moduleValidationTimer
+      );
+    }
+
+    state.moduleValidationTimer =
+      window.setTimeout(
+        runLiveModuleValidation,
+        380
+      );
+  }
+
+
+  function runLiveModuleValidation() {
+    state.moduleValidationTimer =
+      null;
+
+    if (
+      !state.moduleValidationTouched ||
+      byId('adminModuleEditor')
+        ?.classList
+        .contains('is-hidden')
+    ) {
+      return;
+    }
+
+    state.moduleValidationRunning =
+      true;
+
+    try {
+      const payload =
+        readModulePayload();
+
+      const validation =
+        validateModulePayload(
+          payload
+        );
+
+      applyModuleValidationFeedback(
+        validation,
+        {
+          force:
+            false
+        }
+      );
+
+    } catch (error) {
+      console.warn(
+        'Live module validation failed',
+        error
+      );
+
+    } finally {
+      state.moduleValidationRunning =
+        false;
+    }
+  }
+
+
+  function ensureModuleValidationSummary() {
+    const form =
+      byId('adminModuleForm');
+
+    if (!form) {
+      return null;
+    }
+
+    let summary =
+      byId(
+        'adminModuleValidationSummary'
+      );
+
+    if (summary) {
+      return summary;
+    }
+
+    summary =
+      document.createElement(
+        'section'
+      );
+
+    summary.id =
+      'adminModuleValidationSummary';
+
+    summary.className =
+      'admin-module-validation-summary is-hidden';
+
+    summary.setAttribute(
+      'aria-live',
+      'polite'
+    );
+
+    const firstContent =
+      form.querySelector(
+        '.module-editor-top-grid, .admin-editor-section'
+      );
+
+    if (firstContent) {
+      form.insertBefore(
+        summary,
+        firstContent
+      );
+    } else {
+      form.appendChild(
+        summary
+      );
+    }
+
+    return summary;
+  }
+
+
+  function clearModuleValidationFeedback() {
+    document
+      .querySelectorAll(
+        '#adminModuleForm .is-validation-error, ' +
+        '#adminModuleForm .is-validation-warning, ' +
+        '#adminModuleForm .has-validation-error, ' +
+        '#adminModuleForm .has-validation-warning'
+      )
+      .forEach(
+        (element) => {
+          element.classList.remove(
+            'is-validation-error',
+            'is-validation-warning',
+            'has-validation-error',
+            'has-validation-warning'
+          );
+
+          element.removeAttribute(
+            'aria-invalid'
+          );
+        }
+      );
+
+    document
+      .querySelectorAll(
+        '#adminModuleForm .admin-inline-validation, ' +
+        '#adminModuleForm .admin-section-validation-badge'
+      )
+      .forEach(
+        (element) =>
+          element.remove()
+      );
+
+    const summary =
+      byId(
+        'adminModuleValidationSummary'
+      );
+
+    if (summary) {
+      summary.classList.add(
+        'is-hidden'
+      );
+
+      summary.innerHTML =
+        '';
+    }
+  }
+
+
+  function applyModuleValidationFeedback(
+    validation,
+    options
+  ) {
+    const force =
+      Boolean(
+        options &&
+        options.force
+      );
+
+    if (
+      !force &&
+      !state.moduleValidationTouched
+    ) {
+      return;
+    }
+
+    clearModuleValidationFeedback();
+
+    const summary =
+      ensureModuleValidationSummary();
+
+    const issues =
+      Array.isArray(
+        validation &&
+        validation.issues
+      )
+        ? validation.issues
+        : [];
+
+    const errors =
+      issues.filter(
+        (issue) =>
+          issue.severity ===
+          'error'
+      );
+
+    const warnings =
+      issues.filter(
+        (issue) =>
+          issue.severity ===
+          'warning'
+      );
+
+    const groupedByTarget =
+      new Map();
+
+    issues.forEach(
+      (issue) => {
+        const target =
+          String(
+            issue.target || ''
+          );
+
+        if (!target) {
+          return;
+        }
+
+        const list =
+          groupedByTarget.get(
+            target
+          ) || [];
+
+        list.push(
+          issue
+        );
+
+        groupedByTarget.set(
+          target,
+          list
+        );
+      }
+    );
+
+    groupedByTarget.forEach(
+      (targetIssues, selector) => {
+        markModuleValidationTarget(
+          selector,
+          targetIssues
+        );
+      }
+    );
+
+    markModuleValidationSections(
+      issues
+    );
+
+    if (
+      !summary ||
+      (
+        errors.length ===
+          0 &&
+        warnings.length ===
+          0
+      )
+    ) {
+      return;
+    }
+
+    summary.classList.remove(
+      'is-hidden'
+    );
+
+    summary.classList.toggle(
+      'has-errors',
+      errors.length > 0
+    );
+
+    summary.classList.toggle(
+      'has-warnings',
+      errors.length === 0 &&
+      warnings.length > 0
+    );
+
+    const visibleIssues =
+      issues.slice(
+        0,
+        12
+      );
+
+    summary.innerHTML = `
+      <div class="admin-module-validation-summary__header">
+        <div>
+          <strong>
+            ${
+              errors.length
+                ? `พบจุดที่ต้องแก้ ${errors.length} จุด`
+                : `มีคำเตือน ${warnings.length} จุด`
+            }
+          </strong>
+          <span>
+            กดรายการเพื่อเลื่อนไปยังช่องที่ต้องตรวจสอบ
+          </span>
+        </div>
+        <div class="admin-module-validation-summary__counts">
+          ${
+            errors.length
+              ? `<span class="count-error">${errors.length} ผิดพลาด</span>`
+              : ''
+          }
+          ${
+            warnings.length
+              ? `<span class="count-warning">${warnings.length} คำเตือน</span>`
+              : ''
+          }
+        </div>
+      </div>
+
+      <div class="admin-module-validation-summary__items">
+        ${visibleIssues
+          .map(
+            (issue, index) => `
+              <button
+                type="button"
+                class="admin-validation-jump admin-validation-jump--${escapeHtml(issue.severity)}"
+                data-validation-target="${escapeHtml(issue.target || '')}"
+              >
+                <span>${index + 1}</span>
+                <strong>${escapeHtml(issue.message)}</strong>
+              </button>
+            `
+          )
+          .join('')}
+      </div>
+
+      ${
+        issues.length >
+          visibleIssues.length
+          ? `
+            <div class="admin-module-validation-summary__more">
+              และอีก ${issues.length - visibleIssues.length} รายการ
+            </div>
+          `
+          : ''
+      }
+    `;
+  }
+
+
+  function markModuleValidationTarget(
+    selector,
+    targetIssues
+  ) {
+    let element;
+
+    try {
+      element =
+        document.querySelector(
+          selector
+        );
+
+    } catch (error) {
+      console.warn(
+        'Invalid validation selector',
+        selector,
+        error
+      );
+
+      return;
+    }
+
+    if (!element) {
+      return;
+    }
+
+    const hasError =
+      targetIssues.some(
+        (issue) =>
+          issue.severity ===
+          'error'
+      );
+
+    const severity =
+      hasError
+        ? 'error'
+        : 'warning';
+
+    element.classList.add(
+      severity === 'error'
+        ? 'is-validation-error'
+        : 'is-validation-warning'
+    );
+
+    if (severity === 'error') {
+      element.setAttribute(
+        'aria-invalid',
+        'true'
+      );
+    }
+
+    const wrapper =
+      element.closest(
+        '.admin-field, ' +
+        '.row-field, ' +
+        '.admin-toggle, ' +
+        '.admin-dynamic-row'
+      ) ||
+      element;
+
+    wrapper.classList.add(
+      severity === 'error'
+        ? 'has-validation-error'
+        : 'has-validation-warning'
+    );
+
+    if (
+      element.matches(
+        'input, select, textarea'
+      )
+    ) {
+      const message =
+        document.createElement(
+          'small'
+        );
+
+      message.className =
+        `admin-inline-validation admin-inline-validation--${severity}`;
+
+      message.textContent =
+        targetIssues
+          .map(
+            (issue) =>
+              issue.message
+          )
+          .join(' • ');
+
+      wrapper.appendChild(
+        message
+      );
+    }
+  }
+
+
+  function markModuleValidationSections(
+    issues
+  ) {
+    const sectionMap =
+      new Map();
+
+    issues.forEach(
+      (issue) => {
+        if (!issue.target) {
+          return;
+        }
+
+        let target;
+
+        try {
+          target =
+            document.querySelector(
+              issue.target
+            );
+        } catch (error) {
+          return;
+        }
+
+        const section =
+          target?.closest(
+            '.admin-editor-section'
+          );
+
+        if (!section) {
+          return;
+        }
+
+        const current =
+          sectionMap.get(
+            section
+          ) || {
+            errors:
+              0,
+
+            warnings:
+              0
+          };
+
+        if (
+          issue.severity ===
+          'error'
+        ) {
+          current.errors +=
+            1;
+        } else {
+          current.warnings +=
+            1;
+        }
+
+        sectionMap.set(
+          section,
+          current
+        );
+      }
+    );
+
+    sectionMap.forEach(
+      (counts, section) => {
+        section.classList.add(
+          counts.errors
+            ? 'has-validation-error'
+            : 'has-validation-warning'
+        );
+
+        const title =
+          section.querySelector(
+            '.admin-editor-section__title'
+          );
+
+        if (!title) {
+          return;
+        }
+
+        const badge =
+          document.createElement(
+            'span'
+          );
+
+        badge.className =
+          'admin-section-validation-badge';
+
+        badge.textContent =
+          counts.errors
+            ? `${counts.errors} จุดต้องแก้`
+            : `${counts.warnings} คำเตือน`;
+
+        title.appendChild(
+          badge
+        );
+      }
+    );
+  }
+
+
+  function handleModuleValidationSummaryClick(
+    event
+  ) {
+    const button =
+      event.target.closest(
+        '[data-validation-target]'
+      );
+
+    if (!button) {
+      return;
+    }
+
+    const selector =
+      String(
+        button.dataset
+          .validationTarget ||
+        ''
+      );
+
+    if (selector) {
+      focusValidationTarget(
+        selector
+      );
+    }
+  }
+
+
+  async function validateModuleSourceBeforeSave(
+    payload
+  ) {
+    const module =
+      payload.module || {};
+
+    const result =
+      await API.inspectAdminSource({
+        spreadsheetId:
+          module.sourceSpreadsheetId,
+
+        sheetName:
+          module.sourceSheetName,
+
+        headerRow:
+          module.headerRow,
+
+        sampleRows:
+          1
+      });
+
+    state.sourceMetadata =
+      result;
+
+    populateColumnOptions(
+      result.headers || []
+    );
+
+    setText(
+      'adminSourceInspectStatus',
+      `ตรวจอัตโนมัติแล้ว ${result.lastRow || 0} แถว • ${result.lastColumn || 0} คอลัมน์ • ${result.checkedAt || ''}`
+    );
+
+    const errors =
+      [];
+
+    const warnings =
+      [];
+
+    const issues =
+      [];
+
+    let firstTarget =
+      '';
+
+    const addError = (
+      message,
+      target
+    ) => {
+      const cleanMessage =
+        String(
+          message || ''
+        ).trim();
+
+      errors.push(
+        cleanMessage
+      );
+
+      issues.push({
+        severity:
+          'error',
+
+        message:
+          cleanMessage,
+
+        target:
+          String(
+            target || ''
+          )
+      });
+
+      if (
+        !firstTarget &&
+        target
+      ) {
+        firstTarget =
+          target;
+      }
+    };
+
+    const addWarning = (
+      message,
+      target
+    ) => {
+      const cleanMessage =
+        String(
+          message || ''
+        ).trim();
+
+      warnings.push(
+        cleanMessage
+      );
+
+      issues.push({
+        severity:
+          'warning',
+
+        message:
+          cleanMessage,
+
+        target:
+          String(
+            target || ''
+          )
+      });
+    };
+
+    const headers =
+      Array.isArray(
+        result.headers
+      )
+        ? result.headers
+        : [];
+
+    const availableColumns =
+      new Set(
+        headers
+          .map(
+            (item) =>
+              normalizeColumn(
+                item &&
+                item.column
+              )
+          )
+          .filter(Boolean)
+      );
+
+    if (
+      headers.length ===
+      0
+    ) {
+      addError(
+        'ไม่พบหัวคอลัมน์ในแถวหัวตารางที่กำหนด กรุณาตรวจชื่อชีตและแถวหัวตาราง',
+        '#adminHeaderRow'
+      );
+    }
+
+    if (
+      Number(
+        result.lastRow || 0
+      ) <=
+      Number(
+        module.headerRow || 1
+      )
+    ) {
+      addWarning(
+        'ชีตต้นทางยังไม่มีแถวข้อมูลใต้หัวตาราง',
+        '#adminSourceSheetName'
+      );
+    }
+
+    if (
+      Array.isArray(
+        result.duplicateHeaders
+      ) &&
+      result.duplicateHeaders.length
+    ) {
+      addWarning(
+        'พบชื่อหัวคอลัมน์ซ้ำในชีตต้นทาง: ' +
+        result.duplicateHeaders.join(', '),
+        '#adminSourceSheetName'
+      );
+    }
+
+    const references =
+      [];
+
+    const addReference = (
+      label,
+      column,
+      target
+    ) => {
+      const normalized =
+        normalizeColumn(
+          column
+        );
+
+      if (!normalized) {
+        return;
+      }
+
+      references.push({
+        label,
+        column:
+          normalized,
+        target
+      });
+    };
+
+    addReference(
+      'คอลัมน์เวลาเข้า',
+      module.timestampInColumn,
+      '#adminTimestampInColumn'
+    );
+
+    addReference(
+      'คอลัมน์เวลาออก',
+      module.timestampOutColumn,
+      '#adminTimestampOutColumn'
+    );
+
+    addReference(
+      'คอลัมน์ระยะเวลา',
+      module.durationColumn,
+      '#adminDurationColumn'
+    );
+
+    addReference(
+      'คอลัมน์ผู้บันทึกออก',
+      module.checkoutUserColumn,
+      '#adminCheckoutUserColumn'
+    );
+
+    addReference(
+      'คอลัมน์สถานะกำหนดเอง',
+      module.customStatusColumn,
+      '#adminCustomStatusColumn'
+    );
+
+    addReference(
+      'คอลัมน์สถานะหลังออก',
+      module.afterCheckoutStatusColumn,
+      '#adminAfterCheckoutStatusColumn'
+    );
+
+    payload.filters.forEach(
+      (filter, index) => {
+        addReference(
+          `เงื่อนไขที่ ${index + 1}`,
+          filter.column,
+          `#adminFilterRows [data-filter-row]:nth-child(${index + 1}) [data-filter-column]`
+        );
+      }
+    );
+
+    payload.fields.forEach(
+      (field, index) => {
+        field.sourceColumns.forEach(
+          (column) => {
+            addReference(
+              `ฟิลด์ “${field.displayName || field.fieldId || index + 1}”`,
+              column,
+              `#adminFieldRows [data-field-row]:nth-child(${index + 1}) [data-field-columns]`
+            );
+          }
+        );
+      }
+    );
+
+    references.forEach(
+      (reference) => {
+        if (
+          !availableColumns.has(
+            reference.column
+          )
+        ) {
+          addError(
+            `${reference.label} ระบุคอลัมน์ ${reference.column} แต่คอลัมน์นี้ไม่มีอยู่ในชีตต้นทาง`,
+            reference.target
+          );
+        }
+      }
+    );
+
+    if (
+      String(
+        module.moduleId || ''
+      ).toLowerCase() ===
+      'vendors'
+    ) {
+      if (
+        String(
+          module.sourceSheetName ||
+          ''
+        ).trim() !==
+        'Sheet1'
+      ) {
+        addError(
+          'โมดูล vendors ต้องใช้ชีตต้นทางชื่อ Sheet1 ตามสัญญาข้อมูล Gate In/Gate Out',
+          '#adminSourceSheetName'
+        );
+      }
+
+      [
+        [
+          'คอลัมน์เวลาเข้า',
+          module.timestampInColumn,
+          'B',
+          '#adminTimestampInColumn'
+        ],
+        [
+          'คอลัมน์เวลาออก',
+          module.timestampOutColumn,
+          'O',
+          '#adminTimestampOutColumn'
+        ],
+        [
+          'คอลัมน์ระยะเวลา',
+          module.durationColumn,
+          'P',
+          '#adminDurationColumn'
+        ]
+      ].forEach(
+        (item) => {
+          if (
+            normalizeColumn(
+              item[1]
+            ) !==
+            item[2]
+          ) {
+            addError(
+              `โมดูล vendors ต้องตั้ง ${item[0]} เป็นคอลัมน์ ${item[2]} ตามโครงสร้าง Sheet1`,
+              item[3]
+            );
+          }
+        }
+      );
+    }
+
+    return {
+      valid:
+        errors.length ===
+        0,
+
+      errors,
+      warnings,
+      issues,
+      firstTarget
+    };
+  }
+
+
+  function mergeModuleValidationResults(
+    first,
+    second
+  ) {
+    const errors = [
+      ...(
+        Array.isArray(
+          first &&
+          first.errors
+        )
+          ? first.errors
+          : []
+      ),
+      ...(
+        Array.isArray(
+          second &&
+          second.errors
+        )
+          ? second.errors
+          : []
+      )
+    ];
+
+    const warnings = [
+      ...(
+        Array.isArray(
+          first &&
+          first.warnings
+        )
+          ? first.warnings
+          : []
+      ),
+      ...(
+        Array.isArray(
+          second &&
+          second.warnings
+        )
+          ? second.warnings
+          : []
+      )
+    ];
+
+    const issues = [
+      ...(
+        Array.isArray(
+          first &&
+          first.issues
+        )
+          ? first.issues
+          : []
+      ),
+      ...(
+        Array.isArray(
+          second &&
+          second.issues
+        )
+          ? second.issues
+          : []
+      )
+    ];
+
+    return {
+      valid:
+        errors.length ===
+        0,
+
+      errors:
+        Array.from(
+          new Set(
+            errors
+          )
+        ),
+
+      warnings:
+        Array.from(
+          new Set(
+            warnings
+          )
+        ),
+
+      issues,
+      firstTarget:
+        first &&
+        first.firstTarget
+          ? first.firstTarget
+          : (
+              second &&
+              second.firstTarget
+                ? second.firstTarget
+                : ''
+            )
+    };
+  }
+
+
+  function createSourceValidationFailure(
+    error
+  ) {
+    const message =
+      'ไม่สามารถตรวจสอบ Spreadsheet/Sheet ต้นทางได้: ' +
+      buildErrorMessage(
+        error
+      );
+
+    return {
+      valid:
+        false,
+
+      errors: [
+        message
+      ],
+
+      warnings:
+        [],
+
+      issues: [
+        {
+          severity:
+            'error',
+
+          message,
+
+          target:
+            '#adminSourceSpreadsheetId'
+        }
+      ],
+
+      firstTarget:
+        '#adminSourceSpreadsheetId'
+    };
+  }
+
 
   function showValidationErrors(
     messages,
