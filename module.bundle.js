@@ -1,5 +1,5 @@
 /* SMARTALERT BASELINE 1 — Authoritative Receiving UI
- * Build: 2026.07.21-baseline1
+ * Build: 2026.07.21-baseline2
  */
 
 /*
@@ -1968,8 +1968,9 @@
           {
             query: {
               limit:
-                config.limit ||
-                1500,
+                Number.isFinite(Number(config.limit))
+                  ? Number(config.limit)
+                  : '',
 
               forceRefresh:
                 config.forceRefresh === true
@@ -8188,7 +8189,7 @@
     90 * 1000;
 
 
-  const REVISION_POLL_MIN_MS = 8000;
+  const REVISION_POLL_MIN_MS = 10000;
   const REVISION_POLL_MAX_MS = 60000;
   const REVISION_POLL_RESUME_MS = 350;
 
@@ -9466,7 +9467,7 @@
       config.background === true &&
       hasActiveCardWrite()
     ) {
-      scheduleNextRevisionCheck(REVISION_POLL_MIN_MS);
+      scheduleNextRevisionCheck(state.revisionPollDelayMs);
       return;
     }
 
@@ -9506,7 +9507,6 @@
           await API.getOperationalBoard(
             state.moduleId,
             {
-              limit: 1500,
               forceRefresh:
                 config.forceRefresh === true
             }
@@ -9577,6 +9577,11 @@
           ...state.module,
           ...result.module
         };
+
+        const serverRefreshSeconds = Number(state.module.refreshSeconds);
+        if (Number.isFinite(serverRefreshSeconds) && serverRefreshSeconds >= 10) {
+          state.revisionPollDelayMs = serverRefreshSeconds * 1000;
+        }
 
         renderModuleHeader();
       }
@@ -10241,52 +10246,41 @@
 
 
   function getModuleThresholds() {
-    const module =
-      state.module || {};
-
     const movementThresholds =
       state.movementSummary &&
       state.movementSummary.thresholds
         ? state.movementSummary.thresholds
         : {};
-
-    const greenMinutes = 0;
-    const warningMinutes = 0;
-    const redMinutes = 1;
-
-    const autoCloseHours =
-      Math.max(
-        1,
-        Number(
-          movementThresholds.autoCloseHours
-        ) ||
-        Number(CONFIG.DEFAULT_AUTO_CLOSE_HOURS) ||
-        36
-      );
-
-    const nearAutoCloseHours =
-      Math.max(
-        1,
-        Number(
-          movementThresholds.nearAutoCloseHours
-        ) ||
-        2
-      );
+    const autoCloseHours = Number(
+      movementThresholds.autoCloseHours ??
+      state.module?.autoCloseHours
+    );
+    const nearAutoCloseHours = Number(
+      movementThresholds.nearAutoCloseHours ??
+      state.module?.nearAutoCloseHours
+    );
+    const configured =
+      Number.isFinite(autoCloseHours) &&
+      autoCloseHours >= 1 &&
+      Number.isFinite(nearAutoCloseHours) &&
+      nearAutoCloseHours >= 1 &&
+      nearAutoCloseHours < autoCloseHours;
 
     return {
-      greenMinutes,
-      warningMinutes,
-      redMinutes,
-      warningSeconds:
-        warningMinutes * 60,
-      redSeconds:
-        redMinutes * 60,
-      autoCloseHours,
-      autoCloseSeconds:
-        autoCloseHours * 60 * 60,
-      nearAutoCloseHours,
-      nearAutoCloseSeconds:
-        nearAutoCloseHours * 60 * 60
+      configured,
+      greenMinutes: 0,
+      warningMinutes: 0,
+      redMinutes: 0,
+      warningSeconds: 0,
+      redSeconds: 0,
+      autoCloseHours: configured ? autoCloseHours : null,
+      autoCloseSeconds: configured
+        ? autoCloseHours * 60 * 60
+        : Number.POSITIVE_INFINITY,
+      nearAutoCloseHours: configured ? nearAutoCloseHours : null,
+      nearAutoCloseSeconds: configured
+        ? nearAutoCloseHours * 60 * 60
+        : 0
     };
   }
 
@@ -10627,9 +10621,15 @@
       Number(coverage.totalCount || 4) + ' กฎ'
     );
     setText('thresholdOverdueText', 'Admin กำหนด');
-    setText('thresholdAutoCloseText', autoClose.autoCloseHours + ' ชั่วโมง');
-    setText('controlNearAutoCloseLabel', 'ใกล้ครบ ' + autoClose.autoCloseHours + ' ชม.');
-    setText('timelineAutoCloseLegend', 'ใกล้ครบ ' + autoClose.autoCloseHours + ' ชม.');
+    const autoCloseLabel = autoClose.configured
+      ? autoClose.autoCloseHours + ' ชั่วโมง'
+      : 'Admin ยังไม่ตั้งค่า';
+    const nearLabel = autoClose.configured
+      ? 'เตือนก่อน ' + autoClose.nearAutoCloseHours + ' ชม.'
+      : 'ยังไม่พร้อม';
+    setText('thresholdAutoCloseText', autoCloseLabel);
+    setText('controlNearAutoCloseLabel', nearLabel);
+    setText('timelineAutoCloseLegend', nearLabel);
   }
 
 
@@ -10663,7 +10663,9 @@
           ${rows.join('') || '<p>ยังไม่พบเกณฑ์ SLA</p>'}
           <div data-status="AUTO_CLOSE">
             <span>เคลียร์อัตโนมัติ</span>
-            <strong>ครบ ${escapeHtml(String(autoClose.autoCloseHours))} ชั่วโมง</strong>
+            <strong>${autoClose.configured
+              ? 'ครบ ' + escapeHtml(String(autoClose.autoCloseHours)) + ' ชั่วโมง'
+              : 'Admin ยังไม่ตั้งค่า'}</strong>
           </div>
           <p>
             สีของรถคำนวณจากเวลาที่เริ่มขั้นตอนปัจจุบัน ไม่ใช่เวลารวมตั้งแต่ Gate In
@@ -13316,7 +13318,7 @@
       message =
         summary.nearAutoClose +
         ' รายการใกล้ครบ ' +
-        getModuleThresholds().autoCloseHours +
+        (getModuleThresholds().autoCloseHours || '-') +
         ' ชั่วโมง';
 
     } else if (
@@ -16893,7 +16895,7 @@
       navigator.onLine &&
       !state.destroyed
     ) {
-      scheduleNextRevisionCheck(REVISION_POLL_MIN_MS);
+      scheduleNextRevisionCheck(state.revisionPollDelayMs);
     }
 
     updateAutoRefreshStatus();
@@ -18606,7 +18608,7 @@
  ************************************************************/
 
 (function (window, document) {
-  const BUILD = '2026.07.21-baseline1-authoritative-receiving-ui-v1';
+  const BUILD = '2026.07.21-baseline2-authoritative-receiving-ui-v1';
   const STORAGE_PREFIX = 'smartalert:receiving-command:v1:';
   const MAX_ITEM_AGE_MS = 24 * 60 * 60 * 1000;
   const SEND_RETRY_MIN_MS = 2500;
@@ -19429,9 +19431,13 @@
     observeCards();
     refreshWorkflowState(true);
 
-    state.refreshTimer = window.setInterval(function () {
-      refreshWorkflowState(true);
-    }, 30000);
+    const runtimeModule = window.AlertVendorModuleData?.getState?.().module || {};
+    const refreshSeconds = Number(runtimeModule.refreshSeconds);
+    if (Number.isFinite(refreshSeconds) && refreshSeconds >= 10) {
+      state.refreshTimer = window.setInterval(function () {
+        refreshWorkflowState(true);
+      }, refreshSeconds * 1000);
+    }
 
     document.addEventListener('alertvendor:records-updated', function () {
       scheduleApply();
