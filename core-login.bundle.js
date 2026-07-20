@@ -1,3 +1,8 @@
+/* SMARTALERT BASELINE 2 HOTFIX 5 — AUTH STABILITY
+ * Build: 2026.07.21-baseline2-hotfix5-source-auth-stability-v1
+ * Stable login request ID + duplicate submit guard + clear lock feedback.
+ */
+
 /*
  * AlertVendor Consolidated Bundle
  * Output: github-pages/core-login.bundle.js
@@ -1752,6 +1757,14 @@
        */
       clearAccessToken();
 
+      /*
+       * HOTFIX 5:
+       * Request ID เดียวต้องเดินผ่าน Browser → Worker → Apps Script
+       * เพื่อไม่ให้คำขอเดิมที่ถูกส่งซ้ำนับรหัสผ่านผิดหลายครั้ง
+       */
+      const loginRequestId =
+        createRequestId();
+
       const response =
         await request(
           '/api/auth/login',
@@ -1765,6 +1778,9 @@
             timeoutMs:
               CONFIG.AUTH_TIMEOUT_MS,
 
+            requestId:
+              loginRequestId,
+
             body: {
               username:
                 String(
@@ -1774,7 +1790,13 @@
               password:
                 String(
                   password || ''
-                )
+                ),
+
+              clientRequestId:
+                loginRequestId,
+
+              requestId:
+                loginRequestId
             }
           }
         );
@@ -4384,6 +4406,13 @@
       return;
     }
 
+    /* ป้องกัน Bundle/Bootstrap ถูกเรียกซ้ำแล้วผูก submit ซ้อน */
+    if (form.dataset.loginBound === 'true') {
+      return;
+    }
+
+    form.dataset.loginBound = 'true';
+
     form.addEventListener(
       'submit',
       handleLoginSubmit
@@ -5785,6 +5814,9 @@
       ACCOUNT_LOCKED:
         'บัญชีถูกล็อกชั่วคราว เนื่องจากกรอกรหัสผ่านผิดหลายครั้ง',
 
+      AUTH_BUSY:
+        'มีผู้ใช้งานกำลังเข้าสู่ระบบ กรุณารอสักครู่แล้วลองใหม่ โดยระบบจะไม่นับเป็นรหัสผ่านผิด',
+
       AUTH_REQUIRED:
         'กรุณาเข้าสู่ระบบ',
 
@@ -5809,6 +5841,42 @@
       ORIGIN_NOT_ALLOWED:
         'โดเมนหน้าเว็บนี้ยังไม่ได้รับอนุญาตใน Cloudflare'
     };
+
+    const details =
+      error &&
+      error.details &&
+      typeof error.details === 'object'
+        ? error.details
+        : {};
+
+    if (error.code === 'INVALID_CREDENTIALS') {
+      const remainingAttempts =
+        Number(details.remainingAttempts);
+
+      if (
+        Number.isFinite(remainingAttempts) &&
+        remainingAttempts >= 0
+      ) {
+        return (
+          'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง เหลือโอกาส ' +
+          remainingAttempts +
+          ' ครั้ง'
+        );
+      }
+    }
+
+    if (error.code === 'ACCOUNT_LOCKED') {
+      const lockedUntil =
+        String(details.lockedUntil || '').trim();
+
+      return (
+        (error.message || errorMessages.ACCOUNT_LOCKED) +
+        (lockedUntil ? ' (ถึง ' + lockedUntil + ')' : '') +
+        (details.correctPasswordUnlocksImmediately === true
+          ? ' คุณสามารถกรอกรหัสผ่านที่ถูกต้องเพื่อปลดล็อกได้ทันที'
+          : '')
+      );
+    }
 
     return (
       errorMessages[error.code] ||
