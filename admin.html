@@ -17,7 +17,7 @@
   <title>
     จัดการระบบ | ระบบติดตามสถานะรถและตู้สินค้า
   </title>
-  <link rel="stylesheet" href="./admin.bundle.css?v=20260720-validation-alert-front-layer-r1">
+  <link rel="stylesheet" href="./admin.bundle.css?v=20260720-static-validation-summary-r2">
 
 <script
     src="https://cdn.jsdelivr.net/npm/sweetalert2@11"
@@ -233,7 +233,7 @@
   </style>
 
   <!-- ROUND 10 HOTFIX 2 — Admin Data-Dense UI only -->
-  <script src="./admin.bundle.js?v=20260720-validation-insertbefore-fix-r1" defer></script>
+  <script src="./admin.bundle.js?v=20260720-static-validation-summary-r2" defer></script>
 
 <style id="smartalert-module-editor-critical-css">
 /*
@@ -2250,6 +2250,13 @@
     ></div>
 
     <section class="admin-editor__panel">
+
+        <span
+          id="adminEditorBuildMarker"
+          hidden
+          data-build="20260720-static-validation-summary-r2"
+        ></span>
+
       <header class="admin-editor__header">
         <div>
           <p class="eyebrow">
@@ -2285,6 +2292,13 @@
         >
 
         <div class="admin-editor__scroll">
+
+          <section
+            id="adminModuleValidationSummary"
+            class="admin-module-validation-summary is-hidden"
+            aria-live="polite"
+          ></section>
+
 
         <div class="module-editor-top-grid">
 <section class="admin-editor-section admin-editor-section--identity">
