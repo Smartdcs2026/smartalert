@@ -4441,7 +4441,7 @@
 
   function buildAdminBootFallbackSchema() {
     return {
-      version: 'frontend-fallback-2026.07.20',
+      version: 'frontend-fallback-2026.07.21-baseline2',
       enums: {
         userRoles: ['USER', 'INBOUND', 'ADMIN'],
         moduleStatuses: ['DRAFT', 'PUBLISHED', 'DISABLED', 'ADMIN_ONLY', 'ARCHIVED'],
@@ -4489,7 +4489,7 @@
         : {};
 
     return {
-      version: 'frontend-fallback-2026.07.20',
+      version: 'frontend-fallback-2026.07.21-baseline2',
       generatedAt: formatBangkokDateTime(new Date()),
       actor: {
         username: user.username || 'admin',
@@ -4505,12 +4505,16 @@
       },
       settings: {
         SYSTEM_NAME: { value: 'SmartAlert Vendor Workflow', updatedAt: '', updatedBy: 'SYSTEM' },
-        AUTO_CLOSE_HOURS: { value: 36, updatedAt: '', updatedBy: 'SYSTEM' },
-        DEFAULT_REFRESH_SECONDS: { value: 15, updatedAt: '', updatedBy: 'SYSTEM' },
+        AUTO_CLOSE_HOURS: { value: null, updatedAt: '', updatedBy: 'CONFIG_REQUIRED' },
+        DEFAULT_REFRESH_SECONDS: { value: null, updatedAt: '', updatedBy: 'CONFIG_REQUIRED' },
         SESSION_TIMEOUT_MINUTES: { value: 720, updatedAt: '', updatedBy: 'SYSTEM' },
         MAX_LOGIN_FAILURES: { value: 5, updatedAt: '', updatedBy: 'SYSTEM' },
         LOGIN_LOCK_MINUTES: { value: 15, updatedAt: '', updatedBy: 'SYSTEM' },
-        SWEETALERT_ENABLED: { value: true, updatedAt: '', updatedBy: 'SYSTEM' }
+        SWEETALERT_ENABLED: { value: true, updatedAt: '', updatedBy: 'SYSTEM' },
+        HISTORY_ENABLED: { value: null, updatedAt: '', updatedBy: 'CONFIG_REQUIRED' },
+        SOUND_ENABLED: { value: null, updatedAt: '', updatedBy: 'CONFIG_REQUIRED' },
+        AUTO_CLOSE_NEAR_WARNING_HOURS: { value: null, updatedAt: '', updatedBy: 'CONFIG_REQUIRED' },
+        DASHBOARD_RECORD_LIMIT: { value: null, updatedAt: '', updatedBy: 'CONFIG_REQUIRED' }
       },
       modules: [],
       users: [
@@ -4860,6 +4864,30 @@
         label: 'รีเฟรชเริ่มต้น (วินาที)',
         type: 'number',
         help: '10–3600 วินาที'
+      },
+      {
+        key: 'AUTO_CLOSE_NEAR_WARNING_HOURS',
+        label: 'เตือนก่อน Auto Close (ชั่วโมง)',
+        type: 'number',
+        help: '1–24 ชั่วโมง และต้องน้อยกว่าค่า Auto Close'
+      },
+      {
+        key: 'DASHBOARD_RECORD_LIMIT',
+        label: 'จำนวนรายการสูงสุดบน Dashboard',
+        type: 'number',
+        help: '100–5000 รายการต่อ Snapshot'
+      },
+      {
+        key: 'HISTORY_ENABLED',
+        label: 'เปิดประวัติการทำงาน',
+        type: 'boolean',
+        help: 'ควบคุมการเปิดดูประวัติจาก Runtime Policy'
+      },
+      {
+        key: 'SOUND_ENABLED',
+        label: 'เปิดเสียงแจ้งเตือน',
+        type: 'boolean',
+        help: 'ควบคุมเสียงแจ้งเตือนจาก Runtime Policy'
       },
       {
         key: 'SESSION_TIMEOUT_MINUTES',
@@ -8204,6 +8232,39 @@
       });
       customInput?.focus();
       customInput?.select();
+      return;
+    }
+
+    const nearAutoCloseHours = Number(settings.AUTO_CLOSE_NEAR_WARNING_HOURS);
+    if (
+      !Number.isInteger(nearAutoCloseHours) ||
+      nearAutoCloseHours < 1 ||
+      nearAutoCloseHours > 24 ||
+      nearAutoCloseHours >= autoCloseHours
+    ) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'ช่วงเตือนก่อน Auto Close ไม่ถูกต้อง',
+        text: 'ต้องเป็นจำนวนเต็ม 1–24 ชั่วโมง และน้อยกว่าค่า Auto Close',
+        confirmButtonText: 'แก้ไข'
+      });
+      document.querySelector('[data-setting-key="AUTO_CLOSE_NEAR_WARNING_HOURS"]')?.focus();
+      return;
+    }
+
+    const dashboardRecordLimit = Number(settings.DASHBOARD_RECORD_LIMIT);
+    if (
+      !Number.isInteger(dashboardRecordLimit) ||
+      dashboardRecordLimit < 100 ||
+      dashboardRecordLimit > 5000
+    ) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'จำนวนรายการ Dashboard ไม่ถูกต้อง',
+        text: 'กรุณากรอกจำนวนเต็ม 100–5,000 รายการ',
+        confirmButtonText: 'แก้ไข'
+      });
+      document.querySelector('[data-setting-key="DASHBOARD_RECORD_LIMIT"]')?.focus();
       return;
     }
 
