@@ -9112,15 +9112,54 @@
   }
 
   function normalizeColumn(valueText) {
-    const text =
+    const rawText =
       String(
-        valueText || ''
+        valueText ||
+        ''
       )
-        .trim()
+        .trim();
+
+    const text =
+      rawText
         .toUpperCase();
 
     if (!text) {
       return '';
+    }
+
+    /*
+     * SmartAlert Sheet1 helper:
+     * ให้ Admin พิมพ์ชื่อหัวคอลัมน์ได้ เช่น Timestamp / Timestamp Out / Duration
+     * แล้วแปลงกลับเป็นตัวอักษรคอลัมน์ เพื่อให้ backend เดิมยังทำงานครบ
+     */
+    const sheet1AliasMap = {
+      'AUTO ID': 'A',
+      'AUTOID': 'A',
+      'TIMESTAMP': 'B',
+      'คำนำหน้า': 'C',
+      'ชื่อ': 'D',
+      'สกุล': 'E',
+      'เลขนัดหมาย': 'F',
+      'ชื่อบริษัท': 'G',
+      'บริษัท': 'G',
+      'เบอร์โทร': 'H',
+      'ทะเบียนรถ': 'I',
+      'ทะเบียน': 'I',
+      'จังหวัด': 'J',
+      'ประเภทรถ': 'K',
+      '60MIN': 'L',
+      '60 MIN': 'L',
+      '120MIN': 'M',
+      '120 MIN': 'M',
+      'NOTIFIED': 'N',
+      'TIMESTAMP OUT': 'O',
+      'TIMESTAMPOUT': 'O',
+      'DURATION': 'P',
+      'ระยะเวลา': 'P'
+    };
+
+    if (sheet1AliasMap[text]) {
+      return sheet1AliasMap[text];
     }
 
     /*
@@ -9144,6 +9183,7 @@
         ? letters
         : '';
   }
+
 
   function columnNumberToLetter(
     input
