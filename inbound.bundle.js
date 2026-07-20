@@ -1,3 +1,10 @@
+/* SMARTALERT BASELINE 2 HOTFIX 5 — INBOUND AUTHORITATIVE SOURCE
+ * Build: 2026.07.21-baseline2-hotfix5-source-auth-stability-v1
+ * - Online mode never renders old local dashboard cache before the server reply
+ * - A successful empty server response clears stale vehicle cards
+ * - Legacy V11 cache is removed automatically
+ */
+
 /* SMARTALERT BASELINE 1 — Canonical Workflow Status Compatibility
  * Build: 2026.07.21-baseline2
  */
@@ -6266,7 +6273,7 @@
   const CONFIG = window.APP_CONFIG || {};
   const API = window.VehicleAPI;
   const PENDING_QUEUE = window.InboundPendingQueue;
-  const BUILD = '2026.07.19-round5-revision1-fast-scan-mode-v1';
+  const BUILD = '2026.07.21-baseline2-hotfix5-source-auth-stability-v1';
   const FAST_SCAN_MODE = true;
   const FAST_QUEUE_FLUSH_DELAY_MS = 35;
   const FAST_QUEUE_RETRY_BASE_MS = 1200;
@@ -6279,7 +6286,12 @@
   const DASHBOARD_LIMIT = 1000;
   const DASHBOARD_POLL_MIN_MS = 10000;
   const FOCUS_SUPPRESS_MS = 18000;
-  const DASHBOARD_CACHE_PREFIX = 'ALERT_VENDOR_INBOUND_DASHBOARD_CACHE_V11_';
+  const DASHBOARD_CACHE_PREFIX = 'ALERT_VENDOR_INBOUND_DASHBOARD_CACHE_V12_';
+  const LEGACY_DASHBOARD_CACHE_PREFIXES = [
+    'ALERT_VENDOR_INBOUND_DASHBOARD_CACHE_V11_',
+    'ALERT_VENDOR_INBOUND_DASHBOARD_CACHE_V10_',
+    'ALERT_VENDOR_INBOUND_DASHBOARD_CACHE_V9_'
+  ];
   const DASHBOARD_CACHE_MAX_ITEMS = 800;
 
   const state = {
@@ -6378,7 +6390,16 @@
 
       await loadModules();
       await setupPendingQueue();
-      restoreDashboardCache({silent: true});
+      clearLegacyDashboardCaches();
+
+      /*
+       * HOTFIX 5: เมื่อออนไลน์ต้องรอข้อมูลจริงจาก Server ก่อน
+       * Cache ใช้เฉพาะกรณี Offline หรือ API ล้มเหลวเท่านั้น
+       */
+      if (navigator.onLine === false) {
+        restoreDashboardCache({silent: true});
+      }
+
       createScanner();
       await loadWorkflowDashboard(true, {cacheFirst: false});
       startDashboardPolling();
@@ -7341,27 +7362,35 @@
       const payload = dashboardPayload(data);
       applyDashboardMetadata(payload);
       const nextItems = normalizeDashboardItems(payload);
-      const hadLocalItems = state.dashboardItems.length > 0;
 
-      if (nextItems.length > 0 || !hadLocalItems) {
-        state.dashboardItems = nextItems;
-        state.dashboardLoadedAt = payload.generatedAt || formatBangkokDateTime(new Date());
+      /*
+       * Server ตอบสำเร็จถือเป็น Authoritative Response เสมอ
+       * แม้รายการเป็น 0 ต้องล้าง Cache/การ์ดเก่า ห้ามคงข้อมูลจาก Spreadsheet รุ่นก่อน
+       */
+      state.dashboardItems = nextItems;
+      state.dashboardLoadedAt = payload.generatedAt || formatBangkokDateTime(new Date());
+      state.dashboardCacheRestored = false;
+
+      if (nextItems.length > 0) {
         saveDashboardCache();
-        renderDashboard();
-
-        if (!silent) {
-          const total = state.dashboardTotalRows || nextItems.length;
-          setScanMessage(
-            'โหลดข้อมูลล่าสุดแล้ว ' + nextItems.length +
-            (total > nextItems.length ? ' จากทั้งหมด ' + total + ' รายการ' : ' รายการ'),
-            'SUCCESS'
-          );
-        }
       } else {
-        renderDashboard();
-        if (!silent) {
-          setScanMessage('ไม่พบรายการใหม่จากฐานข้อมูล แต่คงข้อมูลล่าสุดบนหน้าจอไว้', 'WARN');
-        }
+        clearCurrentDashboardCache();
+      }
+
+      resetWorkflowPage();
+      renderDashboard();
+
+      if (!silent) {
+        const total = state.dashboardTotalRows || nextItems.length;
+        setScanMessage(
+          nextItems.length > 0
+            ? (
+                'โหลดข้อมูลล่าสุดแล้ว ' + nextItems.length +
+                (total > nextItems.length ? ' จากทั้งหมด ' + total + ' รายการ' : ' รายการ')
+              )
+            : 'ฐานข้อมูลจริงของ Module นี้ไม่มีรายการ ระบบล้างข้อมูลเก่าบนเครื่องแล้ว',
+          nextItems.length > 0 ? 'SUCCESS' : 'WARN'
+        );
       }
     } catch (error) {
       console.warn('workflow dashboard failed', error);
@@ -7571,7 +7600,7 @@
       window.localStorage.setItem(
         key,
         JSON.stringify({
-          version: 11,
+          version: 12,
           moduleId: state.moduleId,
           savedAt: formatBangkokDateTime(new Date()),
           dataRevision: state.dashboardRevision,
@@ -7584,6 +7613,32 @@
       );
     } catch (error) {
       console.warn('save inbound dashboard cache failed', error);
+    }
+  }
+
+  function clearCurrentDashboardCache() {
+    try {
+      const key = dashboardCacheKey();
+      if (key) {
+        window.localStorage.removeItem(key);
+      }
+    } catch (error) {
+      console.warn('clear inbound dashboard cache failed', error);
+    }
+  }
+
+  function clearLegacyDashboardCaches() {
+    try {
+      const moduleId = String(state.moduleId || '').trim();
+      if (!moduleId) {
+        return;
+      }
+
+      LEGACY_DASHBOARD_CACHE_PREFIXES.forEach((prefix) => {
+        window.localStorage.removeItem(prefix + moduleId);
+      });
+    } catch (error) {
+      console.warn('clear legacy inbound cache failed', error);
     }
   }
 
