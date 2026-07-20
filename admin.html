@@ -17,7 +17,7 @@
   <title>
     จัดการระบบ | ระบบติดตามสถานะรถและตู้สินค้า
   </title>
-  <link rel="stylesheet" href="./admin.bundle.css?v=20260720-structural-editor-r1">
+  <link rel="stylesheet" href="./admin.bundle.css?v=20260720-editor-self-heal-r1">
 
 <script
     src="https://cdn.jsdelivr.net/npm/sweetalert2@11"
@@ -233,7 +233,450 @@
   </style>
 
   <!-- ROUND 10 HOTFIX 2 — Admin Data-Dense UI only -->
-  <script src="./admin.bundle.js?v=20260720-structural-editor-r1" defer></script>
+  <script src="./admin.bundle.js?v=20260720-editor-self-heal-r1" defer></script>
+
+<style id="smartalert-module-editor-critical-css">
+/*
+ * SMARTALERT MODULE EDITOR SELF-HEALING LAYOUT
+ * Build: 2026.07.20-editor-self-heal-r1
+ *
+ * ชุดนี้อยู่ใน admin.html โดยตรง เพื่อป้องกันกรณี HTML ใหม่แต่ CSS เก่ายังค้าง
+ * ทุก selector ถูกจำกัดอยู่ภายใต้ #adminModuleEditor เท่านั้น
+ */
+#adminModuleEditor,
+#adminModuleEditor *,
+#adminModuleEditor *::before,
+#adminModuleEditor *::after {
+  box-sizing: border-box !important;
+}
+
+#adminModuleEditor:not(.is-hidden) {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10000 !important;
+  display: block !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: none !important;
+  overflow: hidden !important;
+  background: #edf5f7 !important;
+}
+
+#adminModuleEditor > .admin-editor__backdrop {
+  display: none !important;
+}
+
+#adminModuleEditor > .admin-editor__panel {
+  position: relative !important;
+  inset: auto !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  overflow: hidden !important;
+  background: #edf5f7 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+#adminModuleEditor .admin-editor__header {
+  position: relative !important;
+  inset: auto !important;
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  min-height: 76px !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 13px 22px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  border-bottom: 1px solid #d7e2e8 !important;
+  background: #fff !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, .05) !important;
+}
+
+#adminModuleEditor #adminModuleForm.admin-editor__body {
+  position: relative !important;
+  inset: auto !important;
+  grid-column: 1 !important;
+  grid-row: 2 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) auto !important;
+  gap: 0 !important;
+  overflow: hidden !important;
+  background: #edf5f7 !important;
+}
+
+#adminModuleEditor #adminExpectedUpdatedAt {
+  display: none !important;
+}
+
+#adminModuleEditor .admin-editor__scroll {
+  position: relative !important;
+  inset: auto !important;
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 16px 20px 30px !important;
+  display: block !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  scrollbar-gutter: stable !important;
+  background:
+    radial-gradient(circle at 7% 0%, rgba(14, 165, 233, .07), transparent 27%),
+    #edf5f7 !important;
+}
+
+#adminModuleEditor .module-editor-top-grid {
+  position: static !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  margin: 0 0 14px !important;
+  padding: 0 !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+  align-items: stretch !important;
+  overflow: visible !important;
+}
+
+#adminModuleEditor .admin-editor-section {
+  position: relative !important;
+  inset: auto !important;
+  z-index: 1 !important;
+  float: none !important;
+  clear: none !important;
+  transform: none !important;
+  grid-column: auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin: 0 0 14px !important;
+  padding: 14px !important;
+  display: block !important;
+  overflow: visible !important;
+  border: 1px solid #d4e0e6 !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .055) !important;
+}
+
+#adminModuleEditor .module-editor-top-grid > .admin-editor-section {
+  margin-bottom: 0 !important;
+  height: 100% !important;
+}
+
+#adminModuleEditor .admin-editor-section__title {
+  width: 100% !important;
+  margin: 0 0 12px !important;
+  padding: 0 !important;
+  display: grid !important;
+  grid-template-columns: 34px minmax(0, 1fr) !important;
+  gap: 10px !important;
+  align-items: center !important;
+}
+
+#adminModuleEditor .admin-editor-section__title > span {
+  width: 34px !important;
+  height: 34px !important;
+  display: grid !important;
+  place-items: center !important;
+  flex: none !important;
+  border-radius: 11px !important;
+  color: #fff !important;
+  background: #0f4c70 !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+}
+
+#adminModuleEditor .admin-editor-section__title h3 {
+  margin: 0 !important;
+  color: #17324d !important;
+  font-size: 15px !important;
+  line-height: 1.2 !important;
+  writing-mode: horizontal-tb !important;
+  word-break: normal !important;
+}
+
+#adminModuleEditor .admin-editor-section__title p {
+  margin: 3px 0 0 !important;
+  color: #64748b !important;
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+  writing-mode: horizontal-tb !important;
+  word-break: normal !important;
+}
+
+#adminModuleEditor .admin-form-grid {
+  width: 100% !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  align-items: start !important;
+}
+
+#adminModuleEditor .admin-editor-section--status .admin-form-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+#adminModuleEditor .admin-field,
+#adminModuleEditor .admin-dynamic-row label {
+  min-width: 0 !important;
+  display: grid !important;
+  align-content: start !important;
+  gap: 5px !important;
+  writing-mode: horizontal-tb !important;
+}
+
+#adminModuleEditor .admin-field--wide {
+  grid-column: span 2 !important;
+}
+
+#adminModuleEditor .admin-field--full {
+  grid-column: 1 / -1 !important;
+}
+
+#adminModuleEditor .admin-field > span,
+#adminModuleEditor .admin-field small,
+#adminModuleEditor .admin-dynamic-row label > span {
+  writing-mode: horizontal-tb !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+#adminModuleEditor input:not([type="checkbox"]):not([type="radio"]),
+#adminModuleEditor select,
+#adminModuleEditor textarea {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  min-height: 40px !important;
+  padding: 8px 10px !important;
+  border: 1px solid #cfdbe2 !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  font-size: 13px !important;
+  line-height: 1.3 !important;
+  writing-mode: horizontal-tb !important;
+}
+
+#adminModuleEditor textarea {
+  min-height: 76px !important;
+  resize: vertical !important;
+}
+
+#adminModuleEditor input[type="checkbox"],
+#adminModuleEditor input[type="radio"] {
+  width: 19px !important;
+  height: 19px !important;
+  min-width: 19px !important;
+  min-height: 19px !important;
+  max-width: 19px !important;
+  max-height: 19px !important;
+  flex: 0 0 19px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+#adminModuleEditor .admin-dynamic-toolbar {
+  width: 100% !important;
+  margin: 0 0 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+}
+
+#adminModuleEditor .admin-dynamic-list {
+  width: 100% !important;
+  display: grid !important;
+  gap: 10px !important;
+}
+
+#adminModuleEditor .admin-dynamic-row {
+  position: relative !important;
+  inset: auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 10px !important;
+  display: grid !important;
+  grid-template-columns: 34px repeat(3, minmax(0, 1fr)) auto !important;
+  gap: 9px !important;
+  align-items: start !important;
+  border: 1px solid #d7e2e8 !important;
+  border-radius: 13px !important;
+  background: #f8fbfc !important;
+  transform: none !important;
+}
+
+#adminModuleEditor .admin-dynamic-checks {
+  grid-column: 2 / -1 !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 8px 14px !important;
+}
+
+#adminModuleEditor .admin-dynamic-checks label {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  writing-mode: horizontal-tb !important;
+}
+
+#adminModuleEditor .admin-toggle-grid {
+  width: 100% !important;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+#adminModuleEditor .admin-toggle {
+  position: relative !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 56px !important;
+  margin: 0 !important;
+  padding: 10px 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+  border: 1px solid #d7e2e8 !important;
+  border-radius: 12px !important;
+  background: #f8fafc !important;
+  writing-mode: horizontal-tb !important;
+}
+
+#adminModuleEditor .admin-toggle span,
+#adminModuleEditor .admin-toggle strong,
+#adminModuleEditor .admin-toggle small {
+  min-width: 0 !important;
+  writing-mode: horizontal-tb !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+#adminModuleEditor .admin-editor__footer {
+  position: static !important;
+  inset: auto !important;
+  grid-column: 1 !important;
+  grid-row: 2 !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 70px !important;
+  margin: 0 !important;
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  border-top: 1px solid #d7e2e8 !important;
+  background: #fff !important;
+  box-shadow: 0 -6px 22px rgba(15, 23, 42, .07) !important;
+  transform: none !important;
+}
+
+@media (max-width: 1320px) {
+  #adminModuleEditor .module-editor-top-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  #adminModuleEditor .admin-editor-section--status {
+    grid-column: 1 / -1 !important;
+  }
+
+  #adminModuleEditor .admin-toggle-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  #adminModuleEditor .module-editor-top-grid,
+  #adminModuleEditor .admin-form-grid,
+  #adminModuleEditor .admin-editor-section--status .admin-form-grid,
+  #adminModuleEditor .admin-toggle-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  #adminModuleEditor .admin-field--wide,
+  #adminModuleEditor .admin-field--full,
+  #adminModuleEditor .admin-editor-section--status {
+    grid-column: auto !important;
+  }
+
+  #adminModuleEditor .admin-dynamic-row {
+    grid-template-columns: 34px minmax(0, 1fr) !important;
+  }
+
+  #adminModuleEditor .admin-dynamic-row > *:not(.admin-dynamic-index) {
+    grid-column: 2 !important;
+  }
+
+  #adminModuleEditor .admin-dynamic-checks {
+    grid-column: 2 !important;
+  }
+}
+
+@media (max-width: 560px) {
+  #adminModuleEditor .admin-editor__header {
+    min-height: 70px !important;
+    padding: 10px 12px !important;
+  }
+
+  #adminModuleEditor .admin-editor__scroll {
+    padding: 10px 10px 22px !important;
+  }
+
+  #adminModuleEditor .admin-editor-section {
+    padding: 11px !important;
+    border-radius: 13px !important;
+  }
+
+  #adminModuleEditor .admin-dynamic-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  #adminModuleEditor .admin-dynamic-row > *,
+  #adminModuleEditor .admin-dynamic-checks {
+    grid-column: 1 !important;
+  }
+
+  #adminModuleEditor .admin-editor__footer {
+    min-height: 68px !important;
+    padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+</style>
+
 </head>
 
 <body
