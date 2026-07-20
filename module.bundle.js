@@ -1,3 +1,7 @@
+/* SMARTALERT BASELINE 1 — Authoritative Receiving UI
+ * Build: 2026.07.21-baseline1
+ */
+
 /*
  * AlertVendor Consolidated Bundle
  * Output: github-pages/module.bundle.js
@@ -2411,17 +2415,14 @@
             method:
               'POST',
 
-            /* Command Journal รับคำสั่งอย่างเดียว Browser จัดการ retry ด้วย Request ID เดิม */
+            /* Baseline 1: รอ Authoritative Commit ของ Receiving + Workflow */
             timeoutMs:
-              Math.min(
-                Number(CONFIG.API_TIMEOUT_MS || 30000),
-                8000
-              ),
+              Number(CONFIG.API_TIMEOUT_MS || 60000),
 
             requestId:
               String(record && (record.clientRequestId || record.requestId) || ''),
 
-            foreground: false,
+            foreground: true,
 
             body:
               record ||
@@ -18597,15 +18598,15 @@
  *
  * หน้าที่ของ Browser
  * 1) จับเวลา ณ ตอนกด
- * 2) เก็บคำสั่งในเครื่องก่อนส่ง Network
- * 3) นำการ์ดออกจากงานที่ต้องทำทันที
- * 4) ส่งคำสั่งไป Server และตรวจสถานะเงียบ ๆ
+ * 2) เก็บ Request ID ในเครื่องก่อนส่ง Network
+ * 3) ล็อกปุ่ม แต่คงการ์ดไว้จน Backend Commit จริง
+ * 4) หลัง Receiving + Workflow Commit จึงย้ายการ์ดออก
  *
- * Browser ไม่ประมวลผล Workflow และไม่เปิด Popup ขวางงาน
+ * Browser ไม่ประมวลผล Workflow และไม่ถือ Queue Accepted เป็น Success
  ************************************************************/
 
 (function (window, document) {
-  const BUILD = '2026.07.20-round11-revision2-receiving-one-click-v1';
+  const BUILD = '2026.07.21-baseline1-authoritative-receiving-ui-v1';
   const STORAGE_PREFIX = 'smartalert:receiving-command:v1:';
   const MAX_ITEM_AGE_MS = 24 * 60 * 60 * 1000;
   const SEND_RETRY_MIN_MS = 2500;
@@ -18625,10 +18626,18 @@
     'STALE_RECORD',
     'SOURCE_RECORD_CHANGED',
     'RECORD_ALREADY_OUT',
+    'RECORD_NO_LONGER_ACTIVE',
+    'RECORD_CHANGED',
     'NOT_CURRENTLY_IN_AREA',
     'DOCUMENT_NOT_SUBMITTED',
+    'DOCUMENT_SUBMIT_REQUIRED',
+    'WORKFLOW_CANCELLED',
+    'WORKFLOW_ALREADY_CLOSED',
+    'WORKFLOW_RECEIVING_EVENT_MISSING',
+    'WORKFLOW_STATE_NOT_READY_FOR_RECEIVING',
     'RECEIVING_NOT_ALLOWED',
     'RECEIVING_DISABLED',
+    'RECEIVING_FEATURE_DISABLED',
     'RECEIVING_COMMAND_REJECTED'
   ]);
 
@@ -18715,16 +18724,14 @@
     pending.set(command.requestId, command);
     persistPending();
     setButtonsForRecord(recordId, true);
-    dispatchAccepted(command);
     closeDetailModal();
     updateStrip();
 
     showToast(
-      'success',
-      'รับสินค้าเสร็จ ' +
+      'info',
+      'กำลังบันทึกรับสินค้าเสร็จ ' +
         (command.expectedPrimaryValue || command.entryCode || '') +
-        ' เวลา ' + timeOnly(clickedAtEpochMs) +
-        ' — ทำรายการคันถัดไปได้'
+        ' — กรุณาไม่กดซ้ำ'
     );
 
     void submitCommand(command);
@@ -18757,17 +18764,11 @@
         return;
       }
 
-      if (result && (
-        result.queueAccepted === true ||
-        result.commandAccepted === true ||
-        result.accepted === true ||
-        result.committed === true ||
-        result.completed === true
-      )) {
+      if (result && result.committed === true && result.completed === true &&
+          result.workflowCommitted !== false &&
+          (!result.workflowSync || result.workflowSync.success === true)) {
         command.serverAccepted = true;
-        command.status = result.completed === true || result.committed === true
-          ? 'DONE'
-          : 'SERVER_ACCEPTED';
+        command.status = 'DONE';
         command.receivingCompleteAt = String(
           result.receivingCompleteAt || command.receivingCompleteAt
         );
@@ -18777,12 +18778,20 @@
         command.updatedAtEpochMs = Date.now();
         persistPending();
 
-        if (command.status === 'DONE') {
-          completeCommand(command, result);
-        } else {
-          updateStrip();
-          scheduleLoopNow();
-        }
+        completeCommand(command, result);
+        return;
+      }
+
+      if (result && (result.receivingCommitted === true || result.accepted === true)) {
+        command.serverAccepted = true;
+        command.status = 'SERVER_ACCEPTED';
+        command.lastCode = code || 'WORKFLOW_SYNC_PENDING';
+        command.lastMessage = String(result.message || 'รับข้อมูลแล้ว กำลังยืนยัน Workflow');
+        command.nextStatusAtEpochMs = Date.now() + 1500;
+        command.updatedAtEpochMs = Date.now();
+        persistPending();
+        updateStrip();
+        scheduleLoopNow();
         return;
       }
 
@@ -18832,12 +18841,12 @@
         return;
       }
 
-      if (result && (result.completed === true || result.done === true || result.committed === true)) {
+      if (result && result.completed === true && result.committed === true && result.workflowCommitted !== false) {
         completeCommand(command, result);
         return;
       }
 
-      if (result && (result.found === true || result.queueAccepted === true || result.commandAccepted === true)) {
+      if (result && (result.found === true || result.receivingCommitted === true || result.pending === true || result.queueAccepted === true || result.commandAccepted === true)) {
         command.serverAccepted = true;
         command.status = 'SERVER_ACCEPTED';
         command.lastCode = code || 'RECEIVING_COMMAND_PENDING';
@@ -18876,6 +18885,7 @@
     command.status = 'DONE';
     command.updatedAtEpochMs = Date.now();
     dispatchCommitted(command, result || {});
+    showToast('success', 'บันทึกรับสินค้าเสร็จแล้ว การ์ดถูกย้ายไปสถานะรอรับเอกสารคืน');
     pending.delete(command.requestId);
     persistPending();
     updateStrip();
@@ -19036,7 +19046,6 @@
 
   function applyPendingToBoard() {
     pending.forEach(function (command) {
-      dispatchAccepted(command);
       setButtonsForRecord(command.recordId, true);
     });
   }
@@ -19046,10 +19055,15 @@
     document.querySelectorAll(
       '.receiving-complete-button[data-record-id="' + safe + '"]'
     ).forEach(function (button) {
+      if (!button.dataset.receivingOriginalLabel) {
+        button.dataset.receivingOriginalLabel = String(button.textContent || 'รับสินค้าเสร็จ').trim();
+      }
       button.disabled = disabled === true;
       button.setAttribute('aria-disabled', disabled === true ? 'true' : 'false');
       button.dataset.receivingCommandPending = disabled === true ? 'TRUE' : 'FALSE';
-      if (disabled === true) button.textContent = 'รับคำสั่งแล้ว';
+      button.textContent = disabled === true
+        ? 'กำลังยืนยัน...'
+        : (button.dataset.receivingOriginalLabel || 'รับสินค้าเสร็จ');
     });
   }
 
@@ -19071,7 +19085,7 @@
     strip.hidden = false;
     strip.dataset.state = offline ? 'OFFLINE' : 'SYNCING';
     strip.innerHTML =
-      '<strong>' + (offline ? 'เก็บคำสั่งในเครื่อง' : 'กำลังยืนยันด้านหลัง') + '</strong>' +
+      '<strong>' + (offline ? 'เก็บคำสั่งในเครื่อง' : 'กำลังยืนยันส่วนกลาง') + '</strong>' +
       '<span>' + count + ' รายการ' +
       (waitingServer ? ' · รอส่ง ' + waitingServer : '') +
       ' · ไม่ต้องกดซ้ำ</span>';
