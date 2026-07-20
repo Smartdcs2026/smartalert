@@ -1,5 +1,5 @@
 /* SMARTALERT BASELINE 1 — Canonical Workflow Status Compatibility
- * Build: 2026.07.21-baseline1
+ * Build: 2026.07.21-baseline2
  */
 
 /*
@@ -6277,7 +6277,7 @@
   const INPUT_DEBOUNCE_MS = 250;
   const MIN_CODE_LENGTH = 12;
   const DASHBOARD_LIMIT = 1000;
-  const DASHBOARD_POLL_MS = 8000;
+  const DASHBOARD_POLL_MIN_MS = 10000;
   const FOCUS_SUPPRESS_MS = 18000;
   const DASHBOARD_CACHE_PREFIX = 'ALERT_VENDOR_INBOUND_DASHBOARD_CACHE_V11_';
   const DASHBOARD_CACHE_MAX_ITEMS = 800;
@@ -6319,6 +6319,7 @@
     effectiveSlaRules: {},
     dashboardPollTimer: 0,
     dashboardPollBusy: false,
+    dashboardPollMs: 0,
     foregroundWriteActive: false,
     postWriteRevisionTimer: 0,
     queueReady: false,
@@ -7404,6 +7405,15 @@
       ? source.effectiveSlaRules
       : state.effectiveSlaRules;
 
+    const serverRefreshSeconds = Number(
+      source.runtimePolicy?.refreshSeconds ??
+      source.module?.refreshSeconds
+    );
+    state.dashboardPollMs =
+      Number.isFinite(serverRefreshSeconds) && serverRefreshSeconds >= 10
+        ? Math.max(DASHBOARD_POLL_MIN_MS, serverRefreshSeconds * 1000)
+        : 0;
+
     const serverSla = state.dashboardSummary && state.dashboardSummary.sla;
     if (serverSla && typeof serverSla === 'object') {
       state.slaSummary = {
@@ -7440,9 +7450,15 @@
 
   function startDashboardPolling() {
     window.clearInterval(state.dashboardPollTimer);
+
+    if (!Number.isFinite(state.dashboardPollMs) || state.dashboardPollMs < DASHBOARD_POLL_MIN_MS) {
+      setScanMessage('Admin ยังไม่ได้ตั้งรอบ Refresh ระบบจึงปิดการดึงข้อมูลอัตโนมัติ', 'WARN');
+      return;
+    }
+
     state.dashboardPollTimer = window.setInterval(() => {
       void pollDashboardRevision();
-    }, DASHBOARD_POLL_MS);
+    }, state.dashboardPollMs);
   }
 
   async function pollDashboardRevision() {
