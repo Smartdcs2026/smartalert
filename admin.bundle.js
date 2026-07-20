@@ -1,7 +1,7 @@
 /*
  * AlertVendor Consolidated Bundle
  * Output: github-pages/admin.bundle.js
- * Build: 20260720-consolidated-bundle-r1
+ * Build: 20260720-admin-shift-timeout-fullpage-r1
  * Generated: 2026-07-20 00:02:45
  * Mode: concatenate-only / no business logic rewrite
  */
@@ -4323,7 +4323,11 @@
     showPageLoading(true);
 
     try {
-      const session = await API.me();
+      const session = await withAdminBootTimeout(
+        API.me(),
+        18000,
+        'ตรวจสอบ Session ผู้ดูแลระบบนานเกินไป'
+      );
 
       if (
         !session ||
@@ -4343,19 +4347,46 @@
         session.user.displayName || session.user.username || 'Admin'
       );
 
-      const results = await Promise.all([
-        API.getAdminUiSchema(),
-        API.getAdminDashboard({ auditLimit: 30 })
+      const [schemaResult, dashboardResult] = await Promise.allSettled([
+        withAdminBootTimeout(
+          API.getAdminUiSchema(),
+          20000,
+          'โหลดโครงสร้างหน้า Admin นานเกินไป'
+        ),
+        withAdminBootTimeout(
+          API.getAdminDashboard({ auditLimit: 20 }),
+          22000,
+          'โหลดข้อมูลหน้า Admin นานเกินไป'
+        )
       ]);
 
-      state.schema = results[0];
-      state.dashboard = results[1];
+      state.schema =
+        schemaResult.status === 'fulfilled'
+          ? schemaResult.value
+          : buildAdminBootFallbackSchema();
+
+      state.dashboard =
+        dashboardResult.status === 'fulfilled'
+          ? dashboardResult.value
+          : buildAdminBootFallbackDashboard(session);
+
       state.dashboardSignature =
         buildAdminDashboardSignature(
           state.dashboard
         );
 
       renderAll();
+
+      if (
+        schemaResult.status !== 'fulfilled' ||
+        dashboardResult.status !== 'fulfilled'
+      ) {
+        toast(
+          'เปิดหน้า Admin แบบกู้คืนชั่วคราวได้แล้ว กรุณากดรีเฟรชอีกครั้งหลัง Deploy เสร็จ',
+          'warning'
+        );
+      }
+
       startSilentDashboardRefresh();
       loadVcwCleanupStatus(false).catch(() => {});
     } catch (error) {
@@ -4366,6 +4397,144 @@
       showPageLoading(false);
     }
   }
+
+
+  function withAdminBootTimeout(promise, timeoutMs, message) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+
+      const timer = window.setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        reject(
+          createLocalError(
+            'ADMIN_BOOT_TIMEOUT',
+            message || 'โหลดข้อมูลหลังบ้านนานเกินไป'
+          )
+        );
+      }, Math.max(5000, Number(timeoutMs) || 15000));
+
+      Promise.resolve(promise)
+        .then((value) => {
+          if (settled) return;
+          settled = true;
+          window.clearTimeout(timer);
+          resolve(value);
+        })
+        .catch((error) => {
+          if (settled) return;
+          settled = true;
+          window.clearTimeout(timer);
+          reject(error);
+        });
+    });
+  }
+
+
+  function buildAdminBootFallbackSchema() {
+    return {
+      version: 'frontend-fallback-2026.07.20',
+      enums: {
+        userRoles: ['USER', 'INBOUND', 'ADMIN'],
+        moduleStatuses: ['DRAFT', 'PUBLISHED', 'DISABLED', 'ADMIN_ONLY', 'ARCHIVED'],
+        currentStatusMethods: [
+          'TIMESTAMP_OUT_EMPTY',
+          'TIMESTAMP_OUT_EMPTY_AND_DURATION_EMPTY',
+          'CUSTOM_COLUMN'
+        ],
+        filterOperators: [
+          'EQUALS',
+          'NOT_EQUALS',
+          'CONTAINS',
+          'NOT_CONTAINS',
+          'STARTS_WITH',
+          'ENDS_WITH',
+          'EMPTY',
+          'NOT_EMPTY'
+        ],
+        filterConnectors: ['AND', 'OR'],
+        fieldTypes: ['TEXT', 'NUMBER', 'DATETIME', 'DATE', 'TIME', 'BADGE', 'DURATION'],
+        fieldPositions: ['PRIMARY', 'SECONDARY', 'DETAIL', 'FOOTER', 'HIDDEN']
+      },
+      defaults: {
+        moduleId: 'vendors',
+        sourceSheetName: 'Sheet1',
+        headerRow: 1,
+        timestampInColumn: 'B',
+        timestampOutColumn: 'O',
+        durationColumn: 'P',
+        warningStartMinutes: 60,
+        redStartMinutes: 120,
+        alertRepeatMinutes: 10,
+        refreshSeconds: 15,
+        historyMonths: 12
+      }
+    };
+  }
+
+
+  function buildAdminBootFallbackDashboard(session) {
+    const user =
+      session &&
+      session.user
+        ? session.user
+        : {};
+
+    return {
+      version: 'frontend-fallback-2026.07.20',
+      generatedAt: formatBangkokDateTime(new Date()),
+      actor: {
+        username: user.username || 'admin',
+        role: 'ADMIN'
+      },
+      capabilities: {
+        moduleManagement: true,
+        userManagement: true,
+        settingsManagement: true,
+        auditViewer: true,
+        sourceInspector: true,
+        permanentModuleDelete: false
+      },
+      settings: {
+        SYSTEM_NAME: { value: 'SmartAlert Vendor Workflow', updatedAt: '', updatedBy: 'SYSTEM' },
+        AUTO_CLOSE_HOURS: { value: 36, updatedAt: '', updatedBy: 'SYSTEM' },
+        DEFAULT_REFRESH_SECONDS: { value: 15, updatedAt: '', updatedBy: 'SYSTEM' },
+        SESSION_TIMEOUT_MINUTES: { value: 720, updatedAt: '', updatedBy: 'SYSTEM' },
+        MAX_LOGIN_FAILURES: { value: 5, updatedAt: '', updatedBy: 'SYSTEM' },
+        LOGIN_LOCK_MINUTES: { value: 15, updatedAt: '', updatedBy: 'SYSTEM' },
+        SWEETALERT_ENABLED: { value: true, updatedAt: '', updatedBy: 'SYSTEM' }
+      },
+      modules: [],
+      users: [
+        {
+          userId: user.userId || '',
+          username: user.username || 'admin',
+          displayName: user.displayName || 'ผู้ดูแลระบบ',
+          role: 'ADMIN',
+          active: true,
+          mustChangePassword: false,
+          lastLoginAt: '',
+          failedLoginCount: 0,
+          lockedAt: '',
+          updatedAt: ''
+        }
+      ],
+      recentAudit: [],
+      structure: {
+        success: false,
+        sheets: [
+          {
+            sheetName: 'กำลังรอข้อมูลจาก Apps Script',
+            exists: true,
+            rowCount: 0,
+            columnCount: 0,
+            missingHeaders: []
+          }
+        ]
+      }
+    };
+  }
+
 
   function bindStaticEvents() {
     document.querySelectorAll('[data-admin-tab]').forEach((button) => {
@@ -9420,11 +9589,15 @@
     showMessage('กำลังเตรียมข้อมูล Module', 'LOADING', false);
 
     try {
-      await waitForAdminReady();
+      const adminReady = await waitForAdminReady();
       assertApi();
       await loadModules(false);
       state.initialized = true;
       hideMessage();
+
+      if (adminReady === false) {
+        console.warn('[Admin Shift] initialized with fallback admin-ready mode');
+      }
     } catch (error) {
       renderLoadFailure(error);
       showMessage(errorMessage(error), 'ERROR', true);
@@ -10037,13 +10210,51 @@
 
   async function waitForAdminReady() {
     const started = Date.now();
-    while (Date.now() - started < 20000) {
+    while (Date.now() - started < 8000) {
       const loading = byId('adminPageLoading');
       const user = text(byId('adminCurrentUser')?.textContent);
-      if ((!loading || !isVisible(loading)) && user && user !== 'กำลังโหลด...') return;
+      const tabsReady = document.querySelectorAll('[data-admin-tab]').length > 0;
+      const shiftPanel = byId('adminPanelShifts');
+
+      if (((!loading || !isVisible(loading)) && tabsReady) || (user && user !== 'กำลังโหลด...')) {
+        return true;
+      }
+
+      if (shiftPanel && tabsReady && document.readyState === 'complete') {
+        return true;
+      }
+
       await delay(150);
     }
-    throw codedError('ADMIN_READY_TIMEOUT', 'หน้า Admin ยังตรวจสิทธิ์ไม่เสร็จ');
+
+    const API = window.VehicleAPI;
+    if (API && typeof API.me === 'function') {
+      try {
+        const session = await withTimeout(
+          API.me(),
+          7000,
+          'ADMIN_READY_SESSION_TIMEOUT'
+        );
+
+        if (
+          session &&
+          session.authenticated &&
+          session.user &&
+          String(session.user.role || '').trim().toUpperCase() === 'ADMIN'
+        ) {
+          const currentUser = byId('adminCurrentUser');
+          if (currentUser && !text(currentUser.textContent)) {
+            currentUser.textContent = session.user.displayName || session.user.username || 'Admin';
+          }
+          return false;
+        }
+      } catch (error) {
+        console.warn('[Admin Shift] fallback session check failed', error);
+      }
+    }
+
+    console.warn('[Admin Shift] continue without strict admin-ready state');
+    return false;
   }
 
   function isVisible(element) {
