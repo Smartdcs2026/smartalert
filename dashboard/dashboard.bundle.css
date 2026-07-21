@@ -8,3 +8,94 @@
 body.is-fullscreen{overflow:hidden}.is-fullscreen .topbar{height:62px;position:static}.is-fullscreen .dashboard-stage{height:calc(100vh - 62px);max-width:none;padding:7px;gap:6px;grid-template-rows:82px 54px minmax(0,1fr) 162px;overflow:hidden}.is-fullscreen .kpi-card{min-height:0;padding:7px}.is-fullscreen .kpi-icon{width:35px;height:35px;flex-basis:35px}.is-fullscreen .kpi-card strong{font-size:25px}.is-fullscreen .main-grid,.is-fullscreen .bottom-grid{min-height:0}.is-fullscreen .panel{padding:7px}.is-fullscreen .table-wrap{height:120px}
 @media(max-width:1280px){.kpi-row{grid-template-columns:repeat(4,1fr)}.main-grid{grid-template-columns:1fr 1.35fr}.right-column{grid-column:1/-1;grid-template-columns:1fr 1fr;grid-template-rows:auto}.bottom-grid{grid-template-columns:1fr}.filter-bar{grid-template-columns:repeat(4,1fr)}.search-field{grid-column:span 2}}
 @media(max-width:760px){.topbar{height:auto;align-items:flex-start;flex-direction:column}.topbar-actions{width:100%;flex-wrap:wrap}.brand-copy h1{font-size:19px}.dashboard-stage{padding:7px}.kpi-row{grid-template-columns:repeat(2,1fr)}.filter-bar{grid-template-columns:repeat(2,1fr)}.search-field{grid-column:1/-1}.main-grid{grid-template-columns:1fr}.right-column{grid-column:auto;grid-template-columns:1fr}.bottom-grid{grid-template-columns:1fr}.shift-summary{grid-template-columns:repeat(2,1fr)}.current-shift{grid-column:1/-1}.data-footnote{flex-direction:column;gap:2px}.kpi-card{min-height:82px}.clock-block{padding:0 8px}.fullscreen-button{min-width:auto}}
+
+/* Round 4 Hotfix 1: Compact dashboard + contain chart growth */
+.topbar{height:60px;padding:6px 14px;gap:12px}
+.brand-mark{width:48px;height:48px;font-size:18px}
+.brand-copy h1{font-size:23px;line-height:1.05}
+.brand-copy p{font-size:11px;line-height:1.2}
+.topbar-actions{gap:10px}
+.topbar-button{height:46px;padding:0 14px;font-size:12px}
+.clock-block{min-width:150px;padding:0 12px}
+.clock-block span{font-size:10px}
+.clock-block strong{font-size:14px}
+.live-state{font-size:11px}
+.dashboard-stage{max-width:1760px;padding:8px;gap:8px}
+.kpi-row{gap:8px}
+.kpi-card{min-height:80px;padding:8px 10px;gap:9px}
+.kpi-icon{width:38px;height:38px;flex:0 0 38px;border-radius:11px;font-size:11px}
+.kpi-card span{font-size:11px}
+.kpi-card strong{font-size:23px}
+.kpi-card small{font-size:9px}
+.filter-bar{gap:7px;padding:8px}
+.filter-bar label>span{font-size:9px}
+.filter-bar input,.filter-bar select,.refresh-button{height:34px}
+.main-grid{grid-template-columns:28% 42% 30%;gap:8px;min-height:0;align-items:start}
+.left-column,.center-column,.right-column{gap:8px;align-content:start}
+.left-column{grid-template-rows:minmax(250px,auto) minmax(210px,auto)}
+.center-column{grid-template-rows:minmax(250px,auto) minmax(250px,auto)}
+.right-column{grid-template-rows:minmax(420px,auto) minmax(170px,auto)}
+.panel{padding:9px}
+.panel-title,.calendar-header{margin-bottom:6px}
+.panel-title h2,.calendar-header h2{font-size:14px}
+.panel-title span,.selected-day>strong{font-size:9px}
+.chart-panel,.status-panel,.hourly-panel,.stage-time-panel{display:grid;grid-template-rows:auto 1fr;min-height:0}
+.chart-canvas{height:clamp(210px,24vh,245px);min-height:210px;max-height:245px;overflow:hidden;position:relative}
+.chart-canvas canvas{display:block;width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important}
+.hourly-panel .chart-canvas{height:clamp(220px,25vh,250px);min-height:220px;max-height:250px}
+.stage-time-panel .chart-canvas{height:clamp(220px,25vh,250px);min-height:220px;max-height:250px}
+.donut-layout{height:clamp(205px,24vh,235px);grid-template-columns:54% 46%}
+.donut-wrap{min-height:0;overflow:hidden}
+.donut-wrap canvas{display:block;width:100%!important;height:100%!important;max-width:190px!important;max-height:190px!important}
+.donut-center strong{font-size:24px}
+.status-legend{gap:5px}
+.legend-row{font-size:9px}
+.legend-row b{font-size:10px}
+.calendar-panel{min-height:0}
+.calendar-grid{gap:4px}
+.calendar-day{height:30px;font-size:8px}
+.selected-day{margin-top:5px;padding:6px}
+.selected-day-grid span{font-size:8px}
+.selected-day-grid b{font-size:12px}
+.ranking-row{grid-template-columns:14px minmax(0,1fr) minmax(70px,48%) auto;gap:5px;font-size:9px}
+.bottom-grid{grid-template-columns:60% 40%;gap:8px;min-height:160px}
+.table-wrap{height:148px}
+.tracking-table{font-size:9px}
+.shift-summary{grid-template-columns:1.1fr repeat(4,1fr)}
+.current-shift strong{font-size:17px}
+.shift-metric strong{font-size:20px}
+.data-footnote{font-size:8px;gap:10px;flex-wrap:wrap}
+body.is-fullscreen .topbar{height:54px}
+.is-fullscreen .dashboard-stage{height:calc(100vh - 54px);grid-template-rows:74px 48px minmax(0,1fr) 150px;padding:6px;gap:6px}
+.is-fullscreen .kpi-card{padding:6px 8px}
+.is-fullscreen .kpi-icon{width:32px;height:32px;flex-basis:32px;font-size:10px}
+.is-fullscreen .kpi-card strong{font-size:21px}
+.is-fullscreen .topbar-button{height:40px}
+.is-fullscreen .chart-canvas{height:clamp(190px,22vh,220px);min-height:190px;max-height:220px}
+.is-fullscreen .hourly-panel .chart-canvas,.is-fullscreen .stage-time-panel .chart-canvas{height:clamp(195px,22vh,225px);min-height:195px;max-height:225px}
+.is-fullscreen .donut-layout{height:clamp(185px,22vh,210px)}
+.is-fullscreen .donut-wrap canvas{max-width:168px!important;max-height:168px!important}
+@media(max-width:1280px){
+  .topbar{height:auto;padding:8px 12px}
+  .brand-copy h1{font-size:21px}
+  .kpi-row{grid-template-columns:repeat(4,1fr)}
+  .main-grid{grid-template-columns:1fr 1.25fr}
+  .right-column{grid-column:1/-1;grid-template-columns:1fr 1fr;grid-template-rows:auto}
+  .hourly-panel .chart-canvas,.stage-time-panel .chart-canvas,.chart-canvas{height:230px;min-height:230px;max-height:230px}
+}
+@media(max-width:760px){
+  .topbar{gap:8px}
+  .topbar-button{height:38px;padding:0 10px}
+  .brand-mark{width:42px;height:42px}
+  .brand-copy h1{font-size:18px}
+  .dashboard-stage{padding:6px;gap:6px}
+  .kpi-card{min-height:74px;padding:7px 8px}
+  .kpi-card strong{font-size:20px}
+  .filter-bar{grid-template-columns:repeat(2,1fr)}
+  .main-grid{grid-template-columns:1fr}
+  .right-column{grid-template-columns:1fr}
+  .bottom-grid{grid-template-columns:1fr}
+  .chart-canvas,.hourly-panel .chart-canvas,.stage-time-panel .chart-canvas{height:210px;min-height:210px;max-height:210px}
+  .donut-layout{height:210px;grid-template-columns:1fr}
+  .status-legend{grid-template-columns:1fr 1fr}
+}
