@@ -1,3 +1,10 @@
+/* SMARTALERT BASELINE 2 FINAL HOTFIX 4 — INTERACTIVE FAST LANE
+ * Build: 2026.07.21-baseline2-final-hotfix4-interactive-fast-lane-v1
+ * - Online scan uses direct authoritative commit
+ * - Timeout/Busy verifies current state before entering Recovery Queue
+ * - Queue remains fallback for offline or confirmed uncommitted operations
+ */
+
 /* SMARTALERT BASELINE 2 HOTFIX 5 — INBOUND AUTHORITATIVE SOURCE
  * Build: 2026.07.21-baseline2-hotfix5-source-auth-stability-v1
  * - Online mode never renders old local dashboard cache before the server reply
@@ -2534,8 +2541,7 @@
         {
           method: 'POST',
           timeoutMs:
-            CONFIG.SAVE_TIMEOUT_MS ||
-            90000,
+            Math.min(Number(CONFIG.SAVE_TIMEOUT_MS || 15000), 15000),
           requestId:
             body.clientRequestId,
           body
@@ -7037,6 +7043,16 @@
           return;
         } catch (processError) {
           if (isTransientQueueError(processError)) {
+            const verified = await verifyProcessScanCommitAfterTransient(
+              cleanCode,
+              workflowExpectation,
+              requestId
+            );
+            if (verified) {
+              handleProcessScanResult(verified, cleanCode);
+              return;
+            }
+
             const queued = await queueResolveScan(
               cleanCode,
               source,
@@ -7047,7 +7063,9 @@
               beep('warn');
               blockDuplicate(cleanCode, HARD_BLOCK_AFTER_SAVE_MS);
               setScanMessage(
-                'ยังยืนยันผลไม่ได้ · เก็บรายการไว้ตรวจสอบอัตโนมัติ: ' + cleanCode,
+                navigator.onLine === false
+                  ? 'ออฟไลน์ · เก็บรายการไว้ในเครื่องแล้ว: ' + cleanCode
+                  : 'Backend ยังไม่ยืนยันผล · ระบบจะตรวจซ้ำด้วย Request ID เดิม: ' + cleanCode,
                 'WARN'
               );
               return;
@@ -7110,6 +7128,58 @@
       setScannerStatus('พร้อมสแกนรายการถัดไป', state.scanner && state.scanner.running ? 'READY' : 'IDLE');
       resetForNextScan();
     }
+  }
+
+  async function verifyProcessScanCommitAfterTransient(autoId, expectation, requestId) {
+    if (!API || typeof API.lookupInboundWorkflow !== 'function' || navigator.onLine === false) {
+      return null;
+    }
+
+    const expectedAction = text(expectation && expectation.expectedActionCode).toUpperCase();
+    const delays = [220, 650];
+
+    for (let index = 0; index < delays.length; index += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, delays[index]));
+      try {
+        const raw = await API.lookupInboundWorkflow(state.moduleId, autoId, {
+          method: 'VERIFY',
+          lookupMethod: 'VERIFY',
+          scanSource: 'DIRECT_TIMEOUT_VERIFY',
+          clientRequestId: requestId,
+          requestId
+        });
+        const lookup = normalizeLookup(raw, {autoId});
+        const workflow = lookup && lookup.state ? lookup.state : {};
+        const status = text(workflow.statusCode).toUpperCase();
+        const submitCommitted = Boolean(
+          workflow.documentSubmittedAt ||
+          ['DOCUMENT_SUBMITTED', 'RECEIVING_COMPLETED', 'DOCUMENT_RETURNED', 'GATE_OUT_COMPLETED'].includes(status)
+        );
+        const returnCommitted = Boolean(
+          workflow.documentReturnedAt ||
+          ['DOCUMENT_RETURNED', 'GATE_OUT_COMPLETED'].includes(status)
+        );
+        const committed = expectedAction === 'RETURN_DOCUMENT'
+          ? returnCommitted
+          : expectedAction === 'SUBMIT_DOCUMENT'
+            ? submitCommitted
+            : false;
+
+        if (committed) {
+          return Object.assign({}, raw || {}, {
+            committed: true,
+            idempotentReplay: true,
+            resolvedAction: expectedAction,
+            requestId,
+            message: 'Backend บันทึกสำเร็จแล้ว ระบบตรวจยืนยันด้วย Request ID เดิม'
+          });
+        }
+      } catch (error) {
+        if (!isTransientQueueError(error)) break;
+      }
+    }
+
+    return null;
   }
 
   function handleProcessScanResult(result, fallbackAutoId) {
@@ -8153,7 +8223,7 @@
       } else if (!online) {
         detail.textContent = 'สแกนต่อได้ตามปกติ ระบบจะส่งเองเมื่ออินเทอร์เน็ตกลับมา';
       } else if (pending > 0) {
-        detail.textContent = 'สแกนรายการถัดไปได้ทันที · ระบบกำลังบันทึกด้านหลัง';
+        detail.textContent = 'มีรายการรอตรวจยืนยัน · ระบบจะส่งซ้ำด้วย Request ID เดิม';
       } else {
         detail.textContent = 'ยิงรหัสแล้วรับรายการถัดไปได้ทันที';
       }
@@ -8196,7 +8266,7 @@
     }
 
     if (Number(state.queueSummary.pending || 0) > 0) {
-      setConnection('ONLINE · กำลังบันทึกด้านหลัง', 'LOADING');
+      setConnection('ONLINE · กำลังตรวจคำสั่งค้าง', 'LOADING');
       return;
     }
 
