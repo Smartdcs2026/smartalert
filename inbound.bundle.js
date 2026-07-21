@@ -6273,8 +6273,8 @@
   const CONFIG = window.APP_CONFIG || {};
   const API = window.VehicleAPI;
   const PENDING_QUEUE = window.InboundPendingQueue;
-  const BUILD = '2026.07.21-baseline2-hotfix5-source-auth-stability-v1';
-  const FAST_SCAN_MODE = true;
+  const BUILD = '2026.07.21-baseline2-final-hotfix2-fast-workflow-v1';
+  const FAST_SCAN_MODE = false; // Online = authoritative direct commit; Queue ใช้เฉพาะ Offline/Timeout
   const FAST_QUEUE_FLUSH_DELAY_MS = 35;
   const FAST_QUEUE_RETRY_BASE_MS = 1200;
   const FAST_QUEUE_RETRY_MAX_MS = 60000;
@@ -6284,10 +6284,11 @@
   const INPUT_DEBOUNCE_MS = 250;
   const MIN_CODE_LENGTH = 12;
   const DASHBOARD_LIMIT = 1000;
-  const DASHBOARD_POLL_MIN_MS = 10000;
+  const DASHBOARD_POLL_MIN_MS = 5000;
   const FOCUS_SUPPRESS_MS = 18000;
-  const DASHBOARD_CACHE_PREFIX = 'ALERT_VENDOR_INBOUND_DASHBOARD_CACHE_V12_';
+  const DASHBOARD_CACHE_PREFIX = 'ALERT_VENDOR_INBOUND_DASHBOARD_CACHE_V13_';
   const LEGACY_DASHBOARD_CACHE_PREFIXES = [
+    'ALERT_VENDOR_INBOUND_DASHBOARD_CACHE_V12_',
     'ALERT_VENDOR_INBOUND_DASHBOARD_CACHE_V11_',
     'ALERT_VENDOR_INBOUND_DASHBOARD_CACHE_V10_',
     'ALERT_VENDOR_INBOUND_DASHBOARD_CACHE_V9_'
