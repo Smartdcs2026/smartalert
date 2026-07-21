@@ -1,3 +1,4 @@
+/* INBOUND_READ_AFTER_WRITE_HOTFIX4_BUILD: 2026.07.22 */
 /* INBOUND_COMPACT_PROFILE_HOTFIX3_BUILD: 2026.07.22 */
 /* PROFILE_AWARE_TIMING_R1_BUILD: 2026.07.21 */
 /* SMARTALERT BASELINE 2 FINAL HOTFIX 5 — OPTIONAL INBOUND UI
@@ -6307,6 +6308,9 @@
     'ALERT_VENDOR_INBOUND_DASHBOARD_CACHE_V9_'
   ];
   const DASHBOARD_CACHE_MAX_ITEMS = 800;
+  const POST_WRITE_HOLD_MS = 60000;
+  const POST_WRITE_HARD_EXPIRE_MS = 120000;
+  const POST_WRITE_REVISION_DELAY_MS = 1800;
 
   const state = {
     session: null,
@@ -6348,6 +6352,8 @@
     dashboardPollMs: 0,
     foregroundWriteActive: false,
     postWriteRevisionTimer: 0,
+    postWriteHolds: new Map(),
+    postWriteVerificationTimers: new Map(),
     queueReady: false,
     queueSummary: {
       pending: 0,
@@ -7217,6 +7223,13 @@
     const committed = result && result.committed === true;
     const replay = result && result.idempotentReplay === true;
 
+    if (committed) {
+      registerPostWriteHold(lookup, {
+        requestId: result && result.requestId,
+        expectedStatusCode: lookup && lookup.state && lookup.state.statusCode
+      });
+    }
+
     state.currentLookup = lookup;
     renderLookupResult(lookup);
     upsertDashboardItemFromLookup(lookup);
@@ -7274,6 +7287,10 @@
     try {
       const result = await API.submitInboundDocument(state.moduleId, payload);
       const updated = normalizeLookup(result, lookup.record);
+      registerPostWriteHold(updated, {
+        requestId,
+        expectedStatusCode: updated && updated.state && updated.state.statusCode
+      });
       state.currentLookup = updated;
       renderLookupResult(updated);
       upsertDashboardItemFromLookup(updated);
@@ -7323,6 +7340,10 @@
     try {
       const result = await API.returnInboundDocument(state.moduleId, payload);
       const updated = normalizeLookup(result, lookup.record);
+      registerPostWriteHold(updated, {
+        requestId,
+        expectedStatusCode: updated && updated.state && updated.state.statusCode
+      });
       state.currentLookup = updated;
       renderLookupResult(updated);
       upsertDashboardItemFromLookup(updated);
@@ -7425,6 +7446,184 @@
     return {type: 'NONE', level: 'WARN', message: workflow.nextStepText || 'สถานะนี้ยังไม่พร้อมบันทึกขั้นตอนถัดไป'};
   }
 
+
+  function workflowStatusRank(statusCode) {
+    const code = text(statusCode).toUpperCase();
+    const ranks = {
+      GATE_IN: 10,
+      WAITING_DOCUMENT_SUBMISSION: 10,
+      DOCUMENT_SUBMITTED: 20,
+      WAITING_RECEIVING: 20,
+      RECEIVING_COMPLETED: 30,
+      WAITING_DOCUMENT_RETURN: 30,
+      DOCUMENT_RETURNED: 40,
+      WAITING_GATE_OUT: 40,
+      GATE_OUT_COMPLETED: 50,
+      AUTO_CLOSED: 50,
+      CANCELLED: 60
+    };
+    return Number(ranks[code] || 0);
+  }
+
+  function isDashboardItemAtOrBeyond(item, expectedStatusCode) {
+    if (!item) return false;
+    const current = text(item.statusCode).toUpperCase();
+    const expected = text(expectedStatusCode).toUpperCase();
+    if (!expected) return true;
+    if (current === expected) return true;
+    return workflowStatusRank(current) >= workflowStatusRank(expected) &&
+      workflowStatusRank(expected) > 0;
+  }
+
+  function clearPostWriteVerificationTimer(autoId) {
+    const key = normalizeCode(autoId);
+    const timer = state.postWriteVerificationTimers.get(key);
+    if (timer) window.clearTimeout(timer);
+    state.postWriteVerificationTimers.delete(key);
+  }
+
+  function clearPostWriteHold(autoId) {
+    const key = normalizeCode(autoId);
+    if (!key) return;
+    state.postWriteHolds.delete(key);
+    clearPostWriteVerificationTimer(key);
+  }
+
+  function registerPostWriteHold(lookup, details) {
+    const item = dashboardItemFromLookup(lookup);
+    const autoId = normalizeCode(item.autoId);
+    if (!autoId) return;
+
+    const config = details && typeof details === 'object' ? details : {};
+    const expectedStatusCode = text(
+      config.expectedStatusCode || item.statusCode
+    ).toUpperCase();
+    const now = Date.now();
+
+    item.updatedAt = item.updatedAt || formatBangkokDateTime(new Date());
+
+    state.postWriteHolds.set(autoId, {
+      autoId,
+      requestId: text(config.requestId),
+      expectedStatusCode,
+      item,
+      createdAtMs: now,
+      holdUntilMs: now + POST_WRITE_HOLD_MS,
+      hardExpireAtMs: now + POST_WRITE_HARD_EXPIRE_MS
+    });
+
+    schedulePostWriteHoldVerification(autoId, 650);
+  }
+
+  function mergeDashboardWithPostWriteHolds(serverItems) {
+    const map = new Map();
+    const now = Date.now();
+
+    (Array.isArray(serverItems) ? serverItems : []).forEach((item) => {
+      const normalized = normalizeDashboardItem(item);
+      const autoId = normalizeCode(normalized.autoId);
+      if (autoId) map.set(autoId, normalized);
+    });
+
+    Array.from(state.postWriteHolds.entries()).forEach(([autoId, hold]) => {
+      const serverItem = map.get(autoId);
+
+      if (serverItem && isDashboardItemAtOrBeyond(
+        serverItem,
+        hold.expectedStatusCode
+      )) {
+        clearPostWriteHold(autoId);
+        return;
+      }
+
+      if (now >= Number(hold.hardExpireAtMs || 0)) {
+        clearPostWriteHold(autoId);
+        return;
+      }
+
+      /*
+       * ห้าม Snapshot เก่าทับผลที่ Backend เพิ่งตอบ committed:true
+       * จำนวนด้านบนและแถวตารางจึงคำนวณจากข้อมูล Merge ชุดเดียวกัน
+       */
+      map.set(autoId, normalizeDashboardItem(hold.item));
+    });
+
+    return Array.from(map.values())
+      .sort((a, b) => dateToMs(b.updatedAt) - dateToMs(a.updatedAt));
+  }
+
+  function schedulePostWriteHoldVerification(autoId, delayMs) {
+    const key = normalizeCode(autoId);
+    if (!key) return;
+
+    clearPostWriteVerificationTimer(key);
+
+    const timer = window.setTimeout(
+      () => void verifyPostWriteHold(key),
+      Math.max(250, Number(delayMs) || 650)
+    );
+    state.postWriteVerificationTimers.set(key, timer);
+  }
+
+  async function verifyPostWriteHold(autoId) {
+    const key = normalizeCode(autoId);
+    const hold = state.postWriteHolds.get(key);
+    if (!hold) return;
+
+    state.postWriteVerificationTimers.delete(key);
+
+    if (
+      navigator.onLine === false ||
+      !API ||
+      typeof API.lookupInboundWorkflow !== 'function' ||
+      !state.moduleId
+    ) {
+      schedulePostWriteHoldVerification(key, 1800);
+      return;
+    }
+
+    try {
+      const raw = await API.lookupInboundWorkflow(state.moduleId, key, {
+        method: 'VERIFY',
+        lookupMethod: 'VERIFY',
+        scanSource: 'READ_AFTER_WRITE_STABILIZER',
+        clientRequestId: hold.requestId,
+        requestId: hold.requestId,
+        cacheBust: Date.now()
+      });
+      const lookup = normalizeLookup(raw, {autoId: key});
+      const verifiedItem = dashboardItemFromLookup(lookup);
+
+      if (isDashboardItemAtOrBeyond(
+        verifiedItem,
+        hold.expectedStatusCode
+      )) {
+        clearPostWriteHold(key);
+        state.currentLookup = lookup;
+        upsertDashboardItemFromLookup(lookup);
+        renderDashboard();
+        saveDashboardCache();
+        scheduleRevisionCheckAfterWrite();
+        return;
+      }
+    } catch (error) {
+      console.warn('ตรวจ Read-after-write รายการ ' + key + ' ไม่สำเร็จ', error);
+    }
+
+    const latestHold = state.postWriteHolds.get(key);
+    if (!latestHold) return;
+
+    if (Date.now() < Number(latestHold.hardExpireAtMs || 0)) {
+      const age = Date.now() - Number(latestHold.createdAtMs || Date.now());
+      schedulePostWriteHoldVerification(
+        key,
+        age < 5000 ? 1200 : age < 20000 ? 2500 : 5000
+      );
+    } else {
+      clearPostWriteHold(key);
+    }
+  }
+
   async function loadWorkflowDashboard(silent, options) {
     const config = options && typeof options === 'object' ? options : {};
 
@@ -7459,17 +7658,18 @@
       const payload = dashboardPayload(data);
       applyDashboardMetadata(payload);
       const nextItems = normalizeDashboardItems(payload);
+      const mergedItems = mergeDashboardWithPostWriteHolds(nextItems);
 
       /*
-       * Server ตอบสำเร็จถือเป็น Authoritative Response เสมอ
-       * แม้รายการเป็น 0 ต้องล้าง Cache/การ์ดเก่า ห้ามคงข้อมูลจาก Spreadsheet รุ่นก่อน
+       * Server ยังเป็นฐานจริง แต่ผล committed:true ที่เพิ่งได้รับต้องไม่ถูก
+       * Snapshot เก่าทับย้อนกลับระหว่างช่วง Read-after-write
        */
-      state.dashboardItems = nextItems;
+      state.dashboardItems = mergedItems;
       applyInboundWorkflowProfileUi();
       state.dashboardLoadedAt = payload.generatedAt || formatBangkokDateTime(new Date());
       state.dashboardCacheRestored = false;
 
-      if (nextItems.length > 0) {
+      if (mergedItems.length > 0) {
         saveDashboardCache();
       } else {
         clearCurrentDashboardCache();
@@ -7479,15 +7679,15 @@
       renderDashboard();
 
       if (!silent) {
-        const total = state.dashboardTotalRows || nextItems.length;
+        const total = state.dashboardTotalRows || mergedItems.length;
         setScanMessage(
-          nextItems.length > 0
+          mergedItems.length > 0
             ? (
-                'โหลดข้อมูลล่าสุดแล้ว ' + nextItems.length +
-                (total > nextItems.length ? ' จากทั้งหมด ' + total + ' รายการ' : ' รายการ')
+                'โหลดข้อมูลล่าสุดแล้ว ' + mergedItems.length +
+                (total > mergedItems.length ? ' จากทั้งหมด ' + total + ' รายการ' : ' รายการ')
               )
             : 'ฐานข้อมูลจริงของ Module นี้ไม่มีรายการ ระบบล้างข้อมูลเก่าบนเครื่องแล้ว',
-          nextItems.length > 0 ? 'SUCCESS' : 'WARN'
+          mergedItems.length > 0 ? 'SUCCESS' : 'WARN'
         );
       }
     } catch (error) {
@@ -7577,7 +7777,7 @@
       ) {
         void pollDashboardRevision();
       }
-    }, 450);
+    }, POST_WRITE_REVISION_DELAY_MS);
   }
 
   function startDashboardPolling() {
@@ -8334,6 +8534,12 @@
         result && result.record && result.record.autoId
       ) {
         const normalized = normalizeLookup(result);
+        registerPostWriteHold(normalized, {
+          requestId: operation.requestId || operation.clientRequestId,
+          expectedStatusCode:
+            operation.expectedStatusCode ||
+            normalized && normalized.state && normalized.state.statusCode
+        });
         state.currentLookup = normalized;
         upsertDashboardItemFromLookup(normalized);
         renderDashboard();
@@ -9498,6 +9704,12 @@
     window.clearTimeout(state.inputTimer);
     window.clearTimeout(state.queueRefreshTimer);
     window.clearTimeout(state.fastQueueFlushTimer);
+    window.clearTimeout(state.postWriteRevisionTimer);
+    state.postWriteVerificationTimers.forEach((timer) => {
+      window.clearTimeout(timer);
+    });
+    state.postWriteVerificationTimers.clear();
+    state.postWriteHolds.clear();
 
     if (state.queueUnsubscribe) {
       try { state.queueUnsubscribe(); } catch (error) {}
