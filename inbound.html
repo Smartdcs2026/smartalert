@@ -2061,7 +2061,82 @@ body.inbound-page {
 
   </style>
 
-  <script src="./inbound.bundle.js?v=20260721-hotfix5-r1-profile-aware-timing" defer></script>
+
+  <style id="smartalertInboundCompactProfileHotfix3">
+    /*
+     * Workflow Profile is operational context, not a page-level alert.
+     * Keep it compact inside the existing Module action bar.
+     */
+    .inbound-workflow-profile-chip {
+      min-height: 34px;
+      max-width: 210px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 1 auto;
+      border: 1px solid rgba(14, 143, 134, .28);
+      border-radius: 999px;
+      padding: 6px 10px;
+      overflow: hidden;
+      color: #07556a;
+      background: #ecfbf8;
+      font-size: 10px;
+      font-weight: 950;
+      letter-spacing: .025em;
+      line-height: 1;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .inbound-workflow-profile-chip[data-profile="SUBMIT_ONLY"],
+    .inbound-workflow-profile-chip[data-profile="RETURN_ONLY"] {
+      border-color: rgba(217, 130, 7, .34);
+      color: #8a4b00;
+      background: #fff8e6;
+    }
+
+    .inbound-workflow-profile-chip[data-profile="BYPASS_INBOUND"],
+    .inbound-workflow-profile-chip[data-profile="DISABLED"] {
+      border-color: rgba(100, 116, 139, .32);
+      color: #475569;
+      background: #f1f5f9;
+    }
+
+    .inbound-workflow-profile-chip[data-profile="LEGACY_ACTIVE"] {
+      border-color: rgba(217, 130, 7, .34);
+      color: #8a4b00;
+      background: #fff8e6;
+    }
+
+    /* Explicitly preserve the original fullscreen control. */
+    .module-actions #inboundFullscreenButton {
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+      visibility: visible !important;
+    }
+
+    body[data-inbound-enabled="FALSE"] .scanner-card {
+      opacity: .78;
+    }
+
+    @media (max-width: 860px) {
+      .inbound-workflow-profile-chip {
+        grid-column: 1 / -1;
+        width: 100%;
+        max-width: none;
+        min-height: 30px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .inbound-workflow-profile-chip {
+        font-size: 9px;
+      }
+    }
+  </style>
+
+  <script src="./inbound.bundle.js?v=20260722-hotfix5-r1-h3-compact-profile-fullscreen" defer></script>
 
   <script>
     (function () {
@@ -2295,4 +2370,3 @@ body.inbound-page {
 </body>
 </html>
 
-<style>.inbound-workflow-profile-banner{margin:10px;border:1px solid #f0c36a;background:#fff8e6;border-radius:14px;padding:12px 14px;display:flex;justify-content:space-between;gap:10px;align-items:center}.inbound-workflow-profile-banner strong{color:#8a4b00}.inbound-workflow-profile-banner span{color:#6b5b45;font-weight:700}body[data-inbound-enabled="FALSE"] .scan-panel{opacity:.75}@media(max-width:700px){.inbound-workflow-profile-banner{align-items:flex-start;flex-direction:column}}</style>
