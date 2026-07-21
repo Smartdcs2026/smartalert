@@ -233,7 +233,7 @@
   </style>
 
   <!-- ROUND 10 HOTFIX 2 — Admin Data-Dense UI only -->
-  <script src="./admin.bundle.js?v=20260722-hotfix5-r1-h6-authoritative-readback" defer></script>
+  <script src="./admin.bundle.js?v=20260722-round3-r1-compact-auto-shift" defer></script>
 
 <style id="smartalert-module-editor-critical-css">
 /*
@@ -1458,6 +1458,25 @@
 
           <label class="admin-field">
             <span>
+              โหมดครอบคลุมเวลา
+            </span>
+
+            <select id="adminShiftCoverageMode">
+              <option value="DEFINED_WINDOWS">
+                เฉพาะช่วงกะที่กำหนด
+              </option>
+              <option value="FULL_24H">
+                ต้องครอบคลุมครบ 24 ชั่วโมง
+              </option>
+            </select>
+
+            <small>
+              เวลานอกกะยังใช้งาน Workflow ได้ และแสดงเป็น OUTSIDE_SHIFT
+            </small>
+          </label>
+
+          <label class="admin-field">
+            <span>
               วันที่เริ่มใช้
             </span>
 
@@ -1479,7 +1498,7 @@
             </strong>
 
             <span>
-              กำหนดได้ 2–4 กะ และรองรับกะข้ามวัน
+              กำหนดได้ 1–5 กะ อยู่ในวันหรือข้ามวันได้ และส่งมอบอัตโนมัติ
             </span>
           </div>
 
@@ -1538,7 +1557,7 @@
 
         <div class="admin-form-actions admin-shift-save-actions">
           <span id="adminShiftSaveHint">
-            บันทึกแล้วระบบจะสร้างเวอร์ชันกะใหม่
+            บันทึกแล้วสร้างเวอร์ชันใหม่ และส่งมอบให้กะถัดไปอัตโนมัติ
           </span>
 
           <button
