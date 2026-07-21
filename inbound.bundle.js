@@ -1,3 +1,4 @@
+/* INBOUND_EFFECTIVE_ACTIVATION_HOTFIX5_BUILD: 2026.07.22 */
 /* INBOUND_READ_AFTER_WRITE_HOTFIX4_BUILD: 2026.07.22 */
 /* INBOUND_COMPACT_PROFILE_HOTFIX3_BUILD: 2026.07.22 */
 /* PROFILE_AWARE_TIMING_R1_BUILD: 2026.07.21 */
@@ -6374,6 +6375,13 @@
       submitScanRequired: true,
       returnScanRequired: true
     },
+    workflowProfileSchedule: {
+      active: null,
+      pending: null,
+      configured: null,
+      hasPending: false,
+      timezone: 'Asia/Bangkok'
+    },
     slaSummary: {
       normal: 0,
       warning: 0,
@@ -7731,7 +7739,23 @@
     state.effectiveSlaRules = source.effectiveSlaRules && typeof source.effectiveSlaRules === 'object'
       ? source.effectiveSlaRules
       : state.effectiveSlaRules;
-    const profile = source.workflowProfile || source.module?.workflowProfile;
+    const schedule =
+      source.workflowProfileSchedule &&
+      typeof source.workflowProfileSchedule === 'object'
+        ? source.workflowProfileSchedule
+        : null;
+    if (schedule) {
+      state.workflowProfileSchedule = Object.assign(
+        {},
+        state.workflowProfileSchedule,
+        schedule
+      );
+    }
+
+    const profile =
+      schedule && schedule.active ||
+      source.workflowProfile ||
+      source.module?.workflowProfile;
     if (profile && typeof profile === 'object') {
       state.workflowProfile = Object.assign({}, state.workflowProfile, profile);
       applyInboundWorkflowProfileUi();
@@ -9847,10 +9871,21 @@
   }
 
 function applyInboundWorkflowProfileUi() {
-  const profile = state.workflowProfile || {};
+  const profile =
+    state.workflowProfileSchedule &&
+    state.workflowProfileSchedule.active ||
+    state.workflowProfile ||
+    {};
+  const pending =
+    state.workflowProfileSchedule &&
+    state.workflowProfileSchedule.pending ||
+    null;
+
   const newRecordsEnabled =
     profile.inboundEnabled !== false &&
-    (profile.submitScanRequired !== false || profile.returnScanRequired !== false);
+    (profile.submitScanRequired !== false ||
+      profile.returnScanRequired !== false);
+
   const legacyActiveCount = Array.isArray(state.dashboardItems)
     ? state.dashboardItems.length
     : 0;
@@ -9858,7 +9893,9 @@ function applyInboundWorkflowProfileUi() {
 
   const input = byId('entryCodeInput');
   const startCamera = byId('startCameraButton');
-  const submitButton = document.querySelector('#manualLookupForm button[type="submit"]');
+  const submitButton = document.querySelector(
+    '#manualLookupForm button[type="submit"]'
+  );
 
   if (input) input.disabled = !enabled;
   if (startCamera) startCamera.disabled = !enabled;
@@ -9868,32 +9905,45 @@ function applyInboundWorkflowProfileUi() {
     profile.code || 'FULL_INBOUND_LEGACY';
   document.body.dataset.inboundEnabled = enabled ? 'TRUE' : 'FALSE';
 
-  /*
-   * HOTFIX 2026-07-22:
-   * ห้ามแทรก Profile Banner เป็น direct child ของ .inbound-shell
-   * เพราะ shell ใช้ fixed grid rows สำหรับ Topbar / Module bar / Workspace
-   * การ prepend banner ทำให้ Module bar และปุ่มเต็มจอถูกดันออกจากตำแหน่งทำงาน
-   */
   const obsoleteBanner = byId('inboundWorkflowProfileBanner');
   if (obsoleteBanner) obsoleteBanner.remove();
 
-  const actions = document.querySelector('.inbound-module-bar .module-actions');
-  let chip = byId('inboundWorkflowProfileChip');
+  const actions = document.querySelector(
+    '.inbound-module-bar .module-actions'
+  );
+  const fullscreenButton = byId('inboundFullscreenButton');
 
-  if (!chip && actions) {
-    chip = document.createElement('span');
-    chip.id = 'inboundWorkflowProfileChip';
-    chip.className = 'inbound-workflow-profile-chip';
-
-    const fullscreenButton = byId('inboundFullscreenButton');
-    if (fullscreenButton && fullscreenButton.parentNode === actions) {
-      actions.insertBefore(chip, fullscreenButton);
-    } else {
-      actions.prepend(chip);
+  function ensureChip(id, className) {
+    let chip = byId(id);
+    if (!chip && actions) {
+      chip = document.createElement('span');
+      chip.id = id;
+      chip.className = className;
+      if (fullscreenButton && fullscreenButton.parentNode === actions) {
+        actions.insertBefore(chip, fullscreenButton);
+      } else {
+        actions.prepend(chip);
+      }
     }
+    return chip;
   }
 
-  const profileCode = String(profile.code || 'FULL_INBOUND_LEGACY').toUpperCase();
+  const activeChip = ensureChip(
+    'inboundWorkflowProfileChip',
+    'inbound-workflow-profile-chip'
+  );
+  const pendingChip = ensureChip(
+    'inboundWorkflowPendingProfileChip',
+    'inbound-workflow-profile-chip inbound-workflow-profile-chip--pending'
+  );
+  const legacyChip = ensureChip(
+    'inboundWorkflowLegacyWorkChip',
+    'inbound-workflow-profile-chip inbound-workflow-profile-chip--legacy'
+  );
+
+  const profileCode = String(
+    profile.code || 'FULL_INBOUND_LEGACY'
+  ).toUpperCase();
   const profileLabelMap = {
     FULL_INBOUND: 'FULL INBOUND',
     FULL_INBOUND_LEGACY: 'FULL INBOUND',
@@ -9902,43 +9952,57 @@ function applyInboundWorkflowProfileUi() {
     BYPASS_INBOUND: 'BYPASS INBOUND'
   };
 
-  const flow = [];
-  if (profile.submitScanRequired !== false) flow.push('สแกนยื่นเอกสาร');
-  if (profile.returnScanRequired !== false) flow.push('สแกนคืนเอกสาร');
-
-  let chipText = profileLabelMap[profileCode] || profileCode;
-  let chipState = profileCode;
-  let chipTitle = `Workflow Profile: ${profileCode}`;
-
-  if (!newRecordsEnabled && legacyActiveCount > 0) {
-    chipText = `ปิดรถใหม่ · งานเดิม ${legacyActiveCount}`;
-    chipState = 'LEGACY_ACTIVE';
-    chipTitle =
-      `Inbound ถูกปิดสำหรับรถ Gate In ใหม่ แต่ยังมีงานเดิม ${legacyActiveCount} รายการที่ต้องดำเนินการตาม Profile เดิม`;
-  } else if (!enabled) {
-    chipText = 'INBOUND ปิด';
-    chipState = 'DISABLED';
-    chipTitle =
-      'Inbound ถูกปิดใช้งาน รถ Gate In ใหม่จะส่งตรงไปขั้นตอนรับสินค้า';
-  } else {
-    chipTitle =
-      `Workflow Profile: ${profileCode} · เปิดใช้งาน ${flow.join(' และ ') || 'ไม่มีขั้นตอน Inbound'}`;
+  if (activeChip) {
+    activeChip.hidden = false;
+    activeChip.textContent =
+      'รถใหม่: ' + (profileLabelMap[profileCode] || profileCode);
+    activeChip.dataset.profile = profileCode;
+    activeChip.title =
+      'Profile ที่ใช้กับรถ Gate In ใหม่ขณะนี้: ' +
+      profileCode +
+      (profile.effectiveAt
+        ? ' · เริ่มใช้ ' + profile.effectiveAt
+        : ' · ค่าเริ่มต้นเปิด Inbound ครบทุกขั้นตอน');
   }
 
-  if (chip) {
-    chip.textContent = chipText;
-    chip.dataset.profile = chipState;
-    chip.title = chipTitle;
-    chip.setAttribute('aria-label', chipTitle);
+  if (pendingChip) {
+    if (pending && pending.code) {
+      pendingChip.hidden = false;
+      pendingChip.textContent =
+        'นัดเปลี่ยน: ' +
+        (profileLabelMap[String(pending.code).toUpperCase()] || pending.code);
+      pendingChip.dataset.profile = 'PENDING';
+      pendingChip.title =
+        'จะเริ่มใช้ ' +
+        pending.code +
+        ' วันที่เวลา ' +
+        (pending.effectiveAt || '-') +
+        ' สำหรับรถ Gate In ใหม่';
+    } else {
+      pendingChip.hidden = true;
+      pendingChip.textContent = '';
+      pendingChip.removeAttribute('title');
+    }
   }
 
-  if (!enabled && state.scanner?.running) stopCamera();
+  if (legacyChip) {
+    if (!newRecordsEnabled && legacyActiveCount > 0) {
+      legacyChip.hidden = false;
+      legacyChip.textContent = 'งานเดิม Inbound: ' + legacyActiveCount;
+      legacyChip.dataset.profile = 'LEGACY_ACTIVE';
+      legacyChip.title =
+        'รถใหม่ข้าม Inbound แล้ว แต่ยังมีรถเดิม ' +
+        legacyActiveCount +
+        ' รายการที่ต้องสแกนตาม Profile เดิมจนจบ';
+    } else {
+      legacyChip.hidden = true;
+      legacyChip.textContent = '';
+      legacyChip.removeAttribute('title');
+    }
+  }
 
-  /*
-   * ปุ่มเต็มจอต้องอยู่ครบทุก Profile
-   * Profile ใช้ควบคุมขั้นตอนธุรกิจเท่านั้น ไม่ควรซ่อนเครื่องมือหน้าจอ
-   */
-  const fullscreenButton = byId('inboundFullscreenButton');
+  if (!enabled && state.scanner && state.scanner.running) stopCamera();
+
   if (fullscreenButton) {
     fullscreenButton.hidden = false;
     fullscreenButton.removeAttribute('aria-hidden');
