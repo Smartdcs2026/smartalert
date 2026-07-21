@@ -1,3 +1,4 @@
+/* INBOUND_SCHEDULE_RECONCILIATION_HOTFIX6_BUILD: 2026.07.22 */
 /* INBOUND_EFFECTIVE_ACTIVATION_HOTFIX5_BUILD: 2026.07.22 */
 /* INBOUND_READ_AFTER_WRITE_HOTFIX4_BUILD: 2026.07.22 */
 /* INBOUND_COMPACT_PROFILE_HOTFIX3_BUILD: 2026.07.22 */
@@ -9870,16 +9871,49 @@
     return error;
   }
 
+function inboundWorkflowProfileBehaviorSignature(profile) {
+  const source =
+    profile && typeof profile === 'object'
+      ? profile
+      : {};
+  const master =
+    source.inboundEnabled !== false &&
+    (
+      source.submitScanRequired !== false ||
+      source.returnScanRequired !== false
+    );
+  const submit = master && source.submitScanRequired !== false;
+  const returned = master && source.returnScanRequired !== false;
+
+  return [
+    master ? '1' : '0',
+    submit ? '1' : '0',
+    returned ? '1' : '0'
+  ].join('|');
+}
+
+function inboundWorkflowPendingProfile(active, pending) {
+  if (!pending || typeof pending !== 'object') return null;
+  if (
+    inboundWorkflowProfileBehaviorSignature(active) ===
+    inboundWorkflowProfileBehaviorSignature(pending)
+  ) {
+    return null;
+  }
+  return pending;
+}
+
 function applyInboundWorkflowProfileUi() {
   const profile =
     state.workflowProfileSchedule &&
     state.workflowProfileSchedule.active ||
     state.workflowProfile ||
     {};
-  const pending =
+  const pending = inboundWorkflowPendingProfile(
+    profile,
     state.workflowProfileSchedule &&
-    state.workflowProfileSchedule.pending ||
-    null;
+    state.workflowProfileSchedule.pending
+  );
 
   const newRecordsEnabled =
     profile.inboundEnabled !== false &&
