@@ -1,5 +1,5 @@
 /* SmartAlert Round 4 — Executive Dashboard & Management Analytics
- * Build: 2026.07.22-round4-executive-dashboard-v1
+ * Build: 2026.07.22-round4-hotfix2-dense-layout-v1
  */
 (function (window, document) {
   'use strict';
@@ -13,6 +13,7 @@
     API_TIMEOUT_MS: 120000,
     MAX_TABLE_ROWS: 8,
     MAX_ALERT_ROWS: 6,
+    MAX_SEGMENT_SECONDS: 7 * 24 * 60 * 60,
     THAI_MONTHS: [
       'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
       'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
@@ -501,13 +502,22 @@
   function stageAverages(rows) {
     const targets = Array.isArray(state.analytics?.targets) ? state.analytics.targets : [];
     return targets.map((target) => {
-      const values = rows.map((record) => record.segments && record.segments[target.code])
-        .filter((value) => Number.isFinite(Number(value)) && Number(value) >= 0)
-        .map(Number);
+      const values = rows
+        .map((record) => record.segments && record.segments[target.code])
+        .map(Number)
+        .filter((value) => (
+          Number.isFinite(value) &&
+          value >= 0 &&
+          value <= CONFIG.MAX_SEGMENT_SECONDS
+        ));
       return {
-        code: target.code, label: target.label || STAGE_LABELS[target.code] || target.code,
-        average: values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length / 60) : 0,
-        target: number(target.targetMinutes), count: values.length
+        code: target.code,
+        label: target.label || STAGE_LABELS[target.code] || target.code,
+        average: values.length
+          ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length / 60)
+          : 0,
+        target: number(target.targetMinutes),
+        count: values.length
       };
     });
   }
@@ -617,16 +627,48 @@
 
   function chartOptions(config) {
     const horizontal = config.horizontal === true;
+    const compactAxis = (value) => {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return value;
+      if (Math.abs(numeric) < 1000) return numeric.toLocaleString('th-TH');
+      return new Intl.NumberFormat('th-TH', {
+        notation: 'compact',
+        maximumFractionDigits: 1
+      }).format(numeric);
+    };
     return {
-      responsive: true, maintainAspectRatio: false, indexAxis: horizontal ? 'y' : 'x',
-      animation: {duration: 280},
+      responsive: true,
+      maintainAspectRatio: false,
+      resizeDelay: 120,
+      normalized: true,
+      indexAxis: horizontal ? 'y' : 'x',
+      animation: {duration: 220},
       plugins: {
-        legend: {display: config.legend === true, position: 'top', labels: {boxWidth: 13, boxHeight: 7, font: {size: 9}, color: COLORS.text}},
-        tooltip: {backgroundColor: '#073d55', titleFont: {size: 11}, bodyFont: {size: 10}}
+        legend: {
+          display: config.legend === true,
+          position: 'top',
+          labels: {boxWidth: 11, boxHeight: 6, padding: 8, font: {size: 8}, color: COLORS.text}
+        },
+        tooltip: {backgroundColor: '#073d55', titleFont: {size: 10}, bodyFont: {size: 9}}
       },
       scales: {
-        x: {grid: {color: COLORS.grid}, ticks: {font: {size: 9}, color: COLORS.text}, title: {display: Boolean(config.xTitle), text: config.xTitle, font: {size: 9}}},
-        y: {beginAtZero: true, grid: {color: COLORS.grid}, ticks: {font: {size: 9}, color: COLORS.text}, title: {display: Boolean(config.yTitle), text: config.yTitle, font: {size: 9}}}
+        x: {
+          beginAtZero: horizontal,
+          grid: {color: COLORS.grid},
+          ticks: {
+            font: {size: 8},
+            color: COLORS.text,
+            maxTicksLimit: horizontal ? 7 : 14,
+            callback: horizontal ? compactAxis : undefined
+          },
+          title: {display: Boolean(config.xTitle), text: config.xTitle, font: {size: 8}}
+        },
+        y: {
+          beginAtZero: true,
+          grid: {color: COLORS.grid},
+          ticks: {font: {size: 8}, color: COLORS.text, maxTicksLimit: horizontal ? 8 : 7},
+          title: {display: Boolean(config.yTitle), text: config.yTitle, font: {size: 8}}
+        }
       }
     };
   }
@@ -813,11 +855,23 @@
     window.addEventListener('offline', () => setText('connectionText', 'ออฟไลน์'));
   }
 
+  function observeDashboardLayout() {
+    if (!('ResizeObserver' in window)) return;
+    const stage = byId('dashboardStage');
+    if (!stage) return;
+    state.layoutObserver = new ResizeObserver(() => scheduleChartResize());
+    state.layoutObserver.observe(stage);
+  }
+
   function initialize() {
     if (!token()) {
       window.location.replace(CONFIG.LOGIN_URL); return;
     }
-    bindEvents(); updateClock(); window.setInterval(updateClock, 1000); loadDashboard(false);
+    bindEvents();
+    observeDashboardLayout();
+    updateClock();
+    window.setInterval(updateClock, 1000);
+    loadDashboard(false);
   }
 
   document.addEventListener('DOMContentLoaded', initialize, {once: true});
