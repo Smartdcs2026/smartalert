@@ -1,3 +1,4 @@
+/* SMARTALERT_AUTOMATIC_HANDOVER_ONLY_BUILD: 2026.07.22 */
 /* PROFILE_AWARE_TIMING_R1_BUILD: 2026.07.21 */
 /* SMARTALERT BASELINE 2 FINAL HOTFIX 5 — PROFILE-AWARE MODULE
  * Build: 2026.07.21-baseline2-final-hotfix5-optional-inbound-v1
@@ -12706,41 +12707,18 @@
       );
     }
 
-    if (handover.note) {
+    if (handover.autoTransferredAt) {
       noteParts.push(
-        'หมายเหตุส่งมอบ: ' +
-        handover.note
+        'ส่งมอบอัตโนมัติเมื่อ ' +
+        handover.autoTransferredAt
       );
-    }
-
-    if (handover.acknowledged) {
-      noteParts.push(
-        'รับทราบโดย ' +
-        (
-          handover.acknowledgedBy ||
-          '-'
-        ) +
-        (
-          handover.acknowledgedAt
-            ? ' · ' +
-              handover.acknowledgedAt
-            : ''
-        )
-      );
-
-      if (handover.acknowledgementNote) {
-        noteParts.push(
-          'หมายเหตุรับมอบ: ' +
-          handover.acknowledgementNote
-        );
-      }
     }
 
     setText(
       'shiftHandoverNote',
       noteParts.length
         ? noteParts.join(' | ')
-        : 'ระบบส่งมอบอัตโนมัติ ผู้ใช้สามารถเพิ่มหมายเหตุได้โดยไม่กระทบงานหลัก'
+        : 'ระบบส่งมอบคงค้างให้กะถัดไปอัตโนมัติ ผู้ใช้ไม่ต้องกดหรือระบุข้อมูล'
     );
 
     const hasSnapshot = Boolean(
@@ -12770,27 +12748,13 @@
       );
 
     if (addNoteButton) {
-      addNoteButton.disabled =
-        state.handoverInProgress ||
-        !enabled ||
-        !hasSnapshot;
+      addNoteButton.hidden = true;
+      addNoteButton.disabled = true;
     }
 
     if (acknowledgeButton) {
-      acknowledgeButton.hidden =
-        handover.acknowledged === true &&
-        pairValid;
-      acknowledgeButton.disabled =
-        state.handoverInProgress ||
-        !enabled ||
-        !hasSnapshot ||
-        !finalized;
-      acknowledgeButton.title =
-        !pairValid
-          ? 'Snapshot กะไม่ถูกต้อง ระบบไม่อนุญาตให้รับทราบ'
-          : !finalized
-            ? 'รอระบบปิด Snapshot ส่งมอบอัตโนมัติก่อน'
-            : 'บันทึกว่ากะปัจจุบันเปิดดูและรับทราบงานแล้ว';
+      acknowledgeButton.hidden = true;
+      acknowledgeButton.disabled = true;
     }
 
     if (refreshButton) {
