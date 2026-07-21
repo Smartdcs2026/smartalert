@@ -8187,8 +8187,8 @@
     90 * 1000;
 
 
-  const REVISION_POLL_MIN_MS = 8000;
-  const REVISION_POLL_MAX_MS = 60000;
+  const REVISION_POLL_MIN_MS = 2500;
+  const REVISION_POLL_MAX_MS = 20000;
   const REVISION_POLL_RESUME_MS = 350;
 
   const state = {
@@ -11227,6 +11227,14 @@
     };
   }
 
+  function isReceivingWorkCardRecord(record) {
+    return Boolean(
+      record &&
+      String(record.operationalStage || '').toUpperCase() === 'WAITING_RECEIVING' &&
+      record.isCurrentlyInArea !== false
+    );
+  }
+
   function applyFiltersAndRender() {
     const searchText =
       state.searchText;
@@ -11234,7 +11242,7 @@
     const statusFilter =
       state.statusFilter;
 
-    state.filteredRecords =
+    const matchedRecords =
       state.records.filter(
         (record) => {
           if (
@@ -11308,6 +11316,13 @@
         }
       );
 
+    /*
+     * หน้า Module เป็นคิวงาน Receiving เท่านั้น
+     * รถที่ยังรอยื่นเอกสารคงอยู่ใน Summary และเปิดดูผ่านรายการแบบเรียบง่าย
+     * แต่ห้ามวาดเป็นการ์ดที่อาจทำให้ผู้ใช้เข้าใจว่าพร้อมรับสินค้าแล้ว
+     */
+    state.filteredRecords = matchedRecords.filter(isReceivingWorkCardRecord);
+
     sortRecords(
       state.filteredRecords
     );
@@ -11318,6 +11333,7 @@
 
     setText(
       'resultCount',
+      'งานรอรับสินค้า ' +
       state.filteredRecords.length +
       ' รายการ'
     );
@@ -19309,7 +19325,7 @@
   'use strict';
 
   const BUILD =
-    '2026.07.21-baseline2-final-hotfix1-receiving-guard-v1';
+    '2026.07.21-baseline2-final-hotfix2-fast-workflow-v1';
 
   document.addEventListener(
     'DOMContentLoaded',
@@ -19448,7 +19464,13 @@
       refreshWorkflowState(true);
     }, 30000);
 
-    document.addEventListener('alertvendor:records-updated', function () {
+    document.addEventListener('alertvendor:records-updated', function (event) {
+      const records = event && event.detail && Array.isArray(event.detail.records)
+        ? event.detail.records
+        : null;
+      if (records) {
+        syncFromOperationalRecords(records, event.detail.generatedAt || '');
+      }
       scheduleApply();
     });
   }
@@ -19472,6 +19494,9 @@
     strip.id = 'moduleWorkflowStrip';
     strip.className = 'module-workflow-strip';
     strip.innerHTML = `
+      <button type="button" class="module-workflow-button" data-workflow-list="WAITING_DOCUMENT_SUBMISSION">
+        รอยื่นเอกสาร <strong id="workflowWaitingDocumentCount">0</strong>
+      </button>
       <button type="button" class="module-workflow-button" data-workflow-list="DOCUMENT_SUBMITTED">
         รอรับสินค้า <strong id="workflowWaitingReceivingCount">0</strong>
       </button>
@@ -19522,7 +19547,10 @@
           receivingCompletedAt: String(item.receivingCompletedAt || '').trim(),
           documentReturnedAt: String(item.documentReturnedAt || '').trim(),
           updatedAt: String(item.updatedAt || '').trim(),
-          updatedBy: String(item.updatedBy || '').trim()
+          updatedBy: String(item.updatedBy || '').trim(),
+          appointmentNumber: String(item.appointmentNumber || item.appointment || '').trim(),
+          companyName: String(item.companyName || item.company || '').trim(),
+          gateInAt: String(item.gateInAt || item.timestampIn || '').trim()
         };
       }),
       summary: source.summary || {}
@@ -19532,6 +19560,7 @@
   function updateCounts() {
     const data = state.data || {items: []};
 
+    setText('workflowWaitingDocumentCount', countStatus(data.items, 'WAITING_DOCUMENT_SUBMISSION'));
     setText('workflowWaitingReceivingCount', countStatus(data.items, 'DOCUMENT_SUBMITTED'));
     setText('workflowReceivingCompletedCount', countStatus(data.items, 'RECEIVING_COMPLETED'));
     setText('workflowDocumentReturnedCount', countStatus(data.items, 'DOCUMENT_RETURNED'));
@@ -19557,7 +19586,8 @@
       const item = findItemForCard(card, recordId, byAutoId);
       const status = item ? item.statusCode : '';
 
-      const hide = status === 'RECEIVING_COMPLETED' || status === 'DOCUMENT_RETURNED';
+      const hide = status === 'WAITING_DOCUMENT_SUBMISSION' ||
+        status === 'RECEIVING_COMPLETED' || status === 'DOCUMENT_RETURNED';
       card.classList.toggle('workflow-hidden-after-receiving', hide);
 
       const completeButton = card.querySelector('[data-receiving-complete-record]');
@@ -19616,8 +19646,10 @@
   function openWorkflowList(status) {
     const data = state.data || {items: []};
     const cleanStatus = String(status || 'RECEIVING_COMPLETED').toUpperCase();
-    const title = cleanStatus === 'DOCUMENT_SUBMITTED'
-      ? 'รายการรอรับสินค้าเสร็จ'
+    const title = cleanStatus === 'WAITING_DOCUMENT_SUBMISSION'
+      ? 'รายการรอยื่นเอกสาร'
+      : cleanStatus === 'DOCUMENT_SUBMITTED'
+        ? 'รายการรอรับสินค้าเสร็จ'
       : cleanStatus === 'DOCUMENT_RETURNED'
         ? 'รายการรับเอกสารคืนแล้ว'
         : 'รายการรับสินค้าเสร็จแล้ว';
@@ -19633,7 +19665,9 @@
           <h2>${escapeHtml(title)} (${items.length})</h2>
         </header>
         <div class="workflow-completed-list">
-          ${items.length ? items.map(workflowItemHtml).join('') : '<div class="empty-state">ไม่มีรายการในสถานะนี้</div>'}
+          ${items.length ? items.map(function (item, index) {
+            return workflowItemHtml(item, index, cleanStatus);
+          }).join('') : '<div class="empty-state">ไม่มีรายการในสถานะนี้</div>'}
         </div>
       </article>
     `;
@@ -19651,7 +19685,19 @@
     });
   }
 
-  function workflowItemHtml(item) {
+  function workflowItemHtml(item, index, status) {
+    if (status === 'WAITING_DOCUMENT_SUBMISSION') {
+      return `
+        <article class="workflow-completed-item">
+          <div>
+            <strong>${escapeHtml(String(index + 1) + '. ' + (item.appointmentNumber || '-'))}</strong>
+            <span>${escapeHtml(item.companyName || '-')}</span>
+          </div>
+          <small>${escapeHtml(item.gateInAt || item.updatedAt || '-')}</small>
+        </article>
+      `;
+    }
+
     return `
       <article class="workflow-completed-item">
         <div>
@@ -19661,6 +19707,55 @@
         <small>${escapeHtml(item.receivingCompletedAt || item.documentReturnedAt || item.updatedAt || '-')}</small>
       </article>
     `;
+  }
+
+  function syncFromOperationalRecords(records, generatedAt) {
+    const items = records.map(function (record) {
+      const stage = String(record && record.operationalStage || '').toUpperCase();
+      const statusCode = stage === 'WAITING_INBOUND_DOCUMENT'
+        ? 'WAITING_DOCUMENT_SUBMISSION'
+        : stage === 'WAITING_RECEIVING'
+          ? 'DOCUMENT_SUBMITTED'
+          : stage === 'WAITING_DOCUMENT_RETURN'
+            ? 'RECEIVING_COMPLETED'
+            : stage === 'WAITING_GATE_OUT'
+              ? 'DOCUMENT_RETURNED'
+              : 'DATA_CONFLICT';
+      const fields = Array.isArray(record && record.fields) ? record.fields : [];
+
+      function fieldValue(labels) {
+        const normalized = labels.map(function (value) {
+          return String(value || '').trim().toLowerCase().replace(/[\s_\-:]+/g, '');
+        });
+        const field = fields.find(function (entry) {
+          const label = String(entry && (entry.label || entry.displayName || entry.name) || '')
+            .trim().toLowerCase().replace(/[\s_\-:]+/g, '');
+          return normalized.indexOf(label) >= 0;
+        });
+        return String(field && field.value || '').trim();
+      }
+
+      return {
+        autoId: String(record && (record.autoId || record.sourceAutoId) || '').trim(),
+        statusCode: statusCode,
+        statusName: String(record && record.operationalStageLabel || statusCode).trim(),
+        receivingCompletedAt: String(record && record.receivingCompleteAt || '').trim(),
+        documentReturnedAt: String(record && record.documentReturnedAt || '').trim(),
+        updatedAt: String(record && record.updatedAt || generatedAt || '').trim(),
+        updatedBy: String(record && record.updatedBy || '').trim(),
+        appointmentNumber: String(record && record.appointmentNumber || fieldValue(['เลขนัดหมาย','หมายเลขนัดหมาย','appointment']) || record && record.primaryValue || '').trim(),
+        companyName: String(record && record.companyName || fieldValue(['ชื่อบริษัท','บริษัท','company']) || '').trim(),
+        gateInAt: String(record && record.timestampIn || '').trim()
+      };
+    });
+
+    state.data = {
+      raw: {generatedAt: generatedAt || ''},
+      items: items,
+      summary: {}
+    };
+    updateCounts();
+    applyCardRules();
   }
 
   function observeCards() {
