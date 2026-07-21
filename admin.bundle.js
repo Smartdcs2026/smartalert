@@ -1,3 +1,9 @@
+/* PROFILE_AWARE_TIMING_R1_BUILD: 2026.07.21 */
+/* SMARTALERT BASELINE 2 FINAL HOTFIX 5 — ADMIN WORKFLOW PROFILE
+ * Build: 2026.07.21-baseline2-final-hotfix5-optional-inbound-v1
+ * Admin controls optional submit/return Inbound steps with versioned effective settings.
+ */
+
 /* SMARTALERT MODULE VALIDATION INLINE-ONLY PATCH
  * Build: 2026.07.20-module-validation-inline-only-r1
  * Validation errors stay inside Module Editor; no duplicate SweetAlert.
@@ -4441,7 +4447,7 @@
 
   function buildAdminBootFallbackSchema() {
     return {
-      version: 'frontend-fallback-2026.07.21-baseline2',
+      version: 'frontend-fallback-2026.07.20',
       enums: {
         userRoles: ['USER', 'INBOUND', 'ADMIN'],
         moduleStatuses: ['DRAFT', 'PUBLISHED', 'DISABLED', 'ADMIN_ONLY', 'ARCHIVED'],
@@ -4489,7 +4495,7 @@
         : {};
 
     return {
-      version: 'frontend-fallback-2026.07.21-baseline2',
+      version: 'frontend-fallback-2026.07.20',
       generatedAt: formatBangkokDateTime(new Date()),
       actor: {
         username: user.username || 'admin',
@@ -4505,16 +4511,15 @@
       },
       settings: {
         SYSTEM_NAME: { value: 'SmartAlert Vendor Workflow', updatedAt: '', updatedBy: 'SYSTEM' },
-        AUTO_CLOSE_HOURS: { value: null, updatedAt: '', updatedBy: 'CONFIG_REQUIRED' },
-        DEFAULT_REFRESH_SECONDS: { value: null, updatedAt: '', updatedBy: 'CONFIG_REQUIRED' },
+        AUTO_CLOSE_HOURS: { value: 36, updatedAt: '', updatedBy: 'SYSTEM' },
+        DEFAULT_REFRESH_SECONDS: { value: 15, updatedAt: '', updatedBy: 'SYSTEM' },
         SESSION_TIMEOUT_MINUTES: { value: 720, updatedAt: '', updatedBy: 'SYSTEM' },
         MAX_LOGIN_FAILURES: { value: 5, updatedAt: '', updatedBy: 'SYSTEM' },
         LOGIN_LOCK_MINUTES: { value: 15, updatedAt: '', updatedBy: 'SYSTEM' },
         SWEETALERT_ENABLED: { value: true, updatedAt: '', updatedBy: 'SYSTEM' },
-        HISTORY_ENABLED: { value: null, updatedAt: '', updatedBy: 'CONFIG_REQUIRED' },
-        SOUND_ENABLED: { value: null, updatedAt: '', updatedBy: 'CONFIG_REQUIRED' },
-        AUTO_CLOSE_NEAR_WARNING_HOURS: { value: null, updatedAt: '', updatedBy: 'CONFIG_REQUIRED' },
-        DASHBOARD_RECORD_LIMIT: { value: null, updatedAt: '', updatedBy: 'CONFIG_REQUIRED' }
+        INBOUND_WORKFLOW_ENABLED: { value: true, updatedAt: '', updatedBy: 'SYSTEM', revision: 'WF-PROFILE-LEGACY-FULL' },
+        INBOUND_SUBMIT_SCAN_REQUIRED: { value: true, updatedAt: '', updatedBy: 'SYSTEM', revision: 'WF-PROFILE-LEGACY-FULL' },
+        INBOUND_RETURN_SCAN_REQUIRED: { value: true, updatedAt: '', updatedBy: 'SYSTEM', revision: 'WF-PROFILE-LEGACY-FULL' }
       },
       modules: [],
       users: [
@@ -4843,6 +4848,25 @@
     const settings = state.dashboard?.settings || {};
     const definitions = [
       {
+        key: 'INBOUND_WORKFLOW_ENABLED',
+        label: 'เปิดใช้งานขั้นตอน Inbound',
+        type: 'boolean',
+        help: 'สวิตช์หลักสำหรับเปิด/ปิดงานสแกนรับและคืนเอกสาร',
+        featured: true
+      },
+      {
+        key: 'INBOUND_SUBMIT_SCAN_REQUIRED',
+        label: 'ต้องสแกนรับ/ยื่นเอกสาร',
+        type: 'boolean',
+        help: 'ปิดแล้วรถ Gate In ใหม่จะส่งตรงไปหน้า Module เพื่อรอรับสินค้า'
+      },
+      {
+        key: 'INBOUND_RETURN_SCAN_REQUIRED',
+        label: 'ต้องสแกนคืนเอกสาร',
+        type: 'boolean',
+        help: 'ปิดแล้วหลังรับสินค้าเสร็จ รถจะไปรอ Gate Out ทันที'
+      },
+      {
         key: 'SYSTEM_NAME',
         label: 'ชื่อระบบ',
         type: 'text',
@@ -4864,30 +4888,6 @@
         label: 'รีเฟรชเริ่มต้น (วินาที)',
         type: 'number',
         help: '10–3600 วินาที'
-      },
-      {
-        key: 'AUTO_CLOSE_NEAR_WARNING_HOURS',
-        label: 'เตือนก่อน Auto Close (ชั่วโมง)',
-        type: 'number',
-        help: '1–24 ชั่วโมง และต้องน้อยกว่าค่า Auto Close'
-      },
-      {
-        key: 'DASHBOARD_RECORD_LIMIT',
-        label: 'จำนวนรายการสูงสุดบน Dashboard',
-        type: 'number',
-        help: '100–5000 รายการต่อ Snapshot'
-      },
-      {
-        key: 'HISTORY_ENABLED',
-        label: 'เปิดประวัติการทำงาน',
-        type: 'boolean',
-        help: 'ควบคุมการเปิดดูประวัติจาก Runtime Policy'
-      },
-      {
-        key: 'SOUND_ENABLED',
-        label: 'เปิดเสียงแจ้งเตือน',
-        type: 'boolean',
-        help: 'ควบคุมเสียงแจ้งเตือนจาก Runtime Policy'
       },
       {
         key: 'SESSION_TIMEOUT_MINUTES',
@@ -5067,11 +5067,16 @@
       `;
     }).join('');
 
+    renderAdminWorkflowProfilePreview();
     syncAdminCustomSettingControls();
   }
 
 
   function handleAdminSettingFieldChange(event) {
+    if (event.target?.matches?.('[data-setting-key^="INBOUND_"]')) {
+      syncAdminWorkflowProfileControls();
+      renderAdminWorkflowProfilePreview();
+    }
     const select = event.target?.closest?.(
       '[data-setting-select-custom="TRUE"]'
     );
@@ -5617,9 +5622,10 @@
           'WARNING';
       }
 
+      const setupApplicableCount = stages.filter((stage) => stage.applicable !== false).length || 4;
       setText(
         'adminSlaConfiguredCount',
-        '0 / 4 ช่วง'
+        '0 / ' + setupApplicableCount + ' ช่วงที่ใช้งาน'
       );
 
       setText(
@@ -5644,6 +5650,7 @@
                   ? 'TRUE'
                   : 'FALSE'
               }"
+              data-applicable="${stage.applicable === false ? 'FALSE' : 'TRUE'}"
             >
               <header class="admin-sla-rule-card__header">
                 <div class="admin-sla-rule-card__title">
@@ -5653,6 +5660,7 @@
 
                   <strong>
                     ${escapeHtml(
+                      stage.effectiveLabel ||
                       stage.label ||
                       stage.key
                     )}
@@ -5696,6 +5704,13 @@
                 </span>
               </div>
 
+              ${stage.applicable === false ? `
+                <div class="admin-sla-not-applicable">
+                  <strong>ไม่ใช้ใน Workflow Profile ${escapeHtml(result.workflowProfile?.code || '')}</strong>
+                  <span>${escapeHtml(stage.notApplicableReason || 'ขั้นตอนนี้ถูกตัดออกจาก SLA และ Alert')}</span>
+                </div>
+              ` : ''}
+
               <div class="admin-sla-fields">
                 <label>
                   <span>
@@ -5708,6 +5723,7 @@
                     max="10080"
                     step="1"
                     data-sla-warning
+                    ${stage.applicable === false ? 'disabled' : ''}
                     value="${escapeHtml(
                       stage.warningMinutes ??
                       ''
@@ -5726,6 +5742,7 @@
                     max="10080"
                     step="1"
                     data-sla-red
+                    ${stage.applicable === false ? 'disabled' : ''}
                     value="${escapeHtml(
                       stage.redMinutes ??
                       ''
@@ -5744,6 +5761,7 @@
                     max="1440"
                     step="1"
                     data-sla-repeat
+                    ${stage.applicable === false ? 'disabled' : ''}
                     value="${escapeHtml(
                       stage.repeatMinutes ??
                       10
@@ -5762,6 +5780,7 @@
                   <input
                     type="checkbox"
                     data-sla-enabled
+                    ${stage.applicable === false ? 'disabled' : ''}
                     ${
                       stage.enabled !==
                         false
@@ -5779,6 +5798,7 @@
                   <input
                     type="checkbox"
                     data-sla-alert
+                    ${stage.applicable === false ? 'disabled' : ''}
                     ${
                       stage.alertEnabled
                         ? 'checked'
@@ -5836,18 +5856,15 @@
         )
         .join('');
 
-    const configuredCount =
-      stages.filter(
-        (stage) =>
-          stage.configured
-      ).length;
+    const applicableStages = stages.filter((stage) => stage.applicable !== false);
+    const configuredCount = applicableStages.filter((stage) => stage.configured).length;
 
     setText(
       'adminSlaConfiguredCount',
       configuredCount +
       ' / ' +
-      stages.length +
-      ' ช่วง'
+      applicableStages.length +
+      ' ช่วงที่ใช้งาน'
     );
 
     setText(
@@ -5859,7 +5876,7 @@
     setText(
       'adminSlaStatus',
       configuredCount ===
-        stages.length
+        applicableStages.length
         ? 'พร้อมใช้งาน'
         : 'ยังตั้งค่าไม่ครบ'
     );
@@ -8205,6 +8222,11 @@
       }
     });
 
+    if (settings.INBOUND_WORKFLOW_ENABLED === false) {
+      settings.INBOUND_SUBMIT_SCAN_REQUIRED = false;
+      settings.INBOUND_RETURN_SCAN_REQUIRED = false;
+    }
+
     const autoCloseHours = Number(settings.AUTO_CLOSE_HOURS);
 
     if (
@@ -8232,39 +8254,6 @@
       });
       customInput?.focus();
       customInput?.select();
-      return;
-    }
-
-    const nearAutoCloseHours = Number(settings.AUTO_CLOSE_NEAR_WARNING_HOURS);
-    if (
-      !Number.isInteger(nearAutoCloseHours) ||
-      nearAutoCloseHours < 1 ||
-      nearAutoCloseHours > 24 ||
-      nearAutoCloseHours >= autoCloseHours
-    ) {
-      await Swal.fire({
-        icon: 'warning',
-        title: 'ช่วงเตือนก่อน Auto Close ไม่ถูกต้อง',
-        text: 'ต้องเป็นจำนวนเต็ม 1–24 ชั่วโมง และน้อยกว่าค่า Auto Close',
-        confirmButtonText: 'แก้ไข'
-      });
-      document.querySelector('[data-setting-key="AUTO_CLOSE_NEAR_WARNING_HOURS"]')?.focus();
-      return;
-    }
-
-    const dashboardRecordLimit = Number(settings.DASHBOARD_RECORD_LIMIT);
-    if (
-      !Number.isInteger(dashboardRecordLimit) ||
-      dashboardRecordLimit < 100 ||
-      dashboardRecordLimit > 5000
-    ) {
-      await Swal.fire({
-        icon: 'warning',
-        title: 'จำนวนรายการ Dashboard ไม่ถูกต้อง',
-        text: 'กรุณากรอกจำนวนเต็ม 100–5,000 รายการ',
-        confirmButtonText: 'แก้ไข'
-      });
-      document.querySelector('[data-setting-key="DASHBOARD_RECORD_LIMIT"]')?.focus();
       return;
     }
 
@@ -14060,6 +14049,64 @@
         )
     );
   }
+
+
+/* BASELINE 2 FINAL HOTFIX 5 REVISION 1 — Workflow Profile + Profile-aware Timing UI */
+function syncAdminWorkflowProfileControls() {
+  const master = document.querySelector('[data-setting-key="INBOUND_WORKFLOW_ENABLED"]');
+  const submit = document.querySelector('[data-setting-key="INBOUND_SUBMIT_SCAN_REQUIRED"]');
+  const returned = document.querySelector('[data-setting-key="INBOUND_RETURN_SCAN_REQUIRED"]');
+  if (!master || !submit || !returned) return;
+  const enabled = master.checked === true;
+  submit.disabled = !enabled;
+  returned.disabled = !enabled;
+  if (!enabled) {
+    submit.checked = false;
+    returned.checked = false;
+  }
+}
+
+function renderAdminWorkflowProfilePreview() {
+  const container = document.getElementById('adminSettingsFields');
+  if (!container) return;
+  syncAdminWorkflowProfileControls();
+  const master = document.querySelector('[data-setting-key="INBOUND_WORKFLOW_ENABLED"]');
+  const submit = document.querySelector('[data-setting-key="INBOUND_SUBMIT_SCAN_REQUIRED"]');
+  const returned = document.querySelector('[data-setting-key="INBOUND_RETURN_SCAN_REQUIRED"]');
+  if (!master || !submit || !returned) return;
+  const enabled = master.checked === true;
+  const submitRequired = enabled && submit.checked === true;
+  const returnRequired = enabled && returned.checked === true;
+  let code = 'BYPASS_INBOUND';
+  if (submitRequired && returnRequired) code = 'FULL_INBOUND';
+  else if (submitRequired) code = 'SUBMIT_ONLY';
+  else if (returnRequired) code = 'RETURN_ONLY';
+  const steps = ['Gate In'];
+  if (submitRequired) steps.push('สแกนยื่นเอกสาร');
+  steps.push('รับสินค้าเสร็จ');
+  if (returnRequired) steps.push('สแกนคืนเอกสาร');
+  steps.push('Gate Out');
+  let preview = document.getElementById('adminWorkflowProfilePreview');
+  if (!preview) {
+    preview = document.createElement('section');
+    preview.id = 'adminWorkflowProfilePreview';
+    preview.className = 'admin-workflow-profile-preview';
+    container.prepend(preview);
+  }
+  preview.innerHTML = `
+    <div class="admin-workflow-profile-preview__header">
+      <div><small>WORKFLOW PROFILE</small><strong>${escapeHtml(code)}</strong></div>
+      <span>${enabled ? 'ใช้กับ Gate In ใหม่หลังบันทึก' : 'ปิดขั้นตอน Inbound'}</span>
+    </div>
+    <div class="admin-workflow-profile-preview__flow">${steps.map((step) => `<b>${escapeHtml(step)}</b>`).join('<i>→</i>')}</div>
+    <div class="admin-workflow-profile-preview__timing">
+      <span><b>เวลารอ Receiving</b> เริ่มจาก ${submitRequired ? 'เวลายื่นเอกสาร' : 'Gate In'}</span>
+      <span><b>เวลารอ Gate Out</b> เริ่มจาก ${returnRequired ? 'เวลารับเอกสารคืน' : 'เวลารับสินค้าเสร็จ'}</span>
+      <span><b>ขั้นตอนที่ปิด</b> แสดงเป็น NOT_APPLICABLE และไม่รวม SLA/Alert/ค่าเฉลี่ย</span>
+    </div>
+    <p>รถที่อยู่กลางกระบวนการจะใช้ Profile เดิมจนปิดงาน ระบบไม่ย้ายสถานะย้อนหลัง</p>
+  `;
+}
 
 })(
   window,
