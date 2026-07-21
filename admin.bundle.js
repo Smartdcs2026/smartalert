@@ -1,3 +1,4 @@
+/* ADMIN_PREVIEW_SCOPE_HOTFIX2_BUILD: 2026.07.22 */
 /* PROFILE_AWARE_TIMING_R1_BUILD: 2026.07.21 */
 /* SMARTALERT BASELINE 2 FINAL HOTFIX 5 — ADMIN WORKFLOW PROFILE
  * Build: 2026.07.21-baseline2-final-hotfix5-optional-inbound-v1
@@ -4839,6 +4840,63 @@
         </div>
       </article>
     `).join('');
+  }
+
+  /* BASELINE 2 FINAL HOTFIX 5 REVISION 1 — Workflow Profile + Profile-aware Timing UI */
+  function syncAdminWorkflowProfileControls() {
+    const master = document.querySelector('[data-setting-key="INBOUND_WORKFLOW_ENABLED"]');
+    const submit = document.querySelector('[data-setting-key="INBOUND_SUBMIT_SCAN_REQUIRED"]');
+    const returned = document.querySelector('[data-setting-key="INBOUND_RETURN_SCAN_REQUIRED"]');
+    if (!master || !submit || !returned) return;
+    const enabled = master.checked === true;
+    submit.disabled = !enabled;
+    returned.disabled = !enabled;
+    if (!enabled) {
+      submit.checked = false;
+      returned.checked = false;
+    }
+  }
+
+  function renderAdminWorkflowProfilePreview() {
+    const container = document.getElementById('adminSettingsFields');
+    if (!container) return;
+    syncAdminWorkflowProfileControls();
+    const master = document.querySelector('[data-setting-key="INBOUND_WORKFLOW_ENABLED"]');
+    const submit = document.querySelector('[data-setting-key="INBOUND_SUBMIT_SCAN_REQUIRED"]');
+    const returned = document.querySelector('[data-setting-key="INBOUND_RETURN_SCAN_REQUIRED"]');
+    if (!master || !submit || !returned) return;
+    const enabled = master.checked === true;
+    const submitRequired = enabled && submit.checked === true;
+    const returnRequired = enabled && returned.checked === true;
+    let code = 'BYPASS_INBOUND';
+    if (submitRequired && returnRequired) code = 'FULL_INBOUND';
+    else if (submitRequired) code = 'SUBMIT_ONLY';
+    else if (returnRequired) code = 'RETURN_ONLY';
+    const steps = ['Gate In'];
+    if (submitRequired) steps.push('สแกนยื่นเอกสาร');
+    steps.push('รับสินค้าเสร็จ');
+    if (returnRequired) steps.push('สแกนคืนเอกสาร');
+    steps.push('Gate Out');
+    let preview = document.getElementById('adminWorkflowProfilePreview');
+    if (!preview) {
+      preview = document.createElement('section');
+      preview.id = 'adminWorkflowProfilePreview';
+      preview.className = 'admin-workflow-profile-preview';
+      container.prepend(preview);
+    }
+    preview.innerHTML = `
+      <div class="admin-workflow-profile-preview__header">
+        <div><small>WORKFLOW PROFILE</small><strong>${escapeHtml(code)}</strong></div>
+        <span>${enabled ? 'ใช้กับ Gate In ใหม่หลังบันทึก' : 'ปิดขั้นตอน Inbound'}</span>
+      </div>
+      <div class="admin-workflow-profile-preview__flow">${steps.map((step) => `<b>${escapeHtml(step)}</b>`).join('<i>→</i>')}</div>
+      <div class="admin-workflow-profile-preview__timing">
+        <span><b>เวลารอ Receiving</b> เริ่มจาก ${submitRequired ? 'เวลายื่นเอกสาร' : 'Gate In'}</span>
+        <span><b>เวลารอ Gate Out</b> เริ่มจาก ${returnRequired ? 'เวลารับเอกสารคืน' : 'เวลารับสินค้าเสร็จ'}</span>
+        <span><b>ขั้นตอนที่ปิด</b> แสดงเป็น NOT_APPLICABLE และไม่รวม SLA/Alert/ค่าเฉลี่ย</span>
+      </div>
+      <p>รถที่อยู่กลางกระบวนการจะใช้ Profile เดิมจนปิดงาน ระบบไม่ย้ายสถานะย้อนหลัง</p>
+    `;
   }
 
   function renderSettings() {
@@ -14051,62 +14109,6 @@
   }
 
 
-/* BASELINE 2 FINAL HOTFIX 5 REVISION 1 — Workflow Profile + Profile-aware Timing UI */
-function syncAdminWorkflowProfileControls() {
-  const master = document.querySelector('[data-setting-key="INBOUND_WORKFLOW_ENABLED"]');
-  const submit = document.querySelector('[data-setting-key="INBOUND_SUBMIT_SCAN_REQUIRED"]');
-  const returned = document.querySelector('[data-setting-key="INBOUND_RETURN_SCAN_REQUIRED"]');
-  if (!master || !submit || !returned) return;
-  const enabled = master.checked === true;
-  submit.disabled = !enabled;
-  returned.disabled = !enabled;
-  if (!enabled) {
-    submit.checked = false;
-    returned.checked = false;
-  }
-}
-
-function renderAdminWorkflowProfilePreview() {
-  const container = document.getElementById('adminSettingsFields');
-  if (!container) return;
-  syncAdminWorkflowProfileControls();
-  const master = document.querySelector('[data-setting-key="INBOUND_WORKFLOW_ENABLED"]');
-  const submit = document.querySelector('[data-setting-key="INBOUND_SUBMIT_SCAN_REQUIRED"]');
-  const returned = document.querySelector('[data-setting-key="INBOUND_RETURN_SCAN_REQUIRED"]');
-  if (!master || !submit || !returned) return;
-  const enabled = master.checked === true;
-  const submitRequired = enabled && submit.checked === true;
-  const returnRequired = enabled && returned.checked === true;
-  let code = 'BYPASS_INBOUND';
-  if (submitRequired && returnRequired) code = 'FULL_INBOUND';
-  else if (submitRequired) code = 'SUBMIT_ONLY';
-  else if (returnRequired) code = 'RETURN_ONLY';
-  const steps = ['Gate In'];
-  if (submitRequired) steps.push('สแกนยื่นเอกสาร');
-  steps.push('รับสินค้าเสร็จ');
-  if (returnRequired) steps.push('สแกนคืนเอกสาร');
-  steps.push('Gate Out');
-  let preview = document.getElementById('adminWorkflowProfilePreview');
-  if (!preview) {
-    preview = document.createElement('section');
-    preview.id = 'adminWorkflowProfilePreview';
-    preview.className = 'admin-workflow-profile-preview';
-    container.prepend(preview);
-  }
-  preview.innerHTML = `
-    <div class="admin-workflow-profile-preview__header">
-      <div><small>WORKFLOW PROFILE</small><strong>${escapeHtml(code)}</strong></div>
-      <span>${enabled ? 'ใช้กับ Gate In ใหม่หลังบันทึก' : 'ปิดขั้นตอน Inbound'}</span>
-    </div>
-    <div class="admin-workflow-profile-preview__flow">${steps.map((step) => `<b>${escapeHtml(step)}</b>`).join('<i>→</i>')}</div>
-    <div class="admin-workflow-profile-preview__timing">
-      <span><b>เวลารอ Receiving</b> เริ่มจาก ${submitRequired ? 'เวลายื่นเอกสาร' : 'Gate In'}</span>
-      <span><b>เวลารอ Gate Out</b> เริ่มจาก ${returnRequired ? 'เวลารับเอกสารคืน' : 'เวลารับสินค้าเสร็จ'}</span>
-      <span><b>ขั้นตอนที่ปิด</b> แสดงเป็น NOT_APPLICABLE และไม่รวม SLA/Alert/ค่าเฉลี่ย</span>
-    </div>
-    <p>รถที่อยู่กลางกระบวนการจะใช้ Profile เดิมจนปิดงาน ระบบไม่ย้ายสถานะย้อนหลัง</p>
-  `;
-}
 
 })(
   window,
