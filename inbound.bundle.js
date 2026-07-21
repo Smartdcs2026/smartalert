@@ -1,3 +1,9 @@
+/* PROFILE_AWARE_TIMING_R1_BUILD: 2026.07.21 */
+/* SMARTALERT BASELINE 2 FINAL HOTFIX 5 — OPTIONAL INBOUND UI
+ * Build: 2026.07.21-baseline2-final-hotfix5-optional-inbound-v1
+ * Scanner availability and task lists follow each record's snapshotted workflow profile.
+ */
+
 /* SMARTALERT BASELINE 2 FINAL HOTFIX 4 — INTERACTIVE FAST LANE
  * Build: 2026.07.21-baseline2-final-hotfix4-interactive-fast-lane-v1
  * - Online scan uses direct authoritative commit
@@ -6279,7 +6285,7 @@
   const CONFIG = window.APP_CONFIG || {};
   const API = window.VehicleAPI;
   const PENDING_QUEUE = window.InboundPendingQueue;
-  const BUILD = '2026.07.21-baseline2-final-hotfix2-fast-workflow-v1';
+  const BUILD = '2026.07.21-baseline2-final-hotfix5-optional-inbound-v1';
   const FAST_SCAN_MODE = false; // Online = authoritative direct commit; Queue ใช้เฉพาะ Offline/Timeout
   const FAST_QUEUE_FLUSH_DELAY_MS = 35;
   const FAST_QUEUE_RETRY_BASE_MS = 1200;
@@ -6355,6 +6361,12 @@
     fastQueueFlushRunning: false,
     fastQueueFlushAgain: false,
     queueUnsubscribe: null,
+    workflowProfile: {
+      code: 'FULL_INBOUND_LEGACY',
+      inboundEnabled: true,
+      submitScanRequired: true,
+      returnScanRequired: true
+    },
     slaSummary: {
       normal: 0,
       warning: 0,
@@ -6413,7 +6425,13 @@
       focusCodeInput();
 
       // คอมพิวเตอร์ที่เสียบเครื่องสแกนจะพร้อมรับรหัสทันที
-      setScanMessage('พร้อมสแกน · ยิงรหัสแล้วสแกนรายการถัดไปได้ทันที', 'SUCCESS');
+      applyInboundWorkflowProfileUi();
+      setScanMessage(
+        state.workflowProfile?.inboundEnabled === false
+          ? 'ขั้นตอน Inbound ถูกปิดใช้งานโดย Admin'
+          : 'พร้อมสแกน · ยิงรหัสแล้วสแกนรายการถัดไปได้ทันที',
+        state.workflowProfile?.inboundEnabled === false ? 'WARN' : 'SUCCESS'
+      );
 
       // พยายามเปิดกล้องแบบเงียบ หาก Browser ไม่ยอมก็ยังใช้ช่องกรอก/เครื่องสแกนได้
       window.setTimeout(() => {
@@ -6960,6 +6978,13 @@
       return;
     }
 
+    if (state.workflowProfile?.inboundEnabled === false && (!Array.isArray(state.dashboardItems) || state.dashboardItems.length === 0)) {
+      beep('warn');
+      setScanMessage('ขั้นตอน Inbound ถูกปิดใช้งานโดย Admin รถจะทำงานตาม Flow ที่กำหนด', 'WARN');
+      resetForNextScan();
+      return;
+    }
+
     if (isDuplicateBlocked(cleanCode)) {
       beep('duplicate');
       setScanMessage('กันสแกนซ้ำ ไม่ยิงข้อมูลซ้ำ: ' + cleanCode, 'WARN');
@@ -7439,6 +7464,7 @@
        * แม้รายการเป็น 0 ต้องล้าง Cache/การ์ดเก่า ห้ามคงข้อมูลจาก Spreadsheet รุ่นก่อน
        */
       state.dashboardItems = nextItems;
+      applyInboundWorkflowProfileUi();
       state.dashboardLoadedAt = payload.generatedAt || formatBangkokDateTime(new Date());
       state.dashboardCacheRestored = false;
 
@@ -7504,6 +7530,11 @@
     state.effectiveSlaRules = source.effectiveSlaRules && typeof source.effectiveSlaRules === 'object'
       ? source.effectiveSlaRules
       : state.effectiveSlaRules;
+    const profile = source.workflowProfile || source.module?.workflowProfile;
+    if (profile && typeof profile === 'object') {
+      state.workflowProfile = Object.assign({}, state.workflowProfile, profile);
+      applyInboundWorkflowProfileUi();
+    }
 
     const serverRefreshSeconds = Number(
       source.runtimePolicy?.refreshSeconds ??
@@ -9601,4 +9632,38 @@
     error.code = code;
     return error;
   }
+
+function applyInboundWorkflowProfileUi() {
+  const profile = state.workflowProfile || {};
+  const newRecordsEnabled = profile.inboundEnabled !== false && (profile.submitScanRequired !== false || profile.returnScanRequired !== false);
+  const legacyActiveCount = Array.isArray(state.dashboardItems) ? state.dashboardItems.length : 0;
+  const enabled = newRecordsEnabled || legacyActiveCount > 0;
+  const input = byId('entryCodeInput');
+  const startCamera = byId('startCameraButton');
+  const submitButton = document.querySelector('#manualLookupForm button[type="submit"]');
+  if (input) input.disabled = !enabled;
+  if (startCamera) startCamera.disabled = !enabled;
+  if (submitButton) submitButton.disabled = !enabled;
+  document.body.dataset.workflowProfile = profile.code || 'FULL_INBOUND_LEGACY';
+  document.body.dataset.inboundEnabled = enabled ? 'TRUE' : 'FALSE';
+  let banner = byId('inboundWorkflowProfileBanner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'inboundWorkflowProfileBanner';
+    banner.className = 'inbound-workflow-profile-banner';
+    const shell = document.querySelector('.inbound-shell') || document.querySelector('main') || document.body;
+    shell.prepend(banner);
+  }
+  const flow = [];
+  if (profile.submitScanRequired !== false) flow.push('สแกนยื่นเอกสาร');
+  if (profile.returnScanRequired !== false) flow.push('สแกนคืนเอกสาร');
+  banner.hidden = newRecordsEnabled && profile.code === 'FULL_INBOUND';
+  banner.innerHTML = !newRecordsEnabled && legacyActiveCount > 0
+    ? `<strong>ปิด Inbound สำหรับรถ Gate In ใหม่</strong><span>ยังมีงานเดิม ${legacyActiveCount} รายการที่ต้องทำต่อจนจบตาม Profile เดิม</span>`
+    : (enabled
+      ? `<strong>Workflow Profile: ${escapeHtml(profile.code || '-')}</strong><span>เปิดใช้งาน ${escapeHtml(flow.join(' และ ') || 'ไม่มีขั้นตอน Inbound')}</span>`
+      : '<strong>ขั้นตอน Inbound ถูกปิดใช้งานโดย Admin</strong><span>รถ Gate In ใหม่จะส่งตรงไปขั้นตอนรับสินค้า และหลังรับสินค้าเสร็จจะรอ Gate Out</span>');
+  if (!enabled && state.scanner?.running) stopCamera();
+}
+
 })(window, document);
