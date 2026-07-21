@@ -2136,7 +2136,7 @@ body.inbound-page {
     }
   </style>
 
-  <script src="./inbound.bundle.js?v=20260722-hotfix5-r1-h4-read-after-write" defer></script>
+  <script src="./inbound.bundle.js?v=20260722-hotfix5-r1-h5-effective-activation" defer></script>
 
   <script>
     (function () {
@@ -2171,6 +2171,35 @@ body.inbound-page {
       }
     })();
   </script>
+
+
+  <style id="smartalertInboundEffectiveActivationHotfix5">
+    .inbound-workflow-profile-chip--pending {
+      border-color: rgba(217, 130, 7, .42);
+      color: #8a4b00;
+      background: #fff7df;
+    }
+
+    .inbound-workflow-profile-chip--legacy {
+      border-color: rgba(124, 58, 237, .28);
+      color: #5b21b6;
+      background: #f5f0ff;
+    }
+
+    .inbound-workflow-profile-chip[hidden] {
+      display: none !important;
+    }
+
+    @media (max-width: 980px) {
+      .inbound-module-bar .module-actions {
+        flex-wrap: wrap;
+      }
+
+      .inbound-workflow-profile-chip {
+        max-width: 180px;
+      }
+    }
+  </style>
 
 </head>
 
