@@ -22972,3 +22972,184 @@ body.admin-page .admin-workflow-profile-preview__header span {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+
+/* HOTFIX 5 REV1 H5 — Effective-time Workflow Activation */
+body.admin-page .admin-workflow-live-status {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+
+body.admin-page .admin-workflow-live-status > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid #cbdde3;
+  border-radius: 12px;
+  background: #fff;
+}
+
+body.admin-page .admin-workflow-live-status > div[data-tone="ACTIVE"] {
+  border-color: #72c9bd;
+  background: #effcf9;
+}
+
+body.admin-page .admin-workflow-live-status > div[data-tone="PENDING"] {
+  border-color: #f1bf59;
+  background: #fff9e8;
+}
+
+body.admin-page .admin-workflow-live-status small {
+  color: #64748b;
+  font-size: .69rem;
+}
+
+body.admin-page .admin-workflow-live-status strong {
+  color: #073b55;
+  font-size: 1rem;
+}
+
+body.admin-page .admin-workflow-live-status span {
+  color: #526777;
+  font-size: .72rem;
+}
+
+body.admin-page .admin-workflow-activation {
+  display: grid;
+  gap: 10px;
+  margin: 13px 0;
+  padding: 12px;
+  border: 1px solid #b9d8df;
+  border-radius: 13px;
+  background: #f8fcfd;
+}
+
+body.admin-page .admin-workflow-activation__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+body.admin-page .admin-workflow-activation__heading > div {
+  display: grid;
+  gap: 3px;
+}
+
+body.admin-page .admin-workflow-activation__heading strong {
+  color: #0b3f5e;
+}
+
+body.admin-page .admin-workflow-activation__heading span,
+body.admin-page .admin-workflow-activation__heading em {
+  color: #64748b;
+  font-size: .7rem;
+  font-style: normal;
+}
+
+body.admin-page .admin-workflow-activation__options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+body.admin-page .admin-workflow-activation__options label {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #cadbe1;
+  border-radius: 11px;
+  background: #fff;
+  cursor: pointer;
+}
+
+body.admin-page .admin-workflow-activation__options input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+}
+
+body.admin-page .admin-workflow-activation__options span {
+  display: grid;
+  gap: 2px;
+}
+
+body.admin-page .admin-workflow-activation__options b {
+  color: #123f5a;
+}
+
+body.admin-page .admin-workflow-activation__options small {
+  color: #64748b;
+  line-height: 1.35;
+}
+
+body.admin-page .admin-workflow-activation__schedule {
+  display: none;
+}
+
+body.admin-page .admin-workflow-activation__schedule[data-active="TRUE"] {
+  display: block;
+}
+
+body.admin-page .admin-workflow-activation__schedule label {
+  display: grid;
+  gap: 5px;
+}
+
+body.admin-page .admin-workflow-activation__schedule input {
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid #b8cdd5;
+  border-radius: 10px;
+  background: #fff;
+}
+
+body.admin-page #adminWorkflowActivationSummary {
+  margin: 0;
+  color: #0d6b67;
+  font-size: .76rem;
+  font-weight: 800;
+}
+
+body.admin-page .admin-workflow-confirm {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  text-align: left;
+}
+
+body.admin-page .admin-workflow-confirm > div {
+  display: grid;
+  gap: 3px;
+  padding: 9px;
+  border: 1px solid #d6e1e6;
+  border-radius: 10px;
+  background: #f8fbfc;
+}
+
+body.admin-page .admin-workflow-confirm span {
+  color: #64748b;
+  font-size: .72rem;
+}
+
+body.admin-page .admin-workflow-confirm strong {
+  color: #0b3f5e;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  body.admin-page .admin-workflow-live-status,
+  body.admin-page .admin-workflow-activation__options,
+  body.admin-page .admin-workflow-confirm {
+    grid-template-columns: 1fr;
+  }
+
+  body.admin-page .admin-workflow-activation__heading {
+    flex-direction: column;
+  }
+}
