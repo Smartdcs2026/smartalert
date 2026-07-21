@@ -1,3 +1,5 @@
+/* SMARTALERT_ROUND3_REV1_COMPACT_ADMIN_BUILD: 2026.07.22 */
+/* SMARTALERT_ROUND3_SHIFT24H_FRONTEND_BUILD: 2026.07.22 */
 /* ADMIN_AUTHORITATIVE_READBACK_HOTFIX6_BUILD: 2026.07.22 */
 /* ADMIN_EFFECTIVE_ACTIVATION_HOTFIX5_BUILD: 2026.07.22 */
 /* ADMIN_SAVED_STATE_HOTFIX4_BUILD: 2026.07.22 */
@@ -11884,6 +11886,8 @@ async function verifyAdminSettingsReadback(expectedValues, options) {
 
     byId('adminShiftRows')?.addEventListener('input', updateShiftFromEvent);
     byId('adminShiftRows')?.addEventListener('change', updateShiftFromEvent);
+    byId('adminShiftEnabled')?.addEventListener('change', updateValidation);
+    byId('adminShiftCoverageMode')?.addEventListener('change', updateValidation);
     byId('adminShiftRows')?.addEventListener('click', removeShiftFromEvent);
   }
 
@@ -12060,7 +12064,7 @@ async function verifyAdminSettingsReadback(expectedValues, options) {
 
       if (token !== state.requestToken) return;
 
-      state.config = results[0] || {};
+      state.config = results[0]?.pendingConfig || results[0] || {};
       state.shifts = Array.isArray(state.config.shifts)
         ? state.config.shifts.map(normalizeShift)
         : defaultShifts();
@@ -12097,6 +12101,7 @@ async function verifyAdminSettingsReadback(expectedValues, options) {
     setChecked('adminShiftEnabled', config.enabled === true);
     setValue('adminShiftTimezone', config.timezone || 'Asia/Bangkok');
     setValue('adminShiftBusinessStart', config.businessDayStart || '06:00');
+    setValue('adminShiftCoverageMode', config.coverageMode || 'DEFINED_WINDOWS');
     setValue('adminShiftEffectiveDate', dateToIso(config.effectiveFrom) || todayIso());
     setText('adminShiftVersion', config.version || 'DEFAULT');
     setText(
@@ -12108,8 +12113,13 @@ async function verifyAdminSettingsReadback(expectedValues, options) {
 
     const badge = byId('adminShiftStatusBadge');
     if (badge) {
-      badge.textContent = config.enabled === true ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
-      badge.dataset.status = config.enabled === true ? 'ENABLED' : 'DISABLED';
+      const pending = Number(config.effectiveAtEpochMs || 0) > Date.now();
+      badge.textContent = pending
+        ? 'รอเริ่มใช้ ' + (config.effectiveAt || config.effectiveFrom || '')
+        : (config.enabled === true ? 'เปิดใช้งาน 24H' : 'ปิดใช้งาน');
+      badge.dataset.status = pending
+        ? 'PENDING'
+        : (config.enabled === true ? 'ENABLED' : 'DISABLED');
     }
 
     renderShiftRows();
@@ -12132,7 +12142,7 @@ async function verifyAdminSettingsReadback(expectedValues, options) {
           (shift.active ? 'checked' : '') + '>',
         '<span>ใช้งาน</span></label>',
         '<button class="admin-shift-remove" type="button" data-remove-shift="' +
-          index + '" ' + (state.shifts.length <= 2 ? 'disabled' : '') + '>ลบ</button>',
+          index + '" ' + (state.shifts.length <= 1 ? 'disabled' : '') + '>ลบ</button>',
         '</div>'
       ].join('');
     }).join('');
@@ -12162,21 +12172,21 @@ async function verifyAdminSettingsReadback(expectedValues, options) {
 
   function removeShiftFromEvent(event) {
     const button = event.target.closest('[data-remove-shift]');
-    if (!button || state.shifts.length <= 2) return;
+    if (!button || state.shifts.length <= 1) return;
     state.shifts.splice(Number(button.dataset.removeShift), 1);
     renderShiftRows();
   }
 
   function addShift() {
-    if (state.shifts.length >= 4) {
-      showError(codedError('SHIFT_LIMIT_REACHED', 'กำหนดได้ไม่เกิน 4 กะ'), 'เพิ่มกะไม่ได้');
+    if (state.shifts.length >= 5) {
+      showError(codedError('SHIFT_LIMIT_REACHED', 'กำหนดได้ไม่เกิน 5 กะ'), 'เพิ่มกะไม่ได้');
       return;
     }
 
     const used = new Set(state.shifts.map(function (shift) {
       return text(shift.code).toUpperCase();
     }));
-    const code = ['A', 'B', 'C', 'D'].find(function (item) {
+    const code = ['A', 'B', 'C', 'D', 'N'].find(function (item) {
       return !used.has(item);
     }) || 'S' + (state.shifts.length + 1);
 
@@ -12191,12 +12201,12 @@ async function verifyAdminSettingsReadback(expectedValues, options) {
   }
 
   function validateShifts(shifts) {
-    if (shifts.length < 2 || shifts.length > 4) {
-      return invalid('ต้องกำหนด 2–4 กะ');
+    if (shifts.length < 1 || shifts.length > 5) {
+      return invalid('ต้องกำหนด 1–5 กะ');
     }
 
     const active = shifts.filter(function (shift) { return shift.active; });
-    if (active.length < 2) return invalid('ต้องเปิดใช้งานอย่างน้อย 2 กะ');
+    if (active.length < 1) return invalid('ต้องเปิดใช้งานอย่างน้อย 1 กะ');
 
     const codes = new Set();
     for (const shift of shifts) {
@@ -12227,13 +12237,35 @@ async function verifyAdminSettingsReadback(expectedValues, options) {
     }
 
     const coverageMinutes = occupied.filter(Boolean).length;
+    const coverageMode =
+      byId('adminShiftCoverageMode')?.value || 'DEFINED_WINDOWS';
+    const enabled = byId('adminShiftEnabled')?.checked === true;
+
+    if (
+      enabled &&
+      coverageMode === 'FULL_24H' &&
+      coverageMinutes !== 1440
+    ) {
+      return {
+        valid: false,
+        coverageMinutes: coverageMinutes,
+        coverageHours: coverageMinutes / 60,
+        message: 'โหมด 24 ชั่วโมงต้องครอบคลุมครบ 24 ชั่วโมง'
+      };
+    }
+
     return {
       valid: true,
       coverageMinutes: coverageMinutes,
       coverageHours: coverageMinutes / 60,
-      message: coverageMinutes === 1440
-        ? 'ช่วงเวลาไม่ทับกันและครบ 24 ชั่วโมง'
-        : 'ช่วงเวลาไม่ทับกัน แต่ยังมีช่วงว่าง'
+      message:
+        coverageMode === 'FULL_24H'
+          ? 'ช่วงเวลาไม่ทับกันและครบ 24 ชั่วโมง'
+          : (
+              coverageMinutes === 1440
+                ? 'ช่วงกะครอบคลุมครบ 24 ชั่วโมง'
+                : 'เวลานอกกะเป็น OUTSIDE_SHIFT และ Workflow ยังทำงาน'
+            )
     };
   }
 
@@ -12260,9 +12292,11 @@ async function verifyAdminSettingsReadback(expectedValues, options) {
     setText(
       'adminShiftSaveHint',
       result.valid
-        ? (result.coverageMinutes === 1440
-          ? 'พร้อมบันทึกการตั้งค่ากะ'
-          : 'บันทึกได้ แต่ช่วงว่างจะไม่ถูกจัดเข้ากะ')
+        ? (
+            enabled
+              ? 'พร้อมบันทึก · ส่งมอบกะอัตโนมัติ'
+              : 'ตารางถูกต้อง แต่ระบบกะยังปิดใช้งาน'
+          )
         : result.message
     );
 
@@ -12279,18 +12313,29 @@ async function verifyAdminSettingsReadback(expectedValues, options) {
       return;
     }
 
-    if (validation.coverageMinutes !== 1440) {
-      const confirmation = await window.Swal.fire({
-        icon: 'warning',
-        title: 'ช่วงกะยังไม่ครบ 24 ชั่วโมง',
-        text: 'ข้อมูลในช่วงเวลาว่างจะไม่ถูกระบุกะ ต้องการบันทึกต่อหรือไม่',
-        showCancelButton: true,
-        confirmButtonText: 'บันทึกต่อ',
-        cancelButtonText: 'กลับไปแก้ไข',
-        reverseButtons: true
-      });
-      if (!confirmation.isConfirmed) return;
-    }
+
+    const reasonResult = await window.Swal.fire({
+      icon: 'question',
+      title: 'ยืนยันการสร้างเวอร์ชันกะใหม่',
+      html:
+        '<p>วันที่เริ่มใช้: <strong>' +
+        escapeHtml(byId('adminShiftEffectiveDate')?.value || todayIso()) +
+        '</strong></p>' +
+        '<p>รถและสถิติย้อนหลังจะยังใช้เวอร์ชันเดิม</p>',
+      input: 'textarea',
+      inputLabel: 'เหตุผลการเปลี่ยนตารางกะ',
+      inputPlaceholder: 'ระบุเหตุผลอย่างน้อย 5 ตัวอักษร',
+      inputValidator: function (value) {
+        return text(value).length >= 5
+          ? undefined
+          : 'กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร';
+      },
+      showCancelButton: true,
+      confirmButtonText: 'บันทึกเวอร์ชันใหม่',
+      cancelButtonText: 'ยกเลิก',
+      reverseButtons: true
+    });
+    if (!reasonResult.isConfirmed) return;
 
     const button = byId('adminShiftSaveButton');
     setButtonLoading(button, true, 'กำลังบันทึก');
@@ -12303,7 +12348,9 @@ async function verifyAdminSettingsReadback(expectedValues, options) {
             enabled: byId('adminShiftEnabled')?.checked === true,
             timezone: text(byId('adminShiftTimezone')?.value) || 'Asia/Bangkok',
             businessDayStart: byId('adminShiftBusinessStart')?.value || '06:00',
+            coverageMode: byId('adminShiftCoverageMode')?.value || 'DEFINED_WINDOWS',
             effectiveFrom: byId('adminShiftEffectiveDate')?.value || todayIso(),
+            changeReason: text(reasonResult.value),
             shifts: state.shifts.map(function (shift, index) {
               return {
                 code: text(shift.code).toUpperCase(),
@@ -12340,7 +12387,7 @@ async function verifyAdminSettingsReadback(expectedValues, options) {
       await window.Swal.fire({
         icon: result?.success === false ? 'warning' : 'success',
         title: 'เตรียมระบบกะแล้ว',
-        text: 'ตรวจสอบชีท ' + (Array.isArray(result?.sheets) ? result.sheets.length : 0) + ' รายการ',
+        text: 'สร้าง/ตรวจสอบเพียงชีทตั้งค่ากะและชีทสรุปกะ',
         confirmButtonText: 'รับทราบ'
       });
       await loadModules(true);
@@ -12375,9 +12422,7 @@ async function verifyAdminSettingsReadback(expectedValues, options) {
         title: 'ประมวลผล Snapshot แล้ว',
         html: '<div class="admin-shift-result">' +
           metric('สรุปกะ', result?.shiftSnapshots) +
-          metric('สรุปรายวัน', result?.dailySnapshots) +
-          metric('รายชั่วโมง', result?.hourlyRows) +
-          metric('ข้อยกเว้น', result?.exceptionRows) +
+          metric('ส่งมอบอัตโนมัติ', result?.automaticTransfers) +
           '</div>',
         confirmButtonText: 'รับทราบ'
       });
@@ -12581,9 +12626,13 @@ async function verifyAdminSettingsReadback(expectedValues, options) {
 
   function defaultShifts() {
     return [
-      {code: 'A', name: 'กะ A', start: '06:00', end: '14:00', active: true},
-      {code: 'B', name: 'กะ B', start: '14:00', end: '22:00', active: true},
-      {code: 'C', name: 'กะ C', start: '22:00', end: '06:00', active: true}
+      {
+        code: 'A',
+        name: 'กะ A',
+        start: '08:00',
+        end: '17:00',
+        active: true
+      }
     ];
   }
 
