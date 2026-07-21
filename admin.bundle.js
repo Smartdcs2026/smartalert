@@ -1,3 +1,4 @@
+/* ADMIN_EFFECTIVE_ACTIVATION_HOTFIX5_BUILD: 2026.07.22 */
 /* ADMIN_SAVED_STATE_HOTFIX4_BUILD: 2026.07.22 */
 /* ADMIN_PREVIEW_SCOPE_HOTFIX2_BUILD: 2026.07.22 */
 /* PROFILE_AWARE_TIMING_R1_BUILD: 2026.07.21 */
@@ -4292,7 +4293,9 @@
     settingsSaveInFlight: false,
     settingsSource: 'SERVER',
     settingsLastConfirmedAt: '',
-    savedSettingsSignature: ''
+    savedSettingsSignature: '',
+    savedWorkflowActivationSignature: '',
+    workflowActivationDirty: false
   };
 
   const LABELS = {
@@ -4521,6 +4524,28 @@
         username: user.username || 'admin',
         role: 'ADMIN'
       },
+      workflowProfileSchedule: {
+        active: {
+          code: 'FULL_INBOUND',
+          inboundEnabled: true,
+          submitScanRequired: true,
+          returnScanRequired: true,
+          revision: 'WF-PROFILE-LEGACY-FULL',
+          effectiveAt: ''
+        },
+        pending: null,
+        configured: {
+          code: 'FULL_INBOUND',
+          inboundEnabled: true,
+          submitScanRequired: true,
+          returnScanRequired: true,
+          revision: 'WF-PROFILE-LEGACY-FULL',
+          effectiveAt: ''
+        },
+        hasPending: false,
+        timezone: 'Asia/Bangkok',
+        defaultProfileCode: 'FULL_INBOUND'
+      },
       capabilities: {
         moduleManagement: true,
         userManagement: true,
@@ -4606,6 +4631,10 @@
     );
     byId('adminSettingsFields')?.addEventListener(
       'change',
+      handleAdminSettingFieldChange
+    );
+    byId('adminSettingsFields')?.addEventListener(
+      'input',
       handleAdminSettingFieldChange
     );
     byId('adminSlaModuleSelect')?.addEventListener(
@@ -4883,23 +4912,50 @@
   function renderAdminWorkflowProfilePreview() {
     const container = document.getElementById('adminSettingsFields');
     if (!container) return;
+
+    const previousActivation = document.querySelector(
+      '[name="adminWorkflowActivationMode"]:checked'
+    )
+      ? collectAdminWorkflowActivation()
+      : defaultWorkflowActivationDraft();
+
     syncAdminWorkflowProfileControls();
-    const master = document.querySelector('[data-setting-key="INBOUND_WORKFLOW_ENABLED"]');
-    const submit = document.querySelector('[data-setting-key="INBOUND_SUBMIT_SCAN_REQUIRED"]');
-    const returned = document.querySelector('[data-setting-key="INBOUND_RETURN_SCAN_REQUIRED"]');
+
+    const master = document.querySelector(
+      '[data-setting-key="INBOUND_WORKFLOW_ENABLED"]'
+    );
+    const submit = document.querySelector(
+      '[data-setting-key="INBOUND_SUBMIT_SCAN_REQUIRED"]'
+    );
+    const returned = document.querySelector(
+      '[data-setting-key="INBOUND_RETURN_SCAN_REQUIRED"]'
+    );
     if (!master || !submit || !returned) return;
+
     const enabled = master.checked === true;
     const submitRequired = enabled && submit.checked === true;
     const returnRequired = enabled && returned.checked === true;
+
     let code = 'BYPASS_INBOUND';
     if (submitRequired && returnRequired) code = 'FULL_INBOUND';
     else if (submitRequired) code = 'SUBMIT_ONLY';
     else if (returnRequired) code = 'RETURN_ONLY';
+
     const steps = ['Gate In'];
     if (submitRequired) steps.push('สแกนยื่นเอกสาร');
     steps.push('รับสินค้าเสร็จ');
     if (returnRequired) steps.push('สแกนคืนเอกสาร');
     steps.push('Gate Out');
+
+    const schedule =
+      state.dashboard && state.dashboard.workflowProfileSchedule || {};
+    const active = schedule.active || {};
+    const pending = schedule.pending || null;
+    const activation = previousActivation || defaultWorkflowActivationDraft();
+    const minLocal = bangkokDateTimeLocalFromValue(
+      new Date(Date.now() + 60000).toISOString()
+    );
+
     let preview = document.getElementById('adminWorkflowProfilePreview');
     if (!preview) {
       preview = document.createElement('section');
@@ -4907,23 +4963,127 @@
       preview.className = 'admin-workflow-profile-preview';
       container.prepend(preview);
     }
+
     preview.innerHTML = `
       <div class="admin-workflow-profile-preview__header">
-        <div><small>WORKFLOW PROFILE</small><strong>${escapeHtml(code)}</strong></div>
+        <div>
+          <small>WORKFLOW PROFILE ที่กำหนด</small>
+          <strong>${escapeHtml(code)}</strong>
+        </div>
         <span>${
           state.settingsDirty
-            ? 'ตัวอย่างที่ยังไม่ได้บันทึก'
-            : (enabled ? 'ค่าที่บันทึกแล้ว · ใช้กับ Gate In ใหม่' : 'ค่าที่บันทึกแล้ว · ปิด Inbound รถใหม่')
+            ? 'ค่าร่างที่ยังไม่ได้บันทึก'
+            : 'ค่าที่บันทึกไว้ในระบบ'
         }</span>
       </div>
-      <div class="admin-workflow-profile-preview__flow">${steps.map((step) => `<b>${escapeHtml(step)}</b>`).join('<i>→</i>')}</div>
-      <div class="admin-workflow-profile-preview__timing">
-        <span><b>เวลารอ Receiving</b> เริ่มจาก ${submitRequired ? 'เวลายื่นเอกสาร' : 'Gate In'}</span>
-        <span><b>เวลารอ Gate Out</b> เริ่มจาก ${returnRequired ? 'เวลารับเอกสารคืน' : 'เวลารับสินค้าเสร็จ'}</span>
-        <span><b>ขั้นตอนที่ปิด</b> แสดงเป็น NOT_APPLICABLE และไม่รวม SLA/Alert/ค่าเฉลี่ย</span>
+
+      <div class="admin-workflow-live-status">
+        <div data-tone="ACTIVE">
+          <small>รถ Gate In ใหม่ใช้งานตอนนี้</small>
+          <strong>${escapeHtml(active.code || 'FULL_INBOUND')}</strong>
+          <span>${
+            active.effectiveAt
+              ? 'เริ่มใช้ ' + escapeHtml(active.effectiveAt)
+              : 'ค่าเริ่มต้นเปิด Inbound ครบทุกขั้นตอน'
+          }</span>
+        </div>
+        <div data-tone="${pending ? 'PENDING' : 'NONE'}">
+          <small>รายการเปลี่ยนที่รอเริ่มใช้</small>
+          <strong>${escapeHtml(pending && pending.code || 'ไม่มี')}</strong>
+          <span>${
+            pending
+              ? 'เริ่ม ' + escapeHtml(pending.effectiveAt || '-')
+              : 'ไม่มี Profile ที่นัดหมายไว้'
+          }</span>
+        </div>
       </div>
-      <p>รถที่อยู่กลางกระบวนการจะใช้ Profile เดิมจนปิดงาน ระบบไม่ย้ายสถานะย้อนหลัง</p>
+
+      <div class="admin-workflow-profile-preview__flow">
+        ${steps.map((step) => `<b>${escapeHtml(step)}</b>`).join('<i>→</i>')}
+      </div>
+
+      <div class="admin-workflow-activation">
+        <div class="admin-workflow-activation__heading">
+          <div>
+            <strong>กำหนดเวลาเริ่มใช้สำหรับรถ Gate In ใหม่</strong>
+            <span>รถที่อยู่กลางงานยังใช้ Profile เดิมจนปิดงาน</span>
+          </div>
+          <em>เขตเวลา Asia/Bangkok</em>
+        </div>
+
+        <div class="admin-workflow-activation__options">
+          <label>
+            <input
+              type="radio"
+              name="adminWorkflowActivationMode"
+              value="IMMEDIATE"
+              data-workflow-activation-control="TRUE"
+              ${activation.mode !== 'SCHEDULED' ? 'checked' : ''}
+            >
+            <span>
+              <b>เริ่มทันที</b>
+              <small>ใช้หลัง Backend บันทึกและตรวจอ่านกลับสำเร็จ</small>
+            </span>
+          </label>
+
+          <label>
+            <input
+              type="radio"
+              name="adminWorkflowActivationMode"
+              value="SCHEDULED"
+              data-workflow-activation-control="TRUE"
+              ${activation.mode === 'SCHEDULED' ? 'checked' : ''}
+            >
+            <span>
+              <b>กำหนดวันและเวลา</b>
+              <small>เหมาะกับการเปลี่ยนช่วงเริ่มกะหรือเวลาที่ฝ่ายบริหารกำหนด</small>
+            </span>
+          </label>
+        </div>
+
+        <div
+          id="adminWorkflowActivationScheduledPanel"
+          class="admin-workflow-activation__schedule"
+          data-active="${activation.mode === 'SCHEDULED' ? 'TRUE' : 'FALSE'}"
+        >
+          <label>
+            <span>วัน–เวลาเริ่มใช้</span>
+            <input
+              id="adminWorkflowActivationAt"
+              type="datetime-local"
+              min="${escapeHtml(minLocal)}"
+              value="${escapeHtml(activation.localValue || '')}"
+              data-workflow-activation-control="TRUE"
+              ${activation.mode === 'SCHEDULED' ? '' : 'disabled'}
+            >
+          </label>
+        </div>
+
+        <p id="adminWorkflowActivationSummary"></p>
+      </div>
+
+      <div class="admin-workflow-profile-preview__timing">
+        <span>
+          <b>เวลารอ Receiving</b>
+          เริ่มจาก ${submitRequired ? 'เวลายื่นเอกสาร' : 'Gate In'}
+        </span>
+        <span>
+          <b>เวลารอ Gate Out</b>
+          เริ่มจาก ${returnRequired ? 'เวลารับเอกสารคืน' : 'เวลารับสินค้าเสร็จ'}
+        </span>
+        <span>
+          <b>ขั้นตอนที่ปิด</b>
+          เป็น NOT_APPLICABLE และไม่รวม SLA/Alert/ค่าเฉลี่ย
+        </span>
+      </div>
+
+      <p>
+        ค่าเริ่มต้นครั้งแรกคือ FULL_INBOUND ระบบจะไม่เขียนทับค่าที่ Admin เคยบันทึก
+        และ Profile ใหม่ยึดตามเวลา Gate In ของรถแต่ละคัน
+      </p>
     `;
+
+    syncWorkflowActivationControls();
   }
 
 
@@ -4960,12 +5120,219 @@
   }
 
   function collectAdminSettingsFormValues() {
-    const settings = collectAdminSettingsFormValues();
+    const settings = {};
+
+    document.querySelectorAll('[data-setting-key]').forEach((input) => {
+      const key = String(input.dataset.settingKey || '').trim();
+      if (!key) return;
+
+      if (
+        input.dataset.settingSelectCustom === 'TRUE' &&
+        String(input.value || '').toUpperCase() === 'CUSTOM'
+      ) {
+        const customInput = document.querySelector(
+          `[data-setting-custom-for="${cssEscape(key)}"]`
+        );
+        settings[key] = Number(customInput && customInput.value);
+        return;
+      }
+
+      if (input.type === 'checkbox') {
+        settings[key] = input.checked === true;
+      } else if (
+        input.type === 'number' ||
+        input.dataset.settingNumber === 'TRUE'
+      ) {
+        settings[key] = Number(input.value);
+      } else {
+        settings[key] = String(input.value || '').trim();
+      }
+    });
+
+    if (settings.INBOUND_WORKFLOW_ENABLED === false) {
+      settings.INBOUND_SUBMIT_SCAN_REQUIRED = false;
+      settings.INBOUND_RETURN_SCAN_REQUIRED = false;
+    }
 
     return settings;
   }
 
-  function adminSettingsMatchExpected(serverSettings, expectedValues) {
+  function adminWorkflowSettingKeys() {
+    return [
+      'INBOUND_WORKFLOW_ENABLED',
+      'INBOUND_SUBMIT_SCAN_REQUIRED',
+      'INBOUND_RETURN_SCAN_REQUIRED'
+    ];
+  }
+
+  function parseAdminDateTimeMs(value) {
+    if (!value) return 0;
+    if (value instanceof Date) return value.getTime();
+
+    const source = String(value || '').trim();
+    const thaiMatch = source.match(
+      /^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/
+    );
+    if (thaiMatch) {
+      return Date.parse(
+        `${thaiMatch[3]}-${thaiMatch[2]}-${thaiMatch[1]}T` +
+        `${thaiMatch[4]}:${thaiMatch[5]}:${thaiMatch[6] || '00'}+07:00`
+      );
+    }
+
+    const ms = Date.parse(source);
+    return Number.isFinite(ms) ? ms : 0;
+  }
+
+  function bangkokDateTimeLocalFromValue(value) {
+    const ms = parseAdminDateTimeMs(value);
+    if (!ms) return '';
+
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: CONFIG.TIMEZONE || 'Asia/Bangkok',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23'
+    });
+    const parts = {};
+    formatter.formatToParts(new Date(ms)).forEach((part) => {
+      parts[part.type] = part.value;
+    });
+    return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+  }
+
+  function bangkokLocalInputToIso(value) {
+    const source = String(value || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(source)) return '';
+    const date = new Date(source + ':00+07:00');
+    return Number.isNaN(date.getTime()) ? '' : date.toISOString();
+  }
+
+  function formatAdminDateTimeValue(value) {
+    const ms = parseAdminDateTimeMs(value);
+    return ms ? formatBangkokDateTime(new Date(ms)) : '-';
+  }
+
+  function savedWorkflowEffectiveAt() {
+    const settings = state.dashboard && state.dashboard.settings || {};
+    const values = adminWorkflowSettingKeys()
+      .map((key) => settings[key] && settings[key].effectiveAt)
+      .filter(Boolean)
+      .sort();
+    return values.length ? values[values.length - 1] : '';
+  }
+
+  function defaultWorkflowActivationDraft() {
+    const effectiveAt = savedWorkflowEffectiveAt();
+    const effectiveMs = parseAdminDateTimeMs(effectiveAt);
+    const isFuture = effectiveMs > Date.now() + 30000;
+    return {
+      mode: isFuture ? 'SCHEDULED' : 'IMMEDIATE',
+      localValue: isFuture
+        ? bangkokDateTimeLocalFromValue(effectiveAt)
+        : '',
+      effectiveAt: effectiveAt
+    };
+  }
+
+  function collectAdminWorkflowActivation() {
+    const modeInput = document.querySelector(
+      '[name="adminWorkflowActivationMode"]:checked'
+    );
+    const mode = String(modeInput && modeInput.value || 'IMMEDIATE').toUpperCase();
+    const localInput = byId('adminWorkflowActivationAt');
+    const localValue = String(localInput && localInput.value || '').trim();
+    const effectiveAtIso =
+      mode === 'SCHEDULED'
+        ? bangkokLocalInputToIso(localValue)
+        : new Date().toISOString();
+
+    return {
+      mode,
+      localValue,
+      effectiveAtIso,
+      display:
+        mode === 'SCHEDULED'
+          ? formatAdminDateTimeValue(effectiveAtIso)
+          : 'ทันทีหลัง Backend บันทึกสำเร็จ'
+    };
+  }
+
+  function workflowActivationSignature(activation) {
+    const source = activation || {};
+    if (source.mode !== 'SCHEDULED') return 'IMMEDIATE';
+    return 'SCHEDULED|' + String(source.localValue || '').slice(0, 16);
+  }
+
+  function savedWorkflowActivationSignature() {
+    const draft = defaultWorkflowActivationDraft();
+    return workflowActivationSignature(draft);
+  }
+
+  function validateWorkflowActivation(activation) {
+    const source = activation || {};
+    if (source.mode !== 'SCHEDULED') return '';
+
+    if (!source.localValue || !source.effectiveAtIso) {
+      return 'กรุณากำหนดวันที่และเวลาเริ่มใช้';
+    }
+
+    const ms = Date.parse(source.effectiveAtIso);
+    if (!Number.isFinite(ms)) {
+      return 'วันที่เวลาเริ่มใช้ไม่ถูกต้อง';
+    }
+
+    if (ms < Date.now() - 60000) {
+      return 'เวลาเริ่มใช้ต้องเป็นเวลาปัจจุบันหรืออนาคต';
+    }
+
+    if (ms > Date.now() + 180 * 24 * 60 * 60 * 1000) {
+      return 'กำหนดเวลาเริ่มใช้ล่วงหน้าได้ไม่เกิน 180 วัน';
+    }
+
+    return '';
+  }
+
+  function syncWorkflowActivationControls() {
+    const scheduled = document.querySelector(
+      '[name="adminWorkflowActivationMode"][value="SCHEDULED"]'
+    );
+    const input = byId('adminWorkflowActivationAt');
+    const panel = byId('adminWorkflowActivationScheduledPanel');
+    const active = Boolean(scheduled && scheduled.checked);
+
+    if (input) input.disabled = !active;
+    if (panel) panel.dataset.active = active ? 'TRUE' : 'FALSE';
+
+    const summary = byId('adminWorkflowActivationSummary');
+    if (summary) {
+      const activation = collectAdminWorkflowActivation();
+      summary.textContent =
+        activation.mode === 'SCHEDULED'
+          ? (
+              activation.effectiveAtIso
+                ? `จะเริ่มใช้ ${activation.display} (Asia/Bangkok)`
+                : 'กรุณาเลือกวันและเวลาเริ่มใช้'
+            )
+          : 'จะเริ่มใช้ทันทีหลัง Backend บันทึกและตรวจอ่านกลับสำเร็จ';
+    }
+  }
+
+  function currentWorkflowDraftCode() {
+    const values = collectAdminSettingsFormValues();
+    const enabled = values.INBOUND_WORKFLOW_ENABLED !== false;
+    const submit = enabled && values.INBOUND_SUBMIT_SCAN_REQUIRED !== false;
+    const returned = enabled && values.INBOUND_RETURN_SCAN_REQUIRED !== false;
+    if (!enabled || (!submit && !returned)) return 'BYPASS_INBOUND';
+    if (submit && returned) return 'FULL_INBOUND';
+    if (submit) return 'SUBMIT_ONLY';
+    return 'RETURN_ONLY';
+  }
+
+function adminSettingsMatchExpected(serverSettings, expectedValues) {
     const source = serverSettings && typeof serverSettings === 'object'
       ? serverSettings
       : {};
@@ -5114,10 +5481,15 @@
 
   function refreshAdminSettingsDirtyState() {
     const formValues = collectAdminSettingsFormValues();
-    state.settingsDirty = !adminSettingsMatchExpected(
+    const valueDirty = !adminSettingsMatchExpected(
       state.dashboard && state.dashboard.settings,
       formValues
     );
+    const activation = collectAdminWorkflowActivation();
+    state.workflowActivationDirty =
+      workflowActivationSignature(activation) !==
+      savedWorkflowActivationSignature();
+    state.settingsDirty = valueDirty || state.workflowActivationDirty;
     updateAdminSettingsSaveBar();
   }
 
@@ -5391,6 +5763,9 @@
 
     state.savedSettingsSignature =
       buildAdminSettingsSignature(settings);
+    state.savedWorkflowActivationSignature =
+      savedWorkflowActivationSignature();
+    state.workflowActivationDirty = false;
     state.settingsDirty = false;
     renderAdminWorkflowProfilePreview();
     syncAdminCustomSettingControls();
@@ -5399,19 +5774,27 @@
 
 
   function handleAdminSettingFieldChange(event) {
-    if (event.target?.matches?.('[data-setting-key^="INBOUND_"]')) {
+    const target = event && event.target;
+
+    if (target && target.matches('[data-workflow-activation-control="TRUE"]')) {
+      syncWorkflowActivationControls();
+      refreshAdminSettingsDirtyState();
+      return;
+    }
+
+    if (target && target.matches('[data-setting-key^="INBOUND_"]')) {
       syncAdminWorkflowProfileControls();
+      refreshAdminSettingsDirtyState();
+      renderAdminWorkflowProfilePreview();
+      return;
     }
 
     refreshAdminSettingsDirtyState();
-    renderAdminWorkflowProfilePreview();
-    const select = event.target?.closest?.(
-      '[data-setting-select-custom="TRUE"]'
-    );
 
-    if (!select) return;
-
-    syncAdminCustomSettingControls(select);
+    const select = target && target.closest
+      ? target.closest('[data-setting-select-custom="TRUE"]')
+      : null;
+    if (select) syncAdminCustomSettingControls(select);
   }
 
 
@@ -8560,39 +8943,7 @@
   async function saveSettings(event) {
     event.preventDefault();
 
-    const settings = {};
-
-    document.querySelectorAll('[data-setting-key]').forEach((input) => {
-      const key = input.dataset.settingKey;
-
-      if (
-        input.dataset.settingSelectCustom === 'TRUE' &&
-        String(input.value || '').toUpperCase() === 'CUSTOM'
-      ) {
-        const customInput = document.querySelector(
-          `[data-setting-custom-for="${cssEscape(key)}"]`
-        );
-        settings[key] = Number(customInput?.value);
-        return;
-      }
-
-      if (input.type === 'checkbox') {
-        settings[key] = input.checked;
-      } else if (
-        input.type === 'number' ||
-        input.dataset.settingNumber === 'TRUE'
-      ) {
-        settings[key] = Number(input.value);
-      } else {
-        settings[key] = String(input.value || '').trim();
-      }
-    });
-
-    if (settings.INBOUND_WORKFLOW_ENABLED === false) {
-      settings.INBOUND_SUBMIT_SCAN_REQUIRED = false;
-      settings.INBOUND_RETURN_SCAN_REQUIRED = false;
-    }
-
+    const settings = collectAdminSettingsFormValues();
     const autoCloseHours = Number(settings.AUTO_CLOSE_HOURS);
 
     if (
@@ -8600,36 +8951,49 @@
       autoCloseHours < 1 ||
       autoCloseHours > 168
     ) {
-      const select = document.querySelector(
-        '[data-setting-key="AUTO_CLOSE_HOURS"]'
-      );
-      const customInput = document.querySelector(
-        '[data-setting-custom-for="AUTO_CLOSE_HOURS"]'
-      );
-
-      if (select) {
-        select.value = 'CUSTOM';
-        syncAdminCustomSettingControls(select);
-      }
-
       await Swal.fire({
         icon: 'warning',
         title: 'เวลาที่กำหนดไม่ถูกต้อง',
         text: 'กรุณากรอกจำนวนเต็มตั้งแต่ 1 ถึง 168 ชั่วโมง',
         confirmButtonText: 'แก้ไข'
       });
-      customInput?.focus();
-      customInput?.select();
       return;
     }
 
-    const currentSettings = state.dashboard?.settings || {};
-    const changedKeys = Object.keys(settings).filter((key) => (
-      adminSettingComparable(currentSettings[key]?.value) !==
+    const currentSettings = state.dashboard && state.dashboard.settings || {};
+    const workflowKeys = adminWorkflowSettingKeys();
+
+    const changedValueKeys = Object.keys(settings).filter((key) => (
+      adminSettingComparable(currentSettings[key] && currentSettings[key].value) !==
       adminSettingComparable(settings[key])
     ));
 
-    if (changedKeys.length === 0) {
+    const activation = collectAdminWorkflowActivation();
+    const activationError = validateWorkflowActivation(activation);
+    if (activationError) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'เวลาเริ่มใช้ไม่ถูกต้อง',
+        text: activationError,
+        confirmButtonText: 'แก้ไข'
+      });
+      byId('adminWorkflowActivationAt')?.focus();
+      return;
+    }
+
+    const activationDirty =
+      workflowActivationSignature(activation) !==
+      savedWorkflowActivationSignature();
+
+    const workflowValueChanged = workflowKeys.some((key) =>
+      changedValueKeys.includes(key)
+    );
+    const workflowChangeRequested = workflowValueChanged || activationDirty;
+    const otherChangedKeys = changedValueKeys.filter(
+      (key) => !workflowKeys.includes(key)
+    );
+
+    if (!workflowChangeRequested && otherChangedKeys.length === 0) {
       await Swal.fire({
         icon: 'info',
         title: 'ไม่มีค่าที่เปลี่ยนแปลง',
@@ -8638,41 +9002,53 @@
       return;
     }
 
-    const currentAutoCloseValue = currentSettings.AUTO_CLOSE_HOURS?.value;
-    const currentAutoCloseHours = Number(currentAutoCloseValue);
-    const hasCurrentAutoClose = Number.isInteger(currentAutoCloseHours);
-    const nextAutoCloseHours = Number(settings.AUTO_CLOSE_HOURS);
-    const autoCloseChanged = changedKeys.includes('AUTO_CLOSE_HOURS');
-    const impactMessage = autoCloseChanged
-      ? `
-        <div class="admin-setting-confirm">
-          <div>
-            <span>ค่าปัจจุบัน</span>
-            <strong>${
-              hasCurrentAutoClose
-                ? escapeHtml(String(currentAutoCloseHours)) + ' ชั่วโมง'
-                : 'ยังไม่ได้กำหนด'
-            }</strong>
-          </div>
-          <div>
-            <span>ค่าใหม่</span>
-            <strong>${escapeHtml(String(nextAutoCloseHours))} ชั่วโมง</strong>
-          </div>
+    const workflowSettings = {};
+    if (workflowChangeRequested) {
+      workflowKeys.forEach((key) => {
+        workflowSettings[key] = settings[key];
+      });
+    }
+
+    const otherSettings = {};
+    otherChangedKeys.forEach((key) => {
+      otherSettings[key] = settings[key];
+    });
+
+    const schedule =
+      state.dashboard && state.dashboard.workflowProfileSchedule || {};
+    const activeCode =
+      schedule.active && schedule.active.code || 'FULL_INBOUND';
+    const nextCode = currentWorkflowDraftCode();
+
+    const impactHtml = `
+      <div class="admin-workflow-confirm">
+        <div>
+          <span>Profile ใช้งานตอนนี้</span>
+          <strong>${escapeHtml(activeCode)}</strong>
         </div>
-        <p class="admin-setting-confirm-note">
-          ${
-            hasCurrentAutoClose && nextAutoCloseHours < currentAutoCloseHours
-              ? 'รายการที่ยังไม่มีเวลาออกและมีอายุเกินค่าใหม่ อาจถูกเคลียร์ในรอบทำงานถัดไป'
-              : 'ค่าใหม่จะใช้กับทุก Module ในรอบ Auto Close ถัดไป'
-          }
-        </p>
-      `
-      : `<p>กำลังเปลี่ยนการตั้งค่า ${changedKeys.length} รายการ</p>`;
+        <div>
+          <span>Profile ที่จะบันทึก</span>
+          <strong>${escapeHtml(nextCode)}</strong>
+        </div>
+        <div>
+          <span>เริ่มใช้</span>
+          <strong>${escapeHtml(activation.display)}</strong>
+        </div>
+      </div>
+      <p class="admin-setting-confirm-note">
+        รถ Gate In ก่อนเวลาเริ่มใช้จะคง Profile เดิม รถ Gate In ตั้งแต่เวลาเริ่มใช้เป็นต้นไปจึงใช้ Profile ใหม่
+      </p>
+      ${
+        otherChangedKeys.length
+          ? `<p>มีการตั้งค่าระบบอื่นเปลี่ยน ${otherChangedKeys.length} รายการ ซึ่งจะบันทึกให้มีผลทันทีแยกจาก Workflow Profile</p>`
+          : ''
+      }
+    `;
 
     const confirmation = await Swal.fire({
-      icon: autoCloseChanged ? 'warning' : 'question',
-      title: 'บันทึกการตั้งค่าระบบ?',
-      html: impactMessage,
+      icon: workflowChangeRequested ? 'warning' : 'question',
+      title: 'ยืนยันบันทึกการตั้งค่าระบบ',
+      html: impactHtml,
       input: 'textarea',
       inputLabel: 'เหตุผลการเปลี่ยน',
       inputPlaceholder: 'ระบุเหตุผลอย่างน้อย 5 ตัวอักษร',
@@ -8688,7 +9064,7 @@
         return undefined;
       },
       showCancelButton: true,
-      confirmButtonText: 'บันทึก',
+      confirmButtonText: 'บันทึกและกำหนดเวลา',
       cancelButtonText: 'ยกเลิก',
       reverseButtons: true,
       focusConfirm: false
@@ -8696,61 +9072,73 @@
 
     if (!confirmation.isConfirmed) return;
 
+    const reason = String(confirmation.value || '').trim();
     showLoading(
       'กำลังบันทึกการตั้งค่า',
-      'ระบบกำลังสร้าง Revision และตรวจอ่านค่ากลับจากฐานข้อมูล'
+      'ระบบกำลังสร้าง Revision แยก Transaction และตรวจอ่านกลับ'
     );
     state.settingsSaveInFlight = true;
     updateAdminSettingsSaveBar();
 
     try {
-      const response = await API.saveAdminSettings({
-        settings,
-        changeReason: String(confirmation.value || '').trim(),
-        effectiveAt: new Date().toISOString()
-      });
+      const responses = [];
+
+      if (otherChangedKeys.length) {
+        responses.push(await API.saveAdminSettings({
+          settings: otherSettings,
+          changeReason: reason + ' | การตั้งค่าระบบทั่วไป',
+          effectiveAt: new Date().toISOString()
+        }));
+      }
+
+      if (workflowChangeRequested) {
+        responses.push(await API.saveAdminSettings({
+          settings: workflowSettings,
+          changeReason: reason + ' | Workflow Profile ' + nextCode,
+          effectiveAt: activation.effectiveAtIso
+        }));
+      }
 
       const verifiedDashboard = await verifyAdminSettingsReadback(settings);
-      let readbackVerified = false;
-
-      if (verifiedDashboard) {
-        state.dashboard = verifiedDashboard;
-        state.settingsSource = 'SERVER';
-        state.settingsLastConfirmedAt =
-          verifiedDashboard.generatedAt || formatBangkokDateTime(new Date());
-        readbackVerified = true;
-      } else if (
-        response &&
-        response.settings &&
-        adminSettingsMatchExpected(response.settings, settings)
-      ) {
-        if (!state.dashboard) state.dashboard = {};
-        state.dashboard.settings = response.settings;
-        state.settingsSource = 'SERVER_RESPONSE';
-        state.settingsLastConfirmedAt = formatBangkokDateTime(new Date());
-      } else {
+      if (!verifiedDashboard) {
         throw createLocalError(
           'SETTINGS_READBACK_MISMATCH',
-          'Backend รับคำสั่งแล้ว แต่ค่าที่อ่านกลับยังไม่ตรง กรุณากดรีเฟรชก่อนเปลี่ยนค่าเพิ่มเติม'
+          'Backend รับคำสั่งแล้ว แต่ยังอ่านค่ากลับไม่ตรง กรุณากดรีเฟรชก่อนแก้ไขเพิ่มเติม'
         );
       }
 
+      state.dashboard = verifiedDashboard;
+      state.settingsSource = 'SERVER';
+      state.settingsLastConfirmedAt =
+        verifiedDashboard.generatedAt || formatBangkokDateTime(new Date());
       state.savedSettingsSignature =
-        buildAdminSettingsSignature(state.dashboard.settings || {});
+        buildAdminSettingsSignature(verifiedDashboard.settings || {});
+      state.savedWorkflowActivationSignature =
+        savedWorkflowActivationSignature();
+      state.workflowActivationDirty = false;
       state.settingsDirty = false;
-      persistAuthoritativeAdminSettings(state.dashboard.settings || {}, {
-        source: readbackVerified ? 'SERVER_READBACK' : 'SERVER_SAVE_RESPONSE'
-      });
+
+      persistAuthoritativeAdminSettings(
+        verifiedDashboard.settings || {},
+        {source: 'SERVER_READBACK_EFFECTIVE_ACTIVATION'}
+      );
       state.dashboardSignature =
-        buildAdminDashboardSignature(state.dashboard);
+        buildAdminDashboardSignature(verifiedDashboard);
 
       Swal.close();
       renderSettings();
 
+      const revisions = responses
+        .map((item) => item && item.revision)
+        .filter(Boolean)
+        .join(', ');
+
       await success(
-        (response.message || 'บันทึกการตั้งค่าแล้ว') +
-        (response.revision ? ` · ${response.revision}` : '') +
-        (readbackVerified ? ' · ตรวจอ่านกลับแล้ว' : ' · บันทึกแล้ว รอตรวจรอบถัดไป')
+        'บันทึกการตั้งค่าและตรวจอ่านกลับแล้ว' +
+        (revisions ? ' · ' + revisions : '') +
+        (workflowChangeRequested
+          ? ' · Profile ' + nextCode + ' เริ่ม ' + activation.display
+          : '')
       );
     } catch (error) {
       Swal.close();
