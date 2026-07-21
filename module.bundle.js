@@ -17571,10 +17571,9 @@
           <div id="calendarGrid" class="calendar-grid"></div>
 
           <div class="calendar-legend">
-            <span data-severity="GREEN">ปกติ</span>
-            <span data-severity="ORANGE">ใกล้เกินเวลา</span>
-            <span data-severity="RED">เกินเวลา</span>
-            <span data-severity="GRAY">ข้อมูลไม่สมบูรณ์</span>
+            <span data-severity="GREEN">ปิดงานครบ</span>
+            <span data-severity="ORANGE">ยังมีงาน Active</span>
+            <span data-severity="GRAY">ข้อมูลต้องตรวจสอบ</span>
           </div>
         </div>
       `,
@@ -17835,95 +17834,41 @@
   }
 
   function createDailySummaryHtml(result) {
-    const summary =
-      result && result.summary
-        ? result.summary
-        : {};
-
-    const records =
-      Array.isArray(
-        result && result.records
-      )
-        ? result.records
-        : [];
-
+    const summary = result && result.summary ? result.summary : {};
+    const records = Array.isArray(result && result.records) ? result.records : [];
     const summaryItems = [
-      ['เข้าพื้นที่ทั้งหมด', summary.totalRecords || 0, 'คัน'],
-      ['ออกแล้ว', summary.exitedRecords || 0, 'คัน'],
-      ['ยังอยู่', summary.activeRecords || 0, 'คัน'],
-      ['เกินเวลา', summary.overdueRecords || 0, 'คัน'],
-      ['ข้อมูลไม่สมบูรณ์', summary.incompleteRecords || 0, 'คัน'],
-      ['เวลาเฉลี่ย', getDurationDisplay(summary.averageDuration), ''],
-      ['เวลาน้อยที่สุด', getDurationDisplay(summary.minimumDuration), ''],
-      ['เวลามากที่สุด', getDurationDisplay(summary.maximumDuration), ''],
-      ['เวลารวม', getDurationDisplay(summary.totalDuration), '']
+      ['Gate In', summary.totalRecords || 0, 'คัน'],
+      ['รอยื่นเอกสาร', summary.waitingDocumentSubmission || 0, 'คัน'],
+      ['รอรับสินค้า', summary.waitingReceiving || 0, 'คัน'],
+      ['รอรับเอกสารคืน', summary.receivingCompleted || 0, 'คัน'],
+      ['คืนเอกสารแล้ว', summary.documentReturned || 0, 'คัน'],
+      ['Gate Out', summary.gateOutCompleted || summary.exitedRecords || 0, 'คัน'],
+      ['ยัง Active', summary.activeRecords || 0, 'คัน'],
+      ['เวลารวมเฉลี่ย', getDurationDisplay(summary.averageDuration), '']
     ];
-
-    const summaryHtml =
-      summaryItems
-        .map(
-          ([label, value, unit]) => `
-            <div class="daily-summary-item">
-              <span>${escapeHtml(label)}</span>
-              <strong>
-                ${escapeHtml(String(value))}
-                ${unit ? `<small>${escapeHtml(unit)}</small>` : ''}
-              </strong>
-            </div>
-          `
-        )
-        .join('');
-
-    const recordsHtml =
-      records.length === 0
-        ? `
-          <div class="daily-empty">
-            ไม่พบรายการในวันที่เลือก
-          </div>
-        `
-        : records
-            .map(
-              (record) => `
-                <article class="daily-record">
-                  <div class="daily-record__head">
-                    <strong>${escapeHtml(record.primaryValue || '-')}</strong>
-                    <span data-status="${escapeHtml(record.statusCode || 'INCOMPLETE')}">
-                      ${escapeHtml(record.statusLabel || '-')}
-                    </span>
-                  </div>
-
-                  <div class="daily-record__times">
-                    <span>
-                      เข้า:
-                      <strong>${escapeHtml(record.timestampIn || '-')}</strong>
-                    </span>
-
-                    <span>
-                      ออก:
-                      <strong>${escapeHtml(record.timestampOut || 'ยังไม่มีข้อมูล')}</strong>
-                    </span>
-
-                    <span>
-                      ระยะเวลา:
-                      <strong>${escapeHtml(record.durationDisplay || '-')}</strong>
-                    </span>
-                  </div>
-                </article>
-              `
-            )
-            .join('');
-
-    return `
-      <div class="daily-summary">
-        <div class="daily-summary-grid">
-          ${summaryHtml}
-        </div>
-
-        <div class="daily-record-list">
-          ${recordsHtml}
-        </div>
-      </div>
-    `;
+    const summaryHtml = summaryItems.map(function (item) {
+      const label = item[0], value = item[1], unit = item[2];
+      return '<div class="daily-summary-item"><span>' + escapeHtml(label) + '</span><strong>' +
+        escapeHtml(String(value)) + (unit ? '<small>' + escapeHtml(unit) + '</small>' : '') +
+        '</strong></div>';
+    }).join('');
+    const rowsHtml = records.length === 0
+      ? '<div class="daily-empty">ไม่พบรายการในวันที่เลือก</div>'
+      : '<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">' +
+        '<thead><tr><th style="text-align:center;padding:7px">ลำดับ</th><th style="text-align:left;padding:7px">เลขนัดหมาย</th>' +
+        '<th style="text-align:left;padding:7px">บริษัท</th><th style="text-align:left;padding:7px">Gate In</th>' +
+        '<th style="text-align:left;padding:7px">สถานะ</th><th style="text-align:left;padding:7px">Gate Out / ระยะเวลา</th></tr></thead><tbody>' +
+        records.map(function (record, index) {
+          return '<tr style="border-top:1px solid #e3ebf0"><td style="text-align:center;padding:8px">' + (index + 1) + '</td>' +
+            '<td style="padding:8px;font-weight:800">' + escapeHtml(record.appointmentNumber || record.primaryValue || '-') + '</td>' +
+            '<td style="padding:8px">' + escapeHtml(record.companyName || '-') + '</td>' +
+            '<td style="padding:8px;white-space:nowrap">' + escapeHtml(record.timestampIn || '-') + '</td>' +
+            '<td style="padding:8px">' + escapeHtml(record.statusLabel || '-') + '</td>' +
+            '<td style="padding:8px;white-space:nowrap">' + escapeHtml(record.timestampOut || 'ยังไม่ Gate Out') +
+            '<br><small>' + escapeHtml(record.durationDisplay || '-') + '</small></td></tr>';
+        }).join('') + '</tbody></table></div>';
+    return '<div class="daily-summary"><div class="daily-summary-grid">' + summaryHtml +
+      '</div><div class="daily-record-list">' + rowsHtml + '</div></div>';
   }
 
   function getDurationDisplay(value) {
@@ -18621,7 +18566,7 @@
  ************************************************************/
 
 (function (window, document) {
-  const BUILD = '2026.07.20-round11-revision2-receiving-one-click-v1';
+  const BUILD = '2026.07.21-baseline2-final-hotfix3-direct-receiving-v1';
   const STORAGE_PREFIX = 'smartalert:receiving-command:v1:';
   const MAX_ITEM_AGE_MS = 24 * 60 * 60 * 1000;
   const SEND_RETRY_MIN_MS = 2500;
@@ -18743,19 +18688,18 @@
     };
     command.clientRequestId = command.requestId;
 
+    command.status = navigator.onLine === true ? 'SENDING' : 'LOCAL_ACCEPTED';
     pending.set(command.requestId, command);
     persistPending();
     setButtonsForRecord(recordId, true);
-    dispatchAccepted(command);
     closeDetailModal();
     updateStrip();
 
     showToast(
-      'success',
-      'รับสินค้าเสร็จ ' +
-        (command.expectedPrimaryValue || command.entryCode || '') +
-        ' เวลา ' + timeOnly(clickedAtEpochMs) +
-        ' — ทำรายการคันถัดไปได้'
+      navigator.onLine === true ? 'info' : 'warning',
+      navigator.onLine === true
+        ? 'กำลังยืนยันรับสินค้าเสร็จ ' + (command.expectedPrimaryValue || command.entryCode || '')
+        : 'อุปกรณ์ออฟไลน์ เก็บคำสั่งไว้และจะแจ้งผลเมื่อเชื่อมต่อ'
     );
 
     void submitCommand(command);
@@ -18789,16 +18733,11 @@
       }
 
       if (result && (
-        result.queueAccepted === true ||
-        result.commandAccepted === true ||
-        result.accepted === true ||
-        result.committed === true ||
-        result.completed === true
+        result.workflowCommitted === true ||
+        (result.committed === true && result.completed === true)
       )) {
         command.serverAccepted = true;
-        command.status = result.completed === true || result.committed === true
-          ? 'DONE'
-          : 'SERVER_ACCEPTED';
+        command.status = 'DONE';
         command.receivingCompleteAt = String(
           result.receivingCompleteAt || command.receivingCompleteAt
         );
@@ -18863,7 +18802,7 @@
         return;
       }
 
-      if (result && (result.completed === true || result.done === true || result.committed === true)) {
+      if (result && (result.workflowCommitted === true || result.completed === true || result.done === true || result.committed === true)) {
         completeCommand(command, result);
         return;
       }
@@ -19067,9 +19006,12 @@
 
   function applyPendingToBoard() {
     pending.forEach(function (command) {
-      dispatchAccepted(command);
+      command.status = 'VERIFYING';
+      command.serverAccepted = false;
+      command.nextStatusAtEpochMs = 0;
       setButtonsForRecord(command.recordId, true);
     });
+    persistPending();
   }
 
   function setButtonsForRecord(recordId, disabled) {
@@ -19080,7 +19022,8 @@
       button.disabled = disabled === true;
       button.setAttribute('aria-disabled', disabled === true ? 'true' : 'false');
       button.dataset.receivingCommandPending = disabled === true ? 'TRUE' : 'FALSE';
-      if (disabled === true) button.textContent = 'รับคำสั่งแล้ว';
+      if (disabled === true) button.textContent = 'กำลังยืนยัน...';
+      else button.textContent = 'บันทึกรับสินค้าเสร็จ';
     });
   }
 
@@ -19102,10 +19045,10 @@
     strip.hidden = false;
     strip.dataset.state = offline ? 'OFFLINE' : 'SYNCING';
     strip.innerHTML =
-      '<strong>' + (offline ? 'เก็บคำสั่งในเครื่อง' : 'กำลังยืนยันด้านหลัง') + '</strong>' +
+      '<strong>' + (offline ? 'เก็บคำสั่งในเครื่อง' : 'กำลังยืนยันกับระบบส่วนกลาง') + '</strong>' +
       '<span>' + count + ' รายการ' +
       (waitingServer ? ' · รอส่ง ' + waitingServer : '') +
-      ' · ไม่ต้องกดซ้ำ</span>';
+      ' · การ์ดยังคงอยู่จนกว่าจะ Commit สำเร็จ</span>';
   }
 
   function injectUi() {
@@ -19325,7 +19268,7 @@
   'use strict';
 
   const BUILD =
-    '2026.07.21-baseline2-final-hotfix2-fast-workflow-v1';
+    '2026.07.21-baseline2-final-hotfix3-destination-receiving-v1';
 
   document.addEventListener(
     'DOMContentLoaded',
