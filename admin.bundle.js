@@ -1,3 +1,4 @@
+/* ADMIN_AUTHORITATIVE_READBACK_HOTFIX6_BUILD: 2026.07.22 */
 /* ADMIN_EFFECTIVE_ACTIVATION_HOTFIX5_BUILD: 2026.07.22 */
 /* ADMIN_SAVED_STATE_HOTFIX4_BUILD: 2026.07.22 */
 /* ADMIN_PREVIEW_SCOPE_HOTFIX2_BUILD: 2026.07.22 */
@@ -3321,9 +3322,12 @@
         await request(
           '/api/admin/dashboard',
           {
+            dedupe: config.dedupe !== false,
             query: {
               auditLimit:
-                config.auditLimit || 30
+                config.auditLimit || 30,
+              cacheBust:
+                config.cacheBust || Date.now()
             }
           }
         );
@@ -4948,7 +4952,10 @@
     steps.push('Gate Out');
 
     const schedule =
-      state.dashboard && state.dashboard.workflowProfileSchedule || {};
+      normalizeAdminWorkflowSchedule(
+        state.dashboard &&
+        state.dashboard.workflowProfileSchedule
+      );
     const active = schedule.active || {};
     const pending = schedule.pending || null;
     const activation = previousActivation || defaultWorkflowActivationDraft();
@@ -5226,15 +5233,26 @@
   }
 
   function defaultWorkflowActivationDraft() {
-    const effectiveAt = savedWorkflowEffectiveAt();
-    const effectiveMs = parseAdminDateTimeMs(effectiveAt);
-    const isFuture = effectiveMs > Date.now() + 30000;
+    const schedule = normalizeAdminWorkflowSchedule(
+      state.dashboard &&
+      state.dashboard.workflowProfileSchedule
+    );
+    const pending = schedule.pending;
+
+    if (pending && pending.effectiveAt) {
+      return {
+        mode: 'SCHEDULED',
+        localValue:
+          bangkokDateTimeLocalFromValue(pending.effectiveAt),
+        effectiveAt: pending.effectiveAt
+      };
+    }
+
     return {
-      mode: isFuture ? 'SCHEDULED' : 'IMMEDIATE',
-      localValue: isFuture
-        ? bangkokDateTimeLocalFromValue(effectiveAt)
-        : '',
-      effectiveAt: effectiveAt
+      mode: 'IMMEDIATE',
+      localValue: '',
+      effectiveAt:
+        schedule.active && schedule.active.effectiveAt || ''
     };
   }
 
@@ -5505,29 +5523,209 @@ function adminSettingsMatchExpected(serverSettings, expectedValues) {
     event.returnValue = '';
   }
 
-  async function verifyAdminSettingsReadback(expectedValues) {
-    const delays = [0, 350, 1100];
+  function adminWorkflowProfileBehaviorSignature(profile) {
+    const source =
+      profile && typeof profile === 'object'
+        ? profile
+        : {};
+    const master =
+      source.inboundEnabled !== false &&
+      (
+        source.submitScanRequired !== false ||
+        source.returnScanRequired !== false
+      );
+    const submit = master && source.submitScanRequired !== false;
+    const returned = master && source.returnScanRequired !== false;
+    return [
+      master ? '1' : '0',
+      submit ? '1' : '0',
+      returned ? '1' : '0'
+    ].join('|');
+  }
+
+  function normalizeAdminWorkflowSchedule(schedule) {
+    const source =
+      schedule && typeof schedule === 'object'
+        ? schedule
+        : {};
+    const active =
+      source.active && typeof source.active === 'object'
+        ? source.active
+        : null;
+    let pending =
+      source.pending && typeof source.pending === 'object'
+        ? source.pending
+        : null;
+
+    if (
+      active &&
+      pending &&
+      adminWorkflowProfileBehaviorSignature(active) ===
+        adminWorkflowProfileBehaviorSignature(pending)
+    ) {
+      pending = null;
+    }
+
+    return Object.assign({}, source, {
+      active,
+      pending,
+      hasPending: Boolean(pending)
+    });
+  }
+
+  function adminWorkflowSchedulesEquivalent(left, right) {
+    const leftSchedule = normalizeAdminWorkflowSchedule(left);
+    const rightSchedule = normalizeAdminWorkflowSchedule(right);
+
+    const activeMatch =
+      adminWorkflowProfileBehaviorSignature(leftSchedule.active) ===
+      adminWorkflowProfileBehaviorSignature(rightSchedule.active);
+
+    const leftPendingSignature = leftSchedule.pending
+      ? adminWorkflowProfileBehaviorSignature(leftSchedule.pending)
+      : '';
+    const rightPendingSignature = rightSchedule.pending
+      ? adminWorkflowProfileBehaviorSignature(rightSchedule.pending)
+      : '';
+
+    return (
+      activeMatch &&
+      leftPendingSignature === rightPendingSignature
+    );
+  }
+
+  function applyAuthoritativeAdminSaveResponse(response, expectedValues) {
+    const source =
+      response && typeof response === 'object'
+        ? response
+        : {};
+
+    if (
+      !source.settings ||
+      !adminSettingsMatchExpected(source.settings, expectedValues)
+    ) {
+      return false;
+    }
+
+    if (!state.dashboard) state.dashboard = {};
+    state.dashboard.settings = source.settings;
+
+    if (source.workflowProfileSchedule) {
+      state.dashboard.workflowProfileSchedule =
+        normalizeAdminWorkflowSchedule(
+          source.workflowProfileSchedule
+        );
+    }
+
+    state.settingsSource = 'POST_READBACK';
+    state.settingsLastConfirmedAt =
+      formatBangkokDateTime(new Date());
+    state.savedSettingsSignature =
+      buildAdminSettingsSignature(source.settings);
+    state.savedWorkflowActivationSignature =
+      savedWorkflowActivationSignature();
+    state.workflowActivationDirty = false;
+    state.settingsDirty = false;
+
+    persistAuthoritativeAdminSettings(source.settings, {
+      source:
+        source.readbackSource ||
+        'POST_TRANSACTION_SHEET_READBACK'
+    });
+
+    return true;
+  }
+
+  function syncAdminDashboardInBackground(
+    expectedValues,
+    expectedSchedule
+  ) {
+    void verifyAdminSettingsReadback(
+      expectedValues,
+      {
+        expectedSchedule,
+        delays: [800, 1800, 4000, 8000]
+      }
+    ).then((dashboard) => {
+      if (!dashboard || state.settingsDirty) return;
+
+      state.dashboard = dashboard;
+      state.settingsSource = 'SERVER';
+      state.settingsLastConfirmedAt =
+        dashboard.generatedAt ||
+        formatBangkokDateTime(new Date());
+      state.savedSettingsSignature =
+        buildAdminSettingsSignature(
+          dashboard.settings || {}
+        );
+      state.savedWorkflowActivationSignature =
+        savedWorkflowActivationSignature();
+      persistAuthoritativeAdminSettings(
+        dashboard.settings || {},
+        {source: 'SERVER_BACKGROUND_READBACK'}
+      );
+      state.dashboardSignature =
+        buildAdminDashboardSignature(dashboard);
+      renderSettings();
+    }).catch((error) => {
+      console.warn(
+        'Background Admin Dashboard Sync ไม่สำเร็จ',
+        error
+      );
+    });
+  }
+
+async function verifyAdminSettingsReadback(expectedValues, options) {
+    const config =
+      options && typeof options === 'object'
+        ? options
+        : {};
+    const delays = Array.isArray(config.delays)
+      ? config.delays
+      : [0, 500, 1500, 3000];
+    const expectedSchedule =
+      config.expectedSchedule &&
+      typeof config.expectedSchedule === 'object'
+        ? config.expectedSchedule
+        : null;
 
     for (let index = 0; index < delays.length; index += 1) {
       if (delays[index] > 0) {
-        await new Promise((resolve) => window.setTimeout(resolve, delays[index]));
+        await new Promise((resolve) =>
+          window.setTimeout(resolve, delays[index])
+        );
       }
 
       try {
         const dashboard = await API.getAdminDashboard({
           auditLimit: 30,
-          cacheBust: Date.now()
+          cacheBust: Date.now() + index,
+          dedupe: false
         });
 
-        if (
+        const settingsMatch =
           dashboard &&
-          adminSettingsMatchExpected(dashboard.settings, expectedValues)
-        ) {
+          adminSettingsMatchExpected(
+            dashboard.settings,
+            expectedValues
+          );
+
+        const scheduleMatch =
+          !expectedSchedule ||
+          adminWorkflowSchedulesEquivalent(
+            dashboard && dashboard.workflowProfileSchedule,
+            expectedSchedule
+          );
+
+        if (settingsMatch && scheduleMatch) {
           return dashboard;
         }
       } catch (error) {
         if (index === delays.length - 1) {
-          console.warn('ตรวจอ่านค่าการตั้งค่ากลับไม่สำเร็จ', error);
+          console.warn(
+            'ตรวจอ่าน Dashboard หลังบันทึกยังไม่สำเร็จ',
+            error
+          );
         }
       }
     }
@@ -9015,7 +9213,10 @@ function adminSettingsMatchExpected(serverSettings, expectedValues) {
     });
 
     const schedule =
-      state.dashboard && state.dashboard.workflowProfileSchedule || {};
+      normalizeAdminWorkflowSchedule(
+        state.dashboard &&
+        state.dashboard.workflowProfileSchedule
+      );
     const activeCode =
       schedule.active && schedule.active.code || 'FULL_INBOUND';
     const nextCode = currentWorkflowDraftCode();
@@ -9099,31 +9300,36 @@ function adminSettingsMatchExpected(serverSettings, expectedValues) {
         }));
       }
 
-      const verifiedDashboard = await verifyAdminSettingsReadback(settings);
-      if (!verifiedDashboard) {
+      const expectedReadback = Object.assign(
+        {},
+        otherSettings,
+        workflowSettings
+      );
+      const latestResponse =
+        responses[responses.length - 1] || {};
+      const postReadbackVerified =
+        applyAuthoritativeAdminSaveResponse(
+          latestResponse,
+          expectedReadback
+        );
+
+      if (!postReadbackVerified) {
         throw createLocalError(
-          'SETTINGS_READBACK_MISMATCH',
-          'Backend รับคำสั่งแล้ว แต่ยังอ่านค่ากลับไม่ตรง กรุณากดรีเฟรชก่อนแก้ไขเพิ่มเติม'
+          'POST_TRANSACTION_READBACK_MISMATCH',
+          'Backend ตอบกลับโดยไม่มีค่าที่เขียนยืนยัน กรุณาหยุดเปลี่ยนค่าและตรวจ Execution Log'
         );
       }
 
-      state.dashboard = verifiedDashboard;
-      state.settingsSource = 'SERVER';
-      state.settingsLastConfirmedAt =
-        verifiedDashboard.generatedAt || formatBangkokDateTime(new Date());
-      state.savedSettingsSignature =
-        buildAdminSettingsSignature(verifiedDashboard.settings || {});
-      state.savedWorkflowActivationSignature =
-        savedWorkflowActivationSignature();
-      state.workflowActivationDirty = false;
-      state.settingsDirty = false;
-
-      persistAuthoritativeAdminSettings(
-        verifiedDashboard.settings || {},
-        {source: 'SERVER_READBACK_EFFECTIVE_ACTIVATION'}
-      );
       state.dashboardSignature =
-        buildAdminDashboardSignature(verifiedDashboard);
+        buildAdminDashboardSignature(
+          state.dashboard
+        );
+
+      const authoritativeSchedule =
+        normalizeAdminWorkflowSchedule(
+          latestResponse.workflowProfileSchedule ||
+          state.dashboard.workflowProfileSchedule
+        );
 
       Swal.close();
       renderSettings();
@@ -9134,11 +9340,17 @@ function adminSettingsMatchExpected(serverSettings, expectedValues) {
         .join(', ');
 
       await success(
-        'บันทึกการตั้งค่าและตรวจอ่านกลับแล้ว' +
+        'บันทึกการตั้งค่าเรียบร้อยแล้ว' +
+        ' · Backend อ่านค่าจากชีตหลัง Transaction แล้ว' +
         (revisions ? ' · ' + revisions : '') +
         (workflowChangeRequested
           ? ' · Profile ' + nextCode + ' เริ่ม ' + activation.display
           : '')
+      );
+
+      syncAdminDashboardInBackground(
+        expectedReadback,
+        authoritativeSchedule
       );
     } catch (error) {
       Swal.close();
