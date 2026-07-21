@@ -1,7 +1,3 @@
-/* SMARTALERT BASELINE 1 — Authoritative Receiving UI
- * Build: 2026.07.21-baseline2
- */
-
 /*
  * AlertVendor Consolidated Bundle
  * Output: github-pages/module.bundle.js
@@ -1968,9 +1964,8 @@
           {
             query: {
               limit:
-                Number.isFinite(Number(config.limit))
-                  ? Number(config.limit)
-                  : '',
+                config.limit ||
+                1500,
 
               forceRefresh:
                 config.forceRefresh === true
@@ -2416,14 +2411,17 @@
             method:
               'POST',
 
-            /* Baseline 1: รอ Authoritative Commit ของ Receiving + Workflow */
+            /* Command Journal รับคำสั่งอย่างเดียว Browser จัดการ retry ด้วย Request ID เดิม */
             timeoutMs:
-              Number(CONFIG.API_TIMEOUT_MS || 60000),
+              Math.min(
+                Number(CONFIG.API_TIMEOUT_MS || 30000),
+                8000
+              ),
 
             requestId:
               String(record && (record.clientRequestId || record.requestId) || ''),
 
-            foreground: true,
+            foreground: false,
 
             body:
               record ||
@@ -8189,7 +8187,7 @@
     90 * 1000;
 
 
-  const REVISION_POLL_MIN_MS = 10000;
+  const REVISION_POLL_MIN_MS = 8000;
   const REVISION_POLL_MAX_MS = 60000;
   const REVISION_POLL_RESUME_MS = 350;
 
@@ -9467,7 +9465,7 @@
       config.background === true &&
       hasActiveCardWrite()
     ) {
-      scheduleNextRevisionCheck(state.revisionPollDelayMs);
+      scheduleNextRevisionCheck(REVISION_POLL_MIN_MS);
       return;
     }
 
@@ -9507,6 +9505,7 @@
           await API.getOperationalBoard(
             state.moduleId,
             {
+              limit: 1500,
               forceRefresh:
                 config.forceRefresh === true
             }
@@ -9577,11 +9576,6 @@
           ...state.module,
           ...result.module
         };
-
-        const serverRefreshSeconds = Number(state.module.refreshSeconds);
-        if (Number.isFinite(serverRefreshSeconds) && serverRefreshSeconds >= 10) {
-          state.revisionPollDelayMs = serverRefreshSeconds * 1000;
-        }
 
         renderModuleHeader();
       }
@@ -10246,41 +10240,52 @@
 
 
   function getModuleThresholds() {
+    const module =
+      state.module || {};
+
     const movementThresholds =
       state.movementSummary &&
       state.movementSummary.thresholds
         ? state.movementSummary.thresholds
         : {};
-    const autoCloseHours = Number(
-      movementThresholds.autoCloseHours ??
-      state.module?.autoCloseHours
-    );
-    const nearAutoCloseHours = Number(
-      movementThresholds.nearAutoCloseHours ??
-      state.module?.nearAutoCloseHours
-    );
-    const configured =
-      Number.isFinite(autoCloseHours) &&
-      autoCloseHours >= 1 &&
-      Number.isFinite(nearAutoCloseHours) &&
-      nearAutoCloseHours >= 1 &&
-      nearAutoCloseHours < autoCloseHours;
+
+    const greenMinutes = 0;
+    const warningMinutes = 0;
+    const redMinutes = 1;
+
+    const autoCloseHours =
+      Math.max(
+        1,
+        Number(
+          movementThresholds.autoCloseHours
+        ) ||
+        Number(CONFIG.DEFAULT_AUTO_CLOSE_HOURS) ||
+        36
+      );
+
+    const nearAutoCloseHours =
+      Math.max(
+        1,
+        Number(
+          movementThresholds.nearAutoCloseHours
+        ) ||
+        2
+      );
 
     return {
-      configured,
-      greenMinutes: 0,
-      warningMinutes: 0,
-      redMinutes: 0,
-      warningSeconds: 0,
-      redSeconds: 0,
-      autoCloseHours: configured ? autoCloseHours : null,
-      autoCloseSeconds: configured
-        ? autoCloseHours * 60 * 60
-        : Number.POSITIVE_INFINITY,
-      nearAutoCloseHours: configured ? nearAutoCloseHours : null,
-      nearAutoCloseSeconds: configured
-        ? nearAutoCloseHours * 60 * 60
-        : 0
+      greenMinutes,
+      warningMinutes,
+      redMinutes,
+      warningSeconds:
+        warningMinutes * 60,
+      redSeconds:
+        redMinutes * 60,
+      autoCloseHours,
+      autoCloseSeconds:
+        autoCloseHours * 60 * 60,
+      nearAutoCloseHours,
+      nearAutoCloseSeconds:
+        nearAutoCloseHours * 60 * 60
     };
   }
 
@@ -10621,15 +10626,9 @@
       Number(coverage.totalCount || 4) + ' กฎ'
     );
     setText('thresholdOverdueText', 'Admin กำหนด');
-    const autoCloseLabel = autoClose.configured
-      ? autoClose.autoCloseHours + ' ชั่วโมง'
-      : 'Admin ยังไม่ตั้งค่า';
-    const nearLabel = autoClose.configured
-      ? 'เตือนก่อน ' + autoClose.nearAutoCloseHours + ' ชม.'
-      : 'ยังไม่พร้อม';
-    setText('thresholdAutoCloseText', autoCloseLabel);
-    setText('controlNearAutoCloseLabel', nearLabel);
-    setText('timelineAutoCloseLegend', nearLabel);
+    setText('thresholdAutoCloseText', autoClose.autoCloseHours + ' ชั่วโมง');
+    setText('controlNearAutoCloseLabel', 'ใกล้ครบ ' + autoClose.autoCloseHours + ' ชม.');
+    setText('timelineAutoCloseLegend', 'ใกล้ครบ ' + autoClose.autoCloseHours + ' ชม.');
   }
 
 
@@ -10663,9 +10662,7 @@
           ${rows.join('') || '<p>ยังไม่พบเกณฑ์ SLA</p>'}
           <div data-status="AUTO_CLOSE">
             <span>เคลียร์อัตโนมัติ</span>
-            <strong>${autoClose.configured
-              ? 'ครบ ' + escapeHtml(String(autoClose.autoCloseHours)) + ' ชั่วโมง'
-              : 'Admin ยังไม่ตั้งค่า'}</strong>
+            <strong>ครบ ${escapeHtml(String(autoClose.autoCloseHours))} ชั่วโมง</strong>
           </div>
           <p>
             สีของรถคำนวณจากเวลาที่เริ่มขั้นตอนปัจจุบัน ไม่ใช่เวลารวมตั้งแต่ Gate In
@@ -13318,7 +13315,7 @@
       message =
         summary.nearAutoClose +
         ' รายการใกล้ครบ ' +
-        (getModuleThresholds().autoCloseHours || '-') +
+        getModuleThresholds().autoCloseHours +
         ' ชั่วโมง';
 
     } else if (
@@ -16895,7 +16892,7 @@
       navigator.onLine &&
       !state.destroyed
     ) {
-      scheduleNextRevisionCheck(state.revisionPollDelayMs);
+      scheduleNextRevisionCheck(REVISION_POLL_MIN_MS);
     }
 
     updateAutoRefreshStatus();
@@ -18600,15 +18597,15 @@
  *
  * หน้าที่ของ Browser
  * 1) จับเวลา ณ ตอนกด
- * 2) เก็บ Request ID ในเครื่องก่อนส่ง Network
- * 3) ล็อกปุ่ม แต่คงการ์ดไว้จน Backend Commit จริง
- * 4) หลัง Receiving + Workflow Commit จึงย้ายการ์ดออก
+ * 2) เก็บคำสั่งในเครื่องก่อนส่ง Network
+ * 3) นำการ์ดออกจากงานที่ต้องทำทันที
+ * 4) ส่งคำสั่งไป Server และตรวจสถานะเงียบ ๆ
  *
- * Browser ไม่ประมวลผล Workflow และไม่ถือ Queue Accepted เป็น Success
+ * Browser ไม่ประมวลผล Workflow และไม่เปิด Popup ขวางงาน
  ************************************************************/
 
 (function (window, document) {
-  const BUILD = '2026.07.21-baseline2-authoritative-receiving-ui-v1';
+  const BUILD = '2026.07.20-round11-revision2-receiving-one-click-v1';
   const STORAGE_PREFIX = 'smartalert:receiving-command:v1:';
   const MAX_ITEM_AGE_MS = 24 * 60 * 60 * 1000;
   const SEND_RETRY_MIN_MS = 2500;
@@ -18628,19 +18625,19 @@
     'STALE_RECORD',
     'SOURCE_RECORD_CHANGED',
     'RECORD_ALREADY_OUT',
-    'RECORD_NO_LONGER_ACTIVE',
-    'RECORD_CHANGED',
     'NOT_CURRENTLY_IN_AREA',
     'DOCUMENT_NOT_SUBMITTED',
+    'RECEIVING_NOT_ALLOWED',
+    'RECEIVING_DISABLED',
+    'RECEIVING_COMMAND_REJECTED',
     'DOCUMENT_SUBMIT_REQUIRED',
+    'WORKFLOW_STATE_NOT_READY_FOR_RECEIVING',
+    'WORKFLOW_STAGE_ORDER_INVALID',
     'WORKFLOW_CANCELLED',
     'WORKFLOW_ALREADY_CLOSED',
     'WORKFLOW_RECEIVING_EVENT_MISSING',
-    'WORKFLOW_STATE_NOT_READY_FOR_RECEIVING',
-    'RECEIVING_NOT_ALLOWED',
-    'RECEIVING_DISABLED',
-    'RECEIVING_FEATURE_DISABLED',
-    'RECEIVING_COMMAND_REJECTED'
+    'WORKFLOW_ALREADY_GATE_OUT',
+    'WORKFLOW_ALREADY_CANCELLED'
   ]);
 
   function initialize() {
@@ -18667,6 +18664,13 @@
     event.stopPropagation();
 
     if (button.disabled || button.dataset.canComplete === 'FALSE') return;
+
+    /*
+     * คลิกที่ผ่าน Guard แล้วเป็นเจ้าของโดย Receiving handler เพียงตัวเดียว
+     * ป้องกัน module-workflow-guard listener ตัวถัดไปเปิด SweetAlert ซ้ำ
+     * หลังปุ่มถูกเปลี่ยนเป็นสถานะกำลังบันทึก
+     */
+    event.stopImmediatePropagation();
 
     const moduleId = getModuleId();
     const recordId = String(button.dataset.recordId || '').trim();
@@ -18726,14 +18730,16 @@
     pending.set(command.requestId, command);
     persistPending();
     setButtonsForRecord(recordId, true);
+    dispatchAccepted(command);
     closeDetailModal();
     updateStrip();
 
     showToast(
-      'info',
-      'กำลังบันทึกรับสินค้าเสร็จ ' +
+      'success',
+      'รับสินค้าเสร็จ ' +
         (command.expectedPrimaryValue || command.entryCode || '') +
-        ' — กรุณาไม่กดซ้ำ'
+        ' เวลา ' + timeOnly(clickedAtEpochMs) +
+        ' — ทำรายการคันถัดไปได้'
     );
 
     void submitCommand(command);
@@ -18766,11 +18772,17 @@
         return;
       }
 
-      if (result && result.committed === true && result.completed === true &&
-          result.workflowCommitted !== false &&
-          (!result.workflowSync || result.workflowSync.success === true)) {
+      if (result && (
+        result.queueAccepted === true ||
+        result.commandAccepted === true ||
+        result.accepted === true ||
+        result.committed === true ||
+        result.completed === true
+      )) {
         command.serverAccepted = true;
-        command.status = 'DONE';
+        command.status = result.completed === true || result.committed === true
+          ? 'DONE'
+          : 'SERVER_ACCEPTED';
         command.receivingCompleteAt = String(
           result.receivingCompleteAt || command.receivingCompleteAt
         );
@@ -18780,20 +18792,12 @@
         command.updatedAtEpochMs = Date.now();
         persistPending();
 
-        completeCommand(command, result);
-        return;
-      }
-
-      if (result && (result.receivingCommitted === true || result.accepted === true)) {
-        command.serverAccepted = true;
-        command.status = 'SERVER_ACCEPTED';
-        command.lastCode = code || 'WORKFLOW_SYNC_PENDING';
-        command.lastMessage = String(result.message || 'รับข้อมูลแล้ว กำลังยืนยัน Workflow');
-        command.nextStatusAtEpochMs = Date.now() + 1500;
-        command.updatedAtEpochMs = Date.now();
-        persistPending();
-        updateStrip();
-        scheduleLoopNow();
+        if (command.status === 'DONE') {
+          completeCommand(command, result);
+        } else {
+          updateStrip();
+          scheduleLoopNow();
+        }
         return;
       }
 
@@ -18843,12 +18847,12 @@
         return;
       }
 
-      if (result && result.completed === true && result.committed === true && result.workflowCommitted !== false) {
+      if (result && (result.completed === true || result.done === true || result.committed === true)) {
         completeCommand(command, result);
         return;
       }
 
-      if (result && (result.found === true || result.receivingCommitted === true || result.pending === true || result.queueAccepted === true || result.commandAccepted === true)) {
+      if (result && (result.found === true || result.queueAccepted === true || result.commandAccepted === true)) {
         command.serverAccepted = true;
         command.status = 'SERVER_ACCEPTED';
         command.lastCode = code || 'RECEIVING_COMMAND_PENDING';
@@ -18887,7 +18891,6 @@
     command.status = 'DONE';
     command.updatedAtEpochMs = Date.now();
     dispatchCommitted(command, result || {});
-    showToast('success', 'บันทึกรับสินค้าเสร็จแล้ว การ์ดถูกย้ายไปสถานะรอรับเอกสารคืน');
     pending.delete(command.requestId);
     persistPending();
     updateStrip();
@@ -19048,6 +19051,7 @@
 
   function applyPendingToBoard() {
     pending.forEach(function (command) {
+      dispatchAccepted(command);
       setButtonsForRecord(command.recordId, true);
     });
   }
@@ -19057,15 +19061,10 @@
     document.querySelectorAll(
       '.receiving-complete-button[data-record-id="' + safe + '"]'
     ).forEach(function (button) {
-      if (!button.dataset.receivingOriginalLabel) {
-        button.dataset.receivingOriginalLabel = String(button.textContent || 'รับสินค้าเสร็จ').trim();
-      }
       button.disabled = disabled === true;
       button.setAttribute('aria-disabled', disabled === true ? 'true' : 'false');
       button.dataset.receivingCommandPending = disabled === true ? 'TRUE' : 'FALSE';
-      button.textContent = disabled === true
-        ? 'กำลังยืนยัน...'
-        : (button.dataset.receivingOriginalLabel || 'รับสินค้าเสร็จ');
+      if (disabled === true) button.textContent = 'รับคำสั่งแล้ว';
     });
   }
 
@@ -19087,7 +19086,7 @@
     strip.hidden = false;
     strip.dataset.state = offline ? 'OFFLINE' : 'SYNCING';
     strip.innerHTML =
-      '<strong>' + (offline ? 'เก็บคำสั่งในเครื่อง' : 'กำลังยืนยันส่วนกลาง') + '</strong>' +
+      '<strong>' + (offline ? 'เก็บคำสั่งในเครื่อง' : 'กำลังยืนยันด้านหลัง') + '</strong>' +
       '<span>' + count + ' รายการ' +
       (waitingServer ? ' · รอส่ง ' + waitingServer : '') +
       ' · ไม่ต้องกดซ้ำ</span>';
@@ -19310,7 +19309,7 @@
   'use strict';
 
   const BUILD =
-    '2026.07.12-r13-local-operational-stage-guard';
+    '2026.07.21-baseline2-final-hotfix1-receiving-guard-v1';
 
   document.addEventListener(
     'DOMContentLoaded',
@@ -19345,6 +19344,20 @@
         button.dataset.operationalStage ||
         ''
       ).toUpperCase();
+
+    /*
+     * Receiving handler ถูกลงทะเบียนก่อน Guard และจะเปลี่ยนปุ่มเป็น disabled
+     * พร้อมตั้ง receivingCommandPending=TRUE หลังรับคลิกที่ถูกต้องแล้ว
+     * Guard ต้องไม่ตีความสถานะหลังคลิกนั้นว่าเป็นขั้นตอนไม่พร้อม
+     */
+    const commandPending =
+      button.dataset.receivingCommandPending ===
+        'TRUE';
+
+    if (commandPending) {
+      return;
+    }
+
     const allowed =
       stage === 'WAITING_RECEIVING' &&
       button.dataset.canComplete ===
@@ -19431,13 +19444,9 @@
     observeCards();
     refreshWorkflowState(true);
 
-    const runtimeModule = window.AlertVendorModuleData?.getState?.().module || {};
-    const refreshSeconds = Number(runtimeModule.refreshSeconds);
-    if (Number.isFinite(refreshSeconds) && refreshSeconds >= 10) {
-      state.refreshTimer = window.setInterval(function () {
-        refreshWorkflowState(true);
-      }, refreshSeconds * 1000);
-    }
+    state.refreshTimer = window.setInterval(function () {
+      refreshWorkflowState(true);
+    }, 30000);
 
     document.addEventListener('alertvendor:records-updated', function () {
       scheduleApply();
