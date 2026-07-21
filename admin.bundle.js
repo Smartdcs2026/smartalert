@@ -1,3 +1,4 @@
+/* SMARTALERT_ROUND3_REV1_HOTFIX1_ADMIN_SHIFT_RENDER: 2026.07.22 */
 /* SMARTALERT_ROUND3_REV1_COMPACT_ADMIN_BUILD: 2026.07.22 */
 /* SMARTALERT_ROUND3_SHIFT24H_FRONTEND_BUILD: 2026.07.22 */
 /* ADMIN_AUTHORITATIVE_READBACK_HOTFIX6_BUILD: 2026.07.22 */
@@ -12116,7 +12117,15 @@ async function verifyAdminSettingsReadback(expectedValues, options) {
       const pending = Number(config.effectiveAtEpochMs || 0) > Date.now();
       badge.textContent = pending
         ? 'รอเริ่มใช้ ' + (config.effectiveAt || config.effectiveFrom || '')
-        : (config.enabled === true ? 'เปิดใช้งาน 24H' : 'ปิดใช้งาน');
+        : (
+            config.enabled === true
+              ? (
+                  config.coverageMode === 'FULL_24H'
+                    ? 'เปิดใช้งาน 24H'
+                    : 'เปิดใช้งานตามช่วงกะ'
+                )
+              : 'ปิดใช้งาน'
+          );
       badge.dataset.status = pending
         ? 'PENDING'
         : (config.enabled === true ? 'ENABLED' : 'DISABLED');
@@ -12274,18 +12283,31 @@ async function verifyAdminSettingsReadback(expectedValues, options) {
   }
 
   function updateValidation() {
+    const enabled = byId('adminShiftEnabled')?.checked === true;
+    const coverageMode =
+      byId('adminShiftCoverageMode')?.value || 'DEFINED_WINDOWS';
     const result = validateShifts(state.shifts);
+    const coverageComplete = result.coverageMinutes === 1440;
+
     setText(
       'adminShiftCoverage',
       result.coverageHours.toFixed(1) + ' ชั่วโมง' +
-        (result.coverageMinutes === 1440 ? ' · ครบ 24 ชั่วโมง' : ' · ยังไม่ครบ 24 ชั่วโมง')
+        (
+          coverageMode === 'FULL_24H'
+            ? (coverageComplete ? ' · ครบ 24 ชั่วโมง' : ' · ยังไม่ครบ 24 ชั่วโมง')
+            : (coverageComplete ? ' · ครบ 24 ชั่วโมง' : ' · ตามช่วงกะที่กำหนด')
+        )
     );
 
     const status = byId('adminShiftValidationStatus');
     if (status) {
       status.textContent = result.message;
       status.dataset.status = result.valid
-        ? (result.coverageMinutes === 1440 ? 'VALID' : 'WARNING')
+        ? (
+            coverageMode === 'FULL_24H' && !coverageComplete
+              ? 'ERROR'
+              : (coverageComplete ? 'VALID' : 'WARNING')
+          )
         : 'ERROR';
     }
 
@@ -12294,7 +12316,11 @@ async function verifyAdminSettingsReadback(expectedValues, options) {
       result.valid
         ? (
             enabled
-              ? 'พร้อมบันทึก · ส่งมอบกะอัตโนมัติ'
+              ? (
+                  coverageMode === 'FULL_24H'
+                    ? 'พร้อมบันทึก · ครอบคลุม 24 ชั่วโมง · ส่งมอบอัตโนมัติ'
+                    : 'พร้อมบันทึก · ใช้เฉพาะช่วงกะ · ส่งมอบอัตโนมัติ'
+                )
               : 'ตารางถูกต้อง แต่ระบบกะยังปิดใช้งาน'
           )
         : result.message
@@ -12522,9 +12548,12 @@ async function verifyAdminSettingsReadback(expectedValues, options) {
   function renderLoadFailure(error) {
     const rows = byId('adminShiftRows');
     if (rows) {
-      rows.innerHTML = '<div class="admin-shift-loading admin-shift-load-error">' +
-        '<strong>ไม่สามารถโหลดการตั้งค่ากะได้</strong><span>' +
-        escapeHtml(errorMessage(error)) + '</span></div>';
+      rows.innerHTML =
+        '<div class="admin-shift-load-error" role="alert">' +
+        '<strong>ไม่สามารถแสดงตารางกะได้</strong>' +
+        '<span>' + escapeHtml(errorMessage(error)) + '</span>' +
+        '<small>กด “โหลดใหม่” หลังตรวจสอบการเชื่อมต่อ</small>' +
+        '</div>';
     }
   }
 
