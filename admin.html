@@ -233,7 +233,7 @@
   </style>
 
   <!-- ROUND 10 HOTFIX 2 — Admin Data-Dense UI only -->
-  <script src="./admin.bundle.js?v=20260722-hotfix5-r1-h2-admin-preview-scope" defer></script>
+  <script src="./admin.bundle.js?v=20260722-hotfix5-r1-h4-saved-state" defer></script>
 
 <style id="smartalert-module-editor-critical-css">
 /*
@@ -1068,13 +1068,40 @@
           class="admin-settings-grid"
         ></div>
 
-        <div class="admin-form-actions">
-          <button
-            class="button button--primary"
-            type="submit"
-          >
-            บันทึกการตั้งค่า
-          </button>
+        <div
+          id="adminSettingsSaveBar"
+          class="admin-settings-save-bar"
+          data-dirty="FALSE"
+          data-source="SERVER"
+        >
+          <div class="admin-settings-save-bar__status">
+            <strong id="adminSettingsSaveStatus">
+              กำลังตรวจค่าที่บันทึก
+            </strong>
+            <span id="adminSettingsSaveDetail">
+              ระบบจะแสดงค่าจาก Backend และรักษาค่าที่บันทึกไว้เมื่อเปิดหน้าครั้งถัดไป
+            </span>
+          </div>
+
+          <div class="admin-settings-save-bar__actions">
+            <button
+              id="adminSettingsDiscardButton"
+              class="button button--secondary"
+              type="button"
+              disabled
+            >
+              คืนค่าที่บันทึก
+            </button>
+
+            <button
+              id="adminSettingsStickySaveButton"
+              class="button button--primary"
+              type="submit"
+              disabled
+            >
+              บันทึกและเริ่มใช้
+            </button>
+          </div>
         </div>
       </form>
     </section>
