@@ -1,3 +1,4 @@
+/* ADMIN_SAVED_STATE_HOTFIX4_BUILD: 2026.07.22 */
 /* ADMIN_PREVIEW_SCOPE_HOTFIX2_BUILD: 2026.07.22 */
 /* PROFILE_AWARE_TIMING_R1_BUILD: 2026.07.21 */
 /* SMARTALERT BASELINE 2 FINAL HOTFIX 5 — ADMIN WORKFLOW PROFILE
@@ -4252,6 +4253,13 @@
 
   const CONFIG = window.APP_CONFIG || {};
   const API = window.VehicleAPI;
+  const ADMIN_SETTINGS_CACHE_KEY = 'SMARTALERT_ADMIN_AUTHORITATIVE_SETTINGS_V2';
+  const ADMIN_SETTINGS_CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+  const ADMIN_WORKFLOW_SETTING_KEYS = Object.freeze([
+    'INBOUND_WORKFLOW_ENABLED',
+    'INBOUND_SUBMIT_SCAN_REQUIRED',
+    'INBOUND_RETURN_SCAN_REQUIRED'
+  ]);
 
   const state = {
     session: null,
@@ -4279,7 +4287,12 @@
     diagnosticsResult: null,
     moduleValidationTouched: false,
     moduleValidationTimer: null,
-    moduleValidationRunning: false
+    moduleValidationRunning: false,
+    settingsDirty: false,
+    settingsSaveInFlight: false,
+    settingsSource: 'SERVER',
+    settingsLastConfirmedAt: '',
+    savedSettingsSignature: ''
   };
 
   const LABELS = {
@@ -4325,6 +4338,7 @@
   };
 
   document.addEventListener('DOMContentLoaded', initializeAdminPage);
+  window.addEventListener('beforeunload', handleAdminBeforeUnload);
   window.addEventListener('beforeunload', destroyAdminPage);
 
   async function initializeAdminPage() {
@@ -4384,6 +4398,11 @@
         dashboardResult.status === 'fulfilled'
           ? dashboardResult.value
           : buildAdminBootFallbackDashboard(session);
+
+      initializeAuthoritativeAdminSettings(
+        state.dashboard,
+        dashboardResult.status === 'fulfilled'
+      );
 
       state.dashboardSignature =
         buildAdminDashboardSignature(
@@ -4581,6 +4600,10 @@
     byId('adminCreateModuleButton')?.addEventListener('click', createNewModule);
     byId('adminCreateUserButton')?.addEventListener('click', () => openUserDialog(null));
     byId('adminSettingsForm')?.addEventListener('submit', saveSettings);
+    byId('adminSettingsDiscardButton')?.addEventListener(
+      'click',
+      discardAdminSettingsDraft
+    );
     byId('adminSettingsFields')?.addEventListener(
       'change',
       handleAdminSettingFieldChange
@@ -4887,7 +4910,11 @@
     preview.innerHTML = `
       <div class="admin-workflow-profile-preview__header">
         <div><small>WORKFLOW PROFILE</small><strong>${escapeHtml(code)}</strong></div>
-        <span>${enabled ? 'ใช้กับ Gate In ใหม่หลังบันทึก' : 'ปิดขั้นตอน Inbound'}</span>
+        <span>${
+          state.settingsDirty
+            ? 'ตัวอย่างที่ยังไม่ได้บันทึก'
+            : (enabled ? 'ค่าที่บันทึกแล้ว · ใช้กับ Gate In ใหม่' : 'ค่าที่บันทึกแล้ว · ปิด Inbound รถใหม่')
+        }</span>
       </div>
       <div class="admin-workflow-profile-preview__flow">${steps.map((step) => `<b>${escapeHtml(step)}</b>`).join('<i>→</i>')}</div>
       <div class="admin-workflow-profile-preview__timing">
@@ -4897,6 +4924,243 @@
       </div>
       <p>รถที่อยู่กลางกระบวนการจะใช้ Profile เดิมจนปิดงาน ระบบไม่ย้ายสถานะย้อนหลัง</p>
     `;
+  }
+
+
+  function adminSettingComparable(value) {
+    if (value === true || value === false) return String(value);
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? String(value) : '';
+    }
+    return String(value).trim();
+  }
+
+  function cloneAdminSettings(settings) {
+    const source = settings && typeof settings === 'object' ? settings : {};
+    try {
+      return JSON.parse(JSON.stringify(source));
+    } catch (error) {
+      return Object.assign({}, source);
+    }
+  }
+
+  function buildAdminSettingsSignature(settings) {
+    const source = settings && typeof settings === 'object' ? settings : {};
+    return JSON.stringify(
+      Object.keys(source)
+        .sort()
+        .map((key) => [
+          key,
+          adminSettingComparable(source[key] && source[key].value),
+          String(source[key] && source[key].revision || ''),
+          String(source[key] && source[key].effectiveAt || '')
+        ])
+    );
+  }
+
+  function collectAdminSettingsFormValues() {
+    const settings = collectAdminSettingsFormValues();
+
+    return settings;
+  }
+
+  function adminSettingsMatchExpected(serverSettings, expectedValues) {
+    const source = serverSettings && typeof serverSettings === 'object'
+      ? serverSettings
+      : {};
+    const expected = expectedValues && typeof expectedValues === 'object'
+      ? expectedValues
+      : {};
+
+    return Object.keys(expected).every((key) => (
+      adminSettingComparable(source[key] && source[key].value) ===
+      adminSettingComparable(expected[key])
+    ));
+  }
+
+  function persistAuthoritativeAdminSettings(settings, meta) {
+    const source = settings && typeof settings === 'object' ? settings : {};
+    if (!Object.keys(source).length) return;
+
+    try {
+      window.localStorage.setItem(
+        ADMIN_SETTINGS_CACHE_KEY,
+        JSON.stringify({
+          version: 2,
+          savedAtMs: Date.now(),
+          savedAt: formatBangkokDateTime(new Date()),
+          source: String(meta && meta.source || 'SERVER'),
+          settings: cloneAdminSettings(source)
+        })
+      );
+    } catch (error) {
+      console.warn('บันทึก Cache การตั้งค่า Admin ไม่สำเร็จ', error);
+    }
+  }
+
+  function restoreAuthoritativeAdminSettings(dashboard) {
+    try {
+      const raw = window.localStorage.getItem(ADMIN_SETTINGS_CACHE_KEY);
+      if (!raw) return false;
+
+      const cached = JSON.parse(raw);
+      const savedAtMs = Number(cached && cached.savedAtMs || 0);
+      const settings = cached && cached.settings;
+
+      if (
+        !savedAtMs ||
+        Date.now() - savedAtMs > ADMIN_SETTINGS_CACHE_MAX_AGE_MS ||
+        !settings ||
+        typeof settings !== 'object'
+      ) {
+        window.localStorage.removeItem(ADMIN_SETTINGS_CACHE_KEY);
+        return false;
+      }
+
+      const hasWorkflowSettings = ADMIN_WORKFLOW_SETTING_KEYS.every(
+        (key) => Object.prototype.hasOwnProperty.call(settings, key)
+      );
+      if (!hasWorkflowSettings) return false;
+
+      dashboard.settings = Object.assign(
+        {},
+        dashboard.settings || {},
+        cloneAdminSettings(settings)
+      );
+      state.settingsSource = 'CACHE';
+      state.settingsLastConfirmedAt = String(cached.savedAt || '');
+      return true;
+    } catch (error) {
+      console.warn('อ่าน Cache การตั้งค่า Admin ไม่สำเร็จ', error);
+      return false;
+    }
+  }
+
+  function initializeAuthoritativeAdminSettings(dashboard, authoritative) {
+    if (!dashboard || typeof dashboard !== 'object') return;
+
+    if (authoritative) {
+      state.settingsSource = 'SERVER';
+      state.settingsLastConfirmedAt =
+        dashboard.generatedAt || formatBangkokDateTime(new Date());
+      persistAuthoritativeAdminSettings(dashboard.settings || {}, {
+        source: 'SERVER_BOOT'
+      });
+    } else if (!restoreAuthoritativeAdminSettings(dashboard)) {
+      state.settingsSource = 'FALLBACK';
+      state.settingsLastConfirmedAt = '';
+    }
+
+    state.savedSettingsSignature =
+      buildAdminSettingsSignature(dashboard.settings || {});
+    state.settingsDirty = false;
+  }
+
+  function updateAdminSettingsSaveBar() {
+    const bar = byId('adminSettingsSaveBar');
+    const status = byId('adminSettingsSaveStatus');
+    const detail = byId('adminSettingsSaveDetail');
+    const discard = byId('adminSettingsDiscardButton');
+    const save = byId('adminSettingsStickySaveButton');
+
+    if (!bar) return;
+
+    bar.dataset.dirty = state.settingsDirty ? 'TRUE' : 'FALSE';
+    bar.dataset.source = state.settingsSource || 'SERVER';
+
+    if (discard) discard.disabled = !state.settingsDirty || state.settingsSaveInFlight;
+    if (save) {
+      save.disabled = !state.settingsDirty || state.settingsSaveInFlight;
+      save.textContent = state.settingsSaveInFlight
+        ? 'กำลังบันทึกและตรวจอ่านกลับ...'
+        : 'บันทึกและเริ่มใช้';
+    }
+
+    if (state.settingsDirty) {
+      if (status) status.textContent = 'มีค่าที่เปลี่ยนแต่ยังไม่ได้บันทึก';
+      if (detail) {
+        detail.textContent =
+          'Preview ด้านบนเป็นเพียงค่าร่าง ระบบจริงยังใช้ค่าที่บันทึกครั้งล่าสุด';
+      }
+      return;
+    }
+
+    if (state.settingsSource === 'CACHE') {
+      if (status) status.textContent = 'แสดงค่าที่บันทึกล่าสุดจากเครื่อง';
+      if (detail) {
+        detail.textContent =
+          'Backend เปิดไม่ทัน ระบบจึงใช้ค่าที่เคยตรวจยืนยันแล้วชั่วคราว · กดรีเฟรชเพื่อตรวจฐานจริง';
+      }
+      return;
+    }
+
+    if (state.settingsSource === 'FALLBACK') {
+      if (status) status.textContent = 'ยังตรวจค่าที่บันทึกจาก Backend ไม่สำเร็จ';
+      if (detail) {
+        detail.textContent =
+          'ห้ามถือค่าที่เห็นเป็นค่าจริงจนกว่าจะกดรีเฟรชและ Backend ตอบสำเร็จ';
+      }
+      return;
+    }
+
+    if (status) status.textContent = 'กำลังแสดงค่าที่บันทึกในระบบ';
+    if (detail) {
+      detail.textContent = state.settingsLastConfirmedAt
+        ? 'ตรวจยืนยันล่าสุด ' + state.settingsLastConfirmedAt
+        : 'ค่าปัจจุบันถูกโหลดจาก Backend';
+    }
+  }
+
+  function refreshAdminSettingsDirtyState() {
+    const formValues = collectAdminSettingsFormValues();
+    state.settingsDirty = !adminSettingsMatchExpected(
+      state.dashboard && state.dashboard.settings,
+      formValues
+    );
+    updateAdminSettingsSaveBar();
+  }
+
+  function discardAdminSettingsDraft() {
+    if (!state.settingsDirty || state.settingsSaveInFlight) return;
+    renderSettings();
+    toast('คืนค่าที่บันทึกครั้งล่าสุดแล้ว', 'success');
+  }
+
+  function handleAdminBeforeUnload(event) {
+    if (!state.settingsDirty || state.settingsSaveInFlight) return;
+    event.preventDefault();
+    event.returnValue = '';
+  }
+
+  async function verifyAdminSettingsReadback(expectedValues) {
+    const delays = [0, 350, 1100];
+
+    for (let index = 0; index < delays.length; index += 1) {
+      if (delays[index] > 0) {
+        await new Promise((resolve) => window.setTimeout(resolve, delays[index]));
+      }
+
+      try {
+        const dashboard = await API.getAdminDashboard({
+          auditLimit: 30,
+          cacheBust: Date.now()
+        });
+
+        if (
+          dashboard &&
+          adminSettingsMatchExpected(dashboard.settings, expectedValues)
+        ) {
+          return dashboard;
+        }
+      } catch (error) {
+        if (index === delays.length - 1) {
+          console.warn('ตรวจอ่านค่าการตั้งค่ากลับไม่สำเร็จ', error);
+        }
+      }
+    }
+
+    return null;
   }
 
   function renderSettings() {
@@ -5125,16 +5389,22 @@
       `;
     }).join('');
 
+    state.savedSettingsSignature =
+      buildAdminSettingsSignature(settings);
+    state.settingsDirty = false;
     renderAdminWorkflowProfilePreview();
     syncAdminCustomSettingControls();
+    updateAdminSettingsSaveBar();
   }
 
 
   function handleAdminSettingFieldChange(event) {
     if (event.target?.matches?.('[data-setting-key^="INBOUND_"]')) {
       syncAdminWorkflowProfileControls();
-      renderAdminWorkflowProfilePreview();
     }
+
+    refreshAdminSettingsDirtyState();
+    renderAdminWorkflowProfilePreview();
     const select = event.target?.closest?.(
       '[data-setting-select-custom="TRUE"]'
     );
@@ -5223,12 +5493,38 @@
   async function refreshDashboard() {
     if (state.loading) return;
 
+    if (state.settingsDirty) {
+      const confirmation = await Swal.fire({
+        icon: 'warning',
+        title: 'มีค่าที่ยังไม่ได้บันทึก',
+        text: 'การรีเฟรชจะคืนค่าแบบฟอร์มกลับเป็นค่าที่บันทึกไว้ในระบบ',
+        showCancelButton: true,
+        confirmButtonText: 'รีเฟรชและทิ้งค่าร่าง',
+        cancelButtonText: 'กลับไปบันทึก',
+        reverseButtons: true
+      });
+      if (!confirmation.isConfirmed) return;
+      state.settingsDirty = false;
+    }
+
     const button = byId('adminRefreshButton');
     setButtonLoading(button, true, 'กำลังรีเฟรช...');
     state.loading = true;
 
     try {
-      state.dashboard = await API.getAdminDashboard({ auditLimit: 30 });
+      state.dashboard = await API.getAdminDashboard({
+        auditLimit: 30,
+        cacheBust: Date.now()
+      });
+      state.settingsSource = 'SERVER';
+      state.settingsLastConfirmedAt =
+        state.dashboard.generatedAt || formatBangkokDateTime(new Date());
+      state.savedSettingsSignature =
+        buildAdminSettingsSignature(state.dashboard.settings || {});
+      state.settingsDirty = false;
+      persistAuthoritativeAdminSettings(state.dashboard.settings || {}, {
+        source: 'SERVER_MANUAL_REFRESH'
+      });
       state.dashboardSignature =
         buildAdminDashboardSignature(
           state.dashboard
@@ -5279,6 +5575,8 @@
       state.destroyed ||
       state.loading ||
       state.moduleSaving ||
+      state.settingsDirty ||
+      state.settingsSaveInFlight ||
       document.visibilityState !==
         'visible'
     ) {
@@ -5334,6 +5632,16 @@
 
       state.dashboard =
         nextDashboard;
+
+      state.settingsSource = 'SERVER';
+      state.settingsLastConfirmedAt =
+        nextDashboard.generatedAt || formatBangkokDateTime(new Date());
+      state.savedSettingsSignature =
+        buildAdminSettingsSignature(nextDashboard.settings || {});
+      state.settingsDirty = false;
+      persistAuthoritativeAdminSettings(nextDashboard.settings || {}, {
+        source: 'SERVER_SILENT_REFRESH'
+      });
 
       state.dashboardSignature =
         nextSignature;
@@ -8316,14 +8624,9 @@
     }
 
     const currentSettings = state.dashboard?.settings || {};
-    const comparable = (value) => {
-      if (value === true || value === false) return String(value);
-      if (value === null || value === undefined) return '';
-      if (typeof value === 'number') return Number.isFinite(value) ? String(value) : '';
-      return String(value).trim();
-    };
     const changedKeys = Object.keys(settings).filter((key) => (
-      comparable(currentSettings[key]?.value) !== comparable(settings[key])
+      adminSettingComparable(currentSettings[key]?.value) !==
+      adminSettingComparable(settings[key])
     ));
 
     if (changedKeys.length === 0) {
@@ -8393,7 +8696,12 @@
 
     if (!confirmation.isConfirmed) return;
 
-    showLoading('กำลังบันทึกการตั้งค่า', 'ระบบกำลังสร้าง Revision และบันทึกประวัติ');
+    showLoading(
+      'กำลังบันทึกการตั้งค่า',
+      'ระบบกำลังสร้าง Revision และตรวจอ่านค่ากลับจากฐานข้อมูล'
+    );
+    state.settingsSaveInFlight = true;
+    updateAdminSettingsSaveBar();
 
     try {
       const response = await API.saveAdminSettings({
@@ -8401,20 +8709,55 @@
         changeReason: String(confirmation.value || '').trim(),
         effectiveAt: new Date().toISOString()
       });
-      Swal.close();
 
-      if (response?.settings && state.dashboard) {
+      const verifiedDashboard = await verifyAdminSettingsReadback(settings);
+      let readbackVerified = false;
+
+      if (verifiedDashboard) {
+        state.dashboard = verifiedDashboard;
+        state.settingsSource = 'SERVER';
+        state.settingsLastConfirmedAt =
+          verifiedDashboard.generatedAt || formatBangkokDateTime(new Date());
+        readbackVerified = true;
+      } else if (
+        response &&
+        response.settings &&
+        adminSettingsMatchExpected(response.settings, settings)
+      ) {
+        if (!state.dashboard) state.dashboard = {};
         state.dashboard.settings = response.settings;
-        renderSettings();
+        state.settingsSource = 'SERVER_RESPONSE';
+        state.settingsLastConfirmedAt = formatBangkokDateTime(new Date());
+      } else {
+        throw createLocalError(
+          'SETTINGS_READBACK_MISMATCH',
+          'Backend รับคำสั่งแล้ว แต่ค่าที่อ่านกลับยังไม่ตรง กรุณากดรีเฟรชก่อนเปลี่ยนค่าเพิ่มเติม'
+        );
       }
+
+      state.savedSettingsSignature =
+        buildAdminSettingsSignature(state.dashboard.settings || {});
+      state.settingsDirty = false;
+      persistAuthoritativeAdminSettings(state.dashboard.settings || {}, {
+        source: readbackVerified ? 'SERVER_READBACK' : 'SERVER_SAVE_RESPONSE'
+      });
+      state.dashboardSignature =
+        buildAdminDashboardSignature(state.dashboard);
+
+      Swal.close();
+      renderSettings();
 
       await success(
         (response.message || 'บันทึกการตั้งค่าแล้ว') +
-        (response.revision ? ` · ${response.revision}` : '')
+        (response.revision ? ` · ${response.revision}` : '') +
+        (readbackVerified ? ' · ตรวจอ่านกลับแล้ว' : ' · บันทึกแล้ว รอตรวจรอบถัดไป')
       );
     } catch (error) {
       Swal.close();
       await showApiError(error, 'บันทึกการตั้งค่าไม่สำเร็จ');
+    } finally {
+      state.settingsSaveInFlight = false;
+      updateAdminSettingsSaveBar();
     }
   }
 
