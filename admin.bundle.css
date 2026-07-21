@@ -22853,3 +22853,122 @@ html body.admin-page .swal2-html-container {
 @media (max-width: 760px) {
   .admin-workflow-profile-preview__timing { grid-template-columns: 1fr; }
 }
+
+
+/* HOTFIX 5 REV1 H4 — Authoritative saved-state settings UX */
+body.admin-page .admin-setting-item--toggle input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 52px;
+  height: 30px;
+  flex: 0 0 52px;
+  border: 1px solid #94a3b8;
+  border-radius: 999px;
+  background: #cbd5e1;
+  cursor: pointer;
+  transition: background .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+body.admin-page .admin-setting-item--toggle input[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, .22);
+  transition: transform .16s ease;
+}
+
+body.admin-page .admin-setting-item--toggle input[type="checkbox"]:checked {
+  border-color: #0f8f86;
+  background: #0f8f86;
+}
+
+body.admin-page .admin-setting-item--toggle input[type="checkbox"]:checked::before {
+  transform: translateX(22px);
+}
+
+body.admin-page .admin-setting-item--toggle input[type="checkbox"]:focus-visible {
+  outline: 3px solid rgba(14, 165, 164, .22);
+  outline-offset: 2px;
+}
+
+body.admin-page .admin-setting-item--toggle input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: .52;
+}
+
+body.admin-page .admin-settings-save-bar {
+  position: sticky;
+  bottom: 10px;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid #b9d8df;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, .14);
+  backdrop-filter: blur(10px);
+}
+
+body.admin-page .admin-settings-save-bar[data-dirty="TRUE"] {
+  border-color: #f59e0b;
+  background: rgba(255, 250, 235, .98);
+}
+
+body.admin-page .admin-settings-save-bar[data-source="CACHE"],
+body.admin-page .admin-settings-save-bar[data-source="FALLBACK"] {
+  border-color: #f59e0b;
+}
+
+body.admin-page .admin-settings-save-bar__status {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+body.admin-page .admin-settings-save-bar__status strong {
+  color: #0f3d5e;
+  font-size: .86rem;
+}
+
+body.admin-page .admin-settings-save-bar[data-dirty="TRUE"]
+.admin-settings-save-bar__status strong {
+  color: #92400e;
+}
+
+body.admin-page .admin-settings-save-bar__status span {
+  color: #64748b;
+  font-size: .74rem;
+  line-height: 1.45;
+}
+
+body.admin-page .admin-settings-save-bar__actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+body.admin-page .admin-workflow-profile-preview__header span {
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  body.admin-page .admin-settings-save-bar {
+    bottom: 6px;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  body.admin-page .admin-settings-save-bar__actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
