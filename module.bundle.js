@@ -1,3 +1,9 @@
+/* PROFILE_AWARE_TIMING_R1_BUILD: 2026.07.21 */
+/* SMARTALERT BASELINE 2 FINAL HOTFIX 5 — PROFILE-AWARE MODULE
+ * Build: 2026.07.21-baseline2-final-hotfix5-optional-inbound-v1
+ * Gate In can route directly to Receiving when submit scan is disabled.
+ */
+
 /*
  * AlertVendor Consolidated Bundle
  * Output: github-pages/module.bundle.js
@@ -23737,3 +23743,14 @@
   };
 
 })(window, document);
+
+
+/* BASELINE 2 FINAL HOTFIX 5 — Workflow Profile display helper */
+window.SmartAlertWorkflowProfileLabel = function (profile) {
+  const code = String(profile && profile.code || '').toUpperCase();
+  if (code === 'FULL_INBOUND' || code === 'FULL_INBOUND_LEGACY') return 'Inbound เต็มรูปแบบ';
+  if (code === 'SUBMIT_ONLY') return 'สแกนยื่นเอกสารเท่านั้น';
+  if (code === 'RETURN_ONLY') return 'สแกนคืนเอกสารเท่านั้น';
+  if (code === 'BYPASS_INBOUND') return 'ไม่ใช้ขั้นตอน Inbound';
+  return code || '-';
+};
