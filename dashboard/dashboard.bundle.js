@@ -363,6 +363,7 @@
     renderTrackingTable();
     renderShiftSummary();
     fitFullscreen();
+    scheduleChartResize();
   }
 
   function renderHeaderMeta() {
@@ -742,6 +743,13 @@
     Object.values(state.charts).forEach((chart) => chart && chart.resize());
   }
 
+  function scheduleChartResize() {
+    window.clearTimeout(state.chartResizeTimer);
+    state.chartResizeTimer = window.setTimeout(() => {
+      Object.values(state.charts).forEach((chart) => chart && chart.resize());
+    }, 160);
+  }
+
   function resetFilters() {
     const today = isoDay(new Date());
     byId('dateFrom').value = today; byId('dateTo').value = today;
@@ -777,6 +785,7 @@
     byId('fullscreenButton').addEventListener('click', toggleFullscreen);
     byId('exportButton').addEventListener('click', exportMenu);
     byId('resetButton').addEventListener('click', resetFilters);
+    window.addEventListener('resize', scheduleChartResize);
     ['dateFrom','dateTo','shiftFilter','profileFilter','statusFilter'].forEach((id) => byId(id).addEventListener('change', applyFiltersAndRender));
     let searchTimer = null;
     byId('searchInput').addEventListener('input', () => {
