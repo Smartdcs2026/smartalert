@@ -1,3 +1,4 @@
+/* INBOUND_COMPACT_PROFILE_HOTFIX3_BUILD: 2026.07.22 */
 /* PROFILE_AWARE_TIMING_R1_BUILD: 2026.07.21 */
 /* SMARTALERT BASELINE 2 FINAL HOTFIX 5 — OPTIONAL INBOUND UI
  * Build: 2026.07.21-baseline2-final-hotfix5-optional-inbound-v1
@@ -9635,35 +9636,101 @@
 
 function applyInboundWorkflowProfileUi() {
   const profile = state.workflowProfile || {};
-  const newRecordsEnabled = profile.inboundEnabled !== false && (profile.submitScanRequired !== false || profile.returnScanRequired !== false);
-  const legacyActiveCount = Array.isArray(state.dashboardItems) ? state.dashboardItems.length : 0;
+  const newRecordsEnabled =
+    profile.inboundEnabled !== false &&
+    (profile.submitScanRequired !== false || profile.returnScanRequired !== false);
+  const legacyActiveCount = Array.isArray(state.dashboardItems)
+    ? state.dashboardItems.length
+    : 0;
   const enabled = newRecordsEnabled || legacyActiveCount > 0;
+
   const input = byId('entryCodeInput');
   const startCamera = byId('startCameraButton');
   const submitButton = document.querySelector('#manualLookupForm button[type="submit"]');
+
   if (input) input.disabled = !enabled;
   if (startCamera) startCamera.disabled = !enabled;
   if (submitButton) submitButton.disabled = !enabled;
-  document.body.dataset.workflowProfile = profile.code || 'FULL_INBOUND_LEGACY';
+
+  document.body.dataset.workflowProfile =
+    profile.code || 'FULL_INBOUND_LEGACY';
   document.body.dataset.inboundEnabled = enabled ? 'TRUE' : 'FALSE';
-  let banner = byId('inboundWorkflowProfileBanner');
-  if (!banner) {
-    banner = document.createElement('div');
-    banner.id = 'inboundWorkflowProfileBanner';
-    banner.className = 'inbound-workflow-profile-banner';
-    const shell = document.querySelector('.inbound-shell') || document.querySelector('main') || document.body;
-    shell.prepend(banner);
+
+  /*
+   * HOTFIX 2026-07-22:
+   * ห้ามแทรก Profile Banner เป็น direct child ของ .inbound-shell
+   * เพราะ shell ใช้ fixed grid rows สำหรับ Topbar / Module bar / Workspace
+   * การ prepend banner ทำให้ Module bar และปุ่มเต็มจอถูกดันออกจากตำแหน่งทำงาน
+   */
+  const obsoleteBanner = byId('inboundWorkflowProfileBanner');
+  if (obsoleteBanner) obsoleteBanner.remove();
+
+  const actions = document.querySelector('.inbound-module-bar .module-actions');
+  let chip = byId('inboundWorkflowProfileChip');
+
+  if (!chip && actions) {
+    chip = document.createElement('span');
+    chip.id = 'inboundWorkflowProfileChip';
+    chip.className = 'inbound-workflow-profile-chip';
+
+    const fullscreenButton = byId('inboundFullscreenButton');
+    if (fullscreenButton && fullscreenButton.parentNode === actions) {
+      actions.insertBefore(chip, fullscreenButton);
+    } else {
+      actions.prepend(chip);
+    }
   }
+
+  const profileCode = String(profile.code || 'FULL_INBOUND_LEGACY').toUpperCase();
+  const profileLabelMap = {
+    FULL_INBOUND: 'FULL INBOUND',
+    FULL_INBOUND_LEGACY: 'FULL INBOUND',
+    SUBMIT_ONLY: 'SUBMIT ONLY',
+    RETURN_ONLY: 'RETURN ONLY',
+    BYPASS_INBOUND: 'BYPASS INBOUND'
+  };
+
   const flow = [];
   if (profile.submitScanRequired !== false) flow.push('สแกนยื่นเอกสาร');
   if (profile.returnScanRequired !== false) flow.push('สแกนคืนเอกสาร');
-  banner.hidden = newRecordsEnabled && profile.code === 'FULL_INBOUND';
-  banner.innerHTML = !newRecordsEnabled && legacyActiveCount > 0
-    ? `<strong>ปิด Inbound สำหรับรถ Gate In ใหม่</strong><span>ยังมีงานเดิม ${legacyActiveCount} รายการที่ต้องทำต่อจนจบตาม Profile เดิม</span>`
-    : (enabled
-      ? `<strong>Workflow Profile: ${escapeHtml(profile.code || '-')}</strong><span>เปิดใช้งาน ${escapeHtml(flow.join(' และ ') || 'ไม่มีขั้นตอน Inbound')}</span>`
-      : '<strong>ขั้นตอน Inbound ถูกปิดใช้งานโดย Admin</strong><span>รถ Gate In ใหม่จะส่งตรงไปขั้นตอนรับสินค้า และหลังรับสินค้าเสร็จจะรอ Gate Out</span>');
+
+  let chipText = profileLabelMap[profileCode] || profileCode;
+  let chipState = profileCode;
+  let chipTitle = `Workflow Profile: ${profileCode}`;
+
+  if (!newRecordsEnabled && legacyActiveCount > 0) {
+    chipText = `ปิดรถใหม่ · งานเดิม ${legacyActiveCount}`;
+    chipState = 'LEGACY_ACTIVE';
+    chipTitle =
+      `Inbound ถูกปิดสำหรับรถ Gate In ใหม่ แต่ยังมีงานเดิม ${legacyActiveCount} รายการที่ต้องดำเนินการตาม Profile เดิม`;
+  } else if (!enabled) {
+    chipText = 'INBOUND ปิด';
+    chipState = 'DISABLED';
+    chipTitle =
+      'Inbound ถูกปิดใช้งาน รถ Gate In ใหม่จะส่งตรงไปขั้นตอนรับสินค้า';
+  } else {
+    chipTitle =
+      `Workflow Profile: ${profileCode} · เปิดใช้งาน ${flow.join(' และ ') || 'ไม่มีขั้นตอน Inbound'}`;
+  }
+
+  if (chip) {
+    chip.textContent = chipText;
+    chip.dataset.profile = chipState;
+    chip.title = chipTitle;
+    chip.setAttribute('aria-label', chipTitle);
+  }
+
   if (!enabled && state.scanner?.running) stopCamera();
+
+  /*
+   * ปุ่มเต็มจอต้องอยู่ครบทุก Profile
+   * Profile ใช้ควบคุมขั้นตอนธุรกิจเท่านั้น ไม่ควรซ่อนเครื่องมือหน้าจอ
+   */
+  const fullscreenButton = byId('inboundFullscreenButton');
+  if (fullscreenButton) {
+    fullscreenButton.hidden = false;
+    fullscreenButton.removeAttribute('aria-hidden');
+  }
 }
 
 })(window, document);
