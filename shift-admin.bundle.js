@@ -1,3 +1,5 @@
+/* SMARTALERT_ROUND3_REV1_COMPACT_FULLPAGE_BUILD: 2026.07.22 */
+/* SMARTALERT_ROUND3_SHIFT24H_FULLPAGE_BUILD: 2026.07.22 */
 /*
  * AlertVendor Consolidated Bundle
  * Output: github-pages/shift-admin.bundle.js
@@ -4293,7 +4295,7 @@
       'click',
       () => {
         if (
-          state.shifts.length >= 4
+          state.shifts.length >= 5
         ) {
           showError(
             new Error(
@@ -4307,7 +4309,7 @@
         state.shifts.push({
           code:
             String.fromCharCode(
-              65 + state.shifts.length
+              (['A', 'B', 'C', 'D', 'N'][state.shifts.length] || 'S').charCodeAt(0)
             ),
           name: 'กะใหม่',
           start: '00:00',
@@ -4324,6 +4326,20 @@
     ).addEventListener(
       'click',
       saveConfig
+    );
+
+    document.getElementById(
+      'shiftAdminEnabled'
+    ).addEventListener(
+      'change',
+      updateCoverage
+    );
+
+    document.getElementById(
+      'shiftAdminCoverageMode'
+    ).addEventListener(
+      'change',
+      updateCoverage
     );
 
     document.getElementById(
@@ -4416,6 +4432,12 @@
     ).value =
       config.businessDayStart ||
       '06:00';
+
+    document.getElementById(
+      'shiftAdminCoverageMode'
+    ).value =
+      config.coverageMode ||
+      'DEFINED_WINDOWS';
 
     state.shifts =
       Array.isArray(config.shifts)
@@ -4512,7 +4534,7 @@
               type="button"
               data-remove-shift="${index}"
               ${
-                state.shifts.length <= 2
+                state.shifts.length <= 1
                   ? 'disabled'
                   : ''
               }
@@ -4585,49 +4607,106 @@
   }
 
   function updateCoverage() {
-    const occupied = new Set();
+    const occupied = new Array(1440).fill('');
+    const errors = [];
+    const active = state.shifts.filter((shift) => shift.active !== false);
 
-    state.shifts
-      .filter((shift) => shift.active)
-      .forEach((shift) => {
-        const start =
-          timeMinutes(shift.start);
+    if (state.shifts.length < 1 || state.shifts.length > 5) {
+      errors.push('ต้องกำหนด 1–5 กะ');
+    }
+    if (
+      document.getElementById('shiftAdminEnabled')?.checked === true &&
+      active.length < 1
+    ) {
+      errors.push('ต้องเปิดใช้งานอย่างน้อย 1 กะ');
+    }
 
-        const end =
-          timeMinutes(shift.end);
+    const codes = new Set();
+    active.forEach((shift) => {
+      const code = String(shift.code || '').trim().toUpperCase();
+      const start = timeMinutes(shift.start);
+      const end = timeMinutes(shift.end);
 
-        let cursor = start;
-        let count = 0;
+      if (!code || codes.has(code)) {
+        errors.push('รหัสกะห้ามว่างหรือซ้ำ');
+        return;
+      }
+      codes.add(code);
 
-        while (
-          cursor !== end &&
-          count < 1440
-        ) {
-          occupied.add(cursor);
-          cursor = (cursor + 1) % 1440;
-          count += 1;
+      let cursor = start;
+      let count = 0;
+      while (cursor !== end && count < 1440) {
+        if (occupied[cursor]) {
+          errors.push(`กะ ${code} ทับกับกะ ${occupied[cursor]}`);
+          break;
         }
-      });
+        occupied[cursor] = code;
+        cursor = (cursor + 1) % 1440;
+        count += 1;
+      }
+    });
 
-    const element =
-      document.getElementById(
-        'shiftAdminCoverage'
-      );
+    const coverage = occupied.filter(Boolean).length;
+    const enabled =
+      document.getElementById('shiftAdminEnabled')?.checked === true;
+    const coverageMode =
+      document.getElementById('shiftAdminCoverageMode')?.value ||
+      'DEFINED_WINDOWS';
+    if (
+      enabled &&
+      coverageMode === 'FULL_24H' &&
+      coverage !== 1440
+    ) {
+      errors.push('โหมด 24 ชั่วโมงต้องครอบคลุมครบ 24 ชั่วโมง');
+    }
 
+    const element = document.getElementById('shiftAdminCoverage');
     element.textContent =
-      `รวมช่วงเวลา ${(
-        occupied.size / 60
-      ).toFixed(1)} ชั่วโมง`;
+      `รวมช่วงเวลา ${(coverage / 60).toFixed(1)} ชั่วโมง` +
+      (
+        coverageMode === 'FULL_24H'
+          ? (coverage === 1440 ? ' · ครบ 24 ชั่วโมง' : ' · ยังไม่ครบ')
+          : (coverage < 1440 ? ' · เวลานอกกะเป็น OUTSIDE_SHIFT' : ' · ครบ 24 ชั่วโมง')
+      );
+    element.classList.toggle('is-warning', errors.length > 0);
 
-    element.classList.toggle(
-      'is-warning',
-      occupied.size !== 1440
-    );
+    return {
+      valid: errors.length === 0,
+      errors,
+      coverageMinutes: coverage
+    };
   }
 
   async function saveConfig() {
     try {
       syncRows();
+      const validation = updateCoverage();
+      if (!validation.valid) {
+        await window.Swal.fire({
+          icon: 'warning',
+          title: 'ตารางกะยังไม่พร้อมบันทึก',
+          html: '<ul>' + validation.errors.map(
+            (item) => '<li>' + escapeHtml(item) + '</li>'
+          ).join('') + '</ul>',
+          confirmButtonText: 'กลับไปแก้ไข'
+        });
+        return;
+      }
+
+      const reasonResult = await window.Swal.fire({
+        icon: 'question',
+        title: 'ยืนยันสร้างเวอร์ชันกะใหม่',
+        input: 'textarea',
+        inputLabel: 'เหตุผลการเปลี่ยน',
+        inputValidator: (value) =>
+          String(value || '').trim().length >= 5
+            ? undefined
+            : 'กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร',
+        showCancelButton: true,
+        confirmButtonText: 'บันทึกเวอร์ชันใหม่',
+        cancelButtonText: 'ยกเลิก'
+      });
+      if (!reasonResult.isConfirmed) return;
 
       const result =
         await window.VehicleAPI
@@ -4650,10 +4729,18 @@
                     'shiftAdminBusinessStart'
                   ).value,
 
+                coverageMode:
+                  document.getElementById(
+                    'shiftAdminCoverageMode'
+                  ).value,
+
                 effectiveFrom:
                   document.getElementById(
                     'shiftAdminEffective'
                   ).value,
+
+                changeReason:
+                  String(reasonResult.value || '').trim(),
 
                 shifts:
                   state.shifts.map(
@@ -4692,9 +4779,7 @@
         icon: 'success',
         title: 'เตรียมระบบกะสำเร็จ',
         text:
-          `สร้าง/ตรวจสอบ ${
-            result.sheets?.length || 0
-          } ชีท`,
+          'สร้าง/ตรวจสอบเพียงชีทตั้งค่ากะและชีทสรุปกะ',
         confirmButtonText: 'รับทราบ'
       });
 
@@ -4728,17 +4813,11 @@
             </strong>
             รายการ<br>
 
-            สรุปรายวัน
+            ส่งมอบอัตโนมัติ
             <strong>
-              ${result.dailySnapshots || 0}
+              ${result.automaticTransfers || 0}
             </strong>
-            รายการ<br>
-
-            รายชั่วโมง
-            <strong>
-              ${result.hourlyRows || 0}
-            </strong>
-            แถว
+            รายการ
           </div>
         `,
 
