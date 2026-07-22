@@ -1,3 +1,4 @@
+/* ROUND4_HOTFIX3_REV4_COMPARISON_TOOLBAR_FIX: 2026.07.22 */
 /* ROUND4_HOTFIX3_REV3_ADMIN_SLA_ALIGNED_AGING */
 :root{
   --navy:#032f46;--teal:#075b72;--cyan:#0b8293;--ink:#10283b;--muted:#607587;
@@ -363,3 +364,74 @@ body.is-fullscreen .compare-chart-canvas{height:100%;min-height:240px;max-height
 .compare-delta{grid-template-columns:minmax(150px,auto) repeat(8,minmax(78px,1fr))}
 @media(max-width:1450px){.compare-severity-strip{grid-template-columns:repeat(3,1fr)}.compare-delta{grid-template-columns:repeat(4,1fr)}.delta-title{grid-column:1/-1}}
 @media(max-width:760px){.compare-severity-strip,.total-age-grid{grid-template-columns:repeat(2,1fr)}.compare-delta{grid-template-columns:1fr}}
+
+
+/* Round 4 Hotfix 3 Rev4 — Comparison toolbar without squeezed side B */
+.comparison-toolbar{
+  display:grid;
+  grid-template-columns:minmax(190px,.8fr) minmax(145px,.52fr) minmax(0,1fr) 42px minmax(0,1fr) auto;
+  grid-template-areas:
+    "heading type view view view close"
+    "heading sideA sideA swap sideB sideB";
+  gap:7px 9px;
+  align-items:end;
+}
+.comparison-heading{grid-area:heading;align-self:center}
+.compare-type-control{grid-area:type}
+.compare-view-control{grid-area:view}
+.compare-control-a{grid-area:sideA}
+.compare-swap{grid-area:swap;align-self:end}
+.compare-control-b{grid-area:sideB}
+.compare-close{grid-area:close;align-self:end;white-space:nowrap}
+.comparison-toolbar label{min-width:0;width:100%}
+.comparison-toolbar select{
+  display:block;
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.compare-control-a select,
+.compare-control-b select{
+  font-size:14px;
+  font-weight:800;
+}
+.compare-swap{width:42px;padding:0}
+
+@media(max-width:1180px){
+  .comparison-toolbar{
+    grid-template-columns:minmax(150px,.7fr) minmax(0,1fr) 42px minmax(0,1fr);
+    grid-template-areas:
+      "heading type view close"
+      "sideA sideA swap sideB";
+  }
+  .compare-control-b{grid-column:4 / 5}
+}
+
+@media(max-width:820px){
+  .comparison-toolbar{
+    grid-template-columns:1fr 42px 1fr;
+    grid-template-areas:
+      "heading heading close"
+      "type view view"
+      "sideA swap sideB";
+  }
+  .comparison-heading span{display:none}
+}
+
+@media(max-width:600px){
+  .comparison-toolbar{
+    grid-template-columns:1fr 42px 1fr;
+    grid-template-areas:
+      "heading heading close"
+      "type type type"
+      "view view view"
+      "sideA swap sideB";
+  }
+  .compare-control-a select,
+  .compare-control-b select{
+    font-size:12px;
+  }
+}
