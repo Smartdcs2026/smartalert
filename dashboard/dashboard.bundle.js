@@ -1,5 +1,5 @@
-/* SmartAlert Round 4 — Executive Dashboard & Management Analytics
- * Build: 2026.07.22-round4-hotfix2-dense-layout-v1
+/* SmartAlert Round 4 Hotfix 3 Rev1 — Main Dashboard + Optional Comparison
+ * Build: 2026.07.22-round4-hotfix3-r1-main-plus-compare-v1
  */
 (function (window, document) {
   'use strict';
@@ -10,7 +10,10 @@
     LOGIN_URL: '../login.html',
     MODULE_URL: '../module.html?id=vendors',
     REFRESH_MS: 60000,
-    API_TIMEOUT_MS: 120000,
+    API_TIMEOUT_MS: 70000,
+    BACKGROUND_TIMEOUT_MS: 45000,
+    CACHE_KEY: 'smartalert_dashboard_snapshot_v4_h3r1',
+    CACHE_RECORD_LIMIT: 1500,
     MAX_TABLE_ROWS: 8,
     MAX_ALERT_ROWS: 6,
     MAX_SEGMENT_SECONDS: 7 * 24 * 60 * 60,
@@ -21,8 +24,8 @@
   });
 
   const COLORS = Object.freeze({
-    purple: '#8a5dd0', blue: '#3374dd', teal: '#17a591', green: '#2fac72',
-    red: '#e04444', orange: '#ef8c22', slate: '#667987', navy: '#07506a',
+    purple: '#CC0099', blue: '#4472C4', teal: '#5B9BD5', green: '#70AD47',
+    red: '#e04444', orange: '#FBB215', pink: '#FF6699', slate: '#667987', navy: '#07506a',
     lightBlue: '#d9e8fb', grid: '#e6edf1', text: '#607587'
   });
 
@@ -61,7 +64,13 @@
     charts: {},
     timer: null,
     loading: false,
-    initialized: false
+    initialized: false,
+    compareMode: false,
+    compareType: 'DAY',
+    compareA: '',
+    compareB: '',
+    refreshWarningAt: 0,
+    chartResizeTimer: null
   };
 
   const byId = (id) => document.getElementById(id);
@@ -93,9 +102,13 @@
     } catch (error) {}
   }
 
-  async function apiGet(path, query) {
+  async function apiGet(path, query, options) {
+    const requestOptions = options && typeof options === 'object' ? options : {};
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), CONFIG.API_TIMEOUT_MS);
+    const timeout = window.setTimeout(
+      () => controller.abort(),
+      number(requestOptions.timeoutMs, CONFIG.API_TIMEOUT_MS)
+    );
     const url = new URL(CONFIG.API_BASE.replace(/\/$/, '') + path);
     Object.entries(query || {}).forEach(([key, value]) => {
       if (value !== '' && value !== null && value !== undefined) {
@@ -133,12 +146,26 @@
     }
   }
 
-  function apiMe() { return apiGet('/api/auth/me'); }
-  function apiBoard(forceRefresh) {
+  function apiMe() { return apiGet('/api/auth/me', null, {timeoutMs: 30000}); }
+  function apiBoard(forceRefresh, options) {
+    const requestOptions = options && typeof options === 'object' ? options : {};
     return apiGet('/api/modules/' + encodeURIComponent(state.moduleId) + '/operational-board', {
       limit: 3000,
-      forceRefresh: forceRefresh === true ? 'true' : ''
+      forceRefresh: forceRefresh === true ? 'true' : '',
+      skipAutoClose: 'true'
+    }, {
+      timeoutMs: requestOptions.background === true
+        ? CONFIG.BACKGROUND_TIMEOUT_MS
+        : CONFIG.API_TIMEOUT_MS
     });
+  }
+  function apiBoardRevision(knownRevision) {
+    return apiGet('/api/modules/' + encodeURIComponent(state.moduleId) + '/operational-board', {
+      limit: 1,
+      revisionOnly: 'true',
+      knownRevision: knownRevision || '',
+      skipAutoClose: 'true'
+    }, {timeoutMs: 25000});
   }
 
   function parseDateTime(value) {
@@ -203,10 +230,104 @@
     if (element) element.textContent = value;
   }
 
-  function setLoading(active) {
+  function setLoading(active, showOverlay) {
     state.loading = active;
-    byId('dashboardLoading')?.classList.toggle('is-hidden', !active);
+    const overlayVisible = active && showOverlay !== false;
+    byId('dashboardLoading')?.classList.toggle('is-hidden', !overlayVisible);
     if (byId('refreshButton')) byId('refreshButton').disabled = active;
+  }
+
+
+  function dashboardCachePayload() {
+    const records = Array.isArray(state.records)
+      ? state.records.slice(0, CONFIG.CACHE_RECORD_LIMIT)
+      : [];
+    const analytics = Object.assign({}, state.analytics || {}, {records});
+    const board = state.board || {};
+    return {
+      savedAt: Date.now(),
+      moduleId: state.moduleId,
+      board: {
+        generatedAt: board.generatedAt || '',
+        generatedAtEpochMs: board.generatedAtEpochMs || 0,
+        snapshotId: board.snapshotId || '',
+        dataRevision: board.dataRevision || '',
+        module: board.module || {},
+        currentShift: board.currentShift || null,
+        shiftSummaries: board.shiftSummaries || [],
+        handover: board.handover || null,
+        dashboard: {analyticsV4: analytics}
+      }
+    };
+  }
+
+  function persistDashboardCache() {
+    try {
+      const payload = dashboardCachePayload();
+      const serialized = JSON.stringify(payload);
+      if (serialized.length <= 4200000) {
+        window.sessionStorage.setItem(CONFIG.CACHE_KEY, serialized);
+      }
+    } catch (error) {
+      console.warn('บันทึก Dashboard Cache ไม่สำเร็จ', error);
+    }
+  }
+
+  function restoreDashboardCache() {
+    try {
+      const raw = window.sessionStorage.getItem(CONFIG.CACHE_KEY);
+      if (!raw) return false;
+      const payload = JSON.parse(raw);
+      if (!payload || payload.moduleId !== state.moduleId || !payload.board) return false;
+      const analytics = payload.board.dashboard && payload.board.dashboard.analyticsV4;
+      if (!analytics || !Array.isArray(analytics.records)) return false;
+      state.board = payload.board;
+      state.analytics = analytics;
+      state.records = analytics.records;
+      initializeDates();
+      populateFilters();
+      applyFiltersAndRender();
+      state.initialized = true;
+      setText('connectionText', 'ใช้ข้อมูลล่าสุด');
+      byId('connectionText')?.classList.add('refresh-stale');
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function applyDashboardBoard(board) {
+    state.board = board || {};
+    state.analytics = board && board.dashboard && board.dashboard.analyticsV4
+      ? board.dashboard.analyticsV4
+      : fallbackAnalytics(board);
+    state.records = Array.isArray(state.analytics.records)
+      ? state.analytics.records
+      : [];
+    initializeDates();
+    populateFilters();
+    applyFiltersAndRender();
+    state.initialized = true;
+    persistDashboardCache();
+  }
+
+  function showRefreshWarning(error) {
+    const now = Date.now();
+    setText('connectionText', 'อัปเดตช้า · ใช้ข้อมูลล่าสุด');
+    byId('connectionText')?.classList.add('refresh-stale');
+    if (!window.Swal || now - state.refreshWarningAt < 300000) return;
+    state.refreshWarningAt = now;
+    window.Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'warning',
+      title: 'อัปเดตข้อมูลยังไม่สำเร็จ',
+      text: 'Dashboard ยังคงแสดงข้อมูลชุดล่าสุดและจะลองใหม่อัตโนมัติ',
+      showConfirmButton: false,
+      timer: 5000,
+      timerProgressBar: true
+    });
+    console.warn('Dashboard background refresh failed', error);
   }
 
   function showError(error) {
@@ -215,7 +336,7 @@
       icon: 'error', title: 'เปิด Dashboard ไม่สำเร็จ', text: message,
       confirmButtonText: 'ลองใหม่', showCancelButton: true, cancelButtonText: 'กลับหน้า Module'
     }).then((result) => {
-      if (result.isConfirmed) loadDashboard(true);
+      if (result.isConfirmed) loadDashboard(false, {manual: true});
       else if (result.dismiss) window.location.href = CONFIG.MODULE_URL;
     });
   }
@@ -251,43 +372,88 @@
     };
   }
 
-  async function loadDashboard(forceRefresh) {
+  async function loadDashboard(forceRefresh, options) {
+    const requestOptions = options && typeof options === 'object' ? options : {};
+    const background = requestOptions.background === true || state.initialized === true;
     if (state.loading) return;
-    setLoading(!state.initialized);
-    setText('connectionText', 'กำลังเชื่อมต่อ');
+    setLoading(true, !background);
+    setText('connectionText', background ? 'กำลังตรวจข้อมูลใหม่' : 'กำลังเชื่อมต่อ');
+
     try {
-      const [user, board] = await Promise.all([apiMe(), apiBoard(forceRefresh)]);
+      let user = state.user;
+      if (!user) user = await apiMe();
       state.user = user || {};
+
       if (!state.user.authenticated) {
         clearSession();
         window.location.replace(CONFIG.LOGIN_URL);
         return;
       }
+
       const sessionUser = state.user.user || state.user;
       const role = text(sessionUser.role).toUpperCase();
       if (role === 'INBOUND') {
         window.location.replace('../inbound.html');
         return;
       }
-      state.board = board || {};
-      state.analytics = board?.dashboard?.analyticsV4 || fallbackAnalytics(board);
-      state.records = Array.isArray(state.analytics.records) ? state.analytics.records : [];
-      initializeDates();
-      populateFilters();
-      applyFiltersAndRender();
+
+      const knownRevision = text(state.board && state.board.dataRevision);
+      if (state.initialized && knownRevision && forceRefresh !== true) {
+        try {
+          const revision = await apiBoardRevision(knownRevision);
+          if (revision && revision.unchanged === true) {
+            setText('connectionText', 'ออนไลน์');
+            byId('connectionText')?.classList.remove('refresh-stale');
+            setText('autoRefreshLabel', 'ตรวจแล้ว ข้อมูลยังเป็นชุดล่าสุด');
+            return;
+          }
+        } catch (revisionError) {
+          if (background) {
+            showRefreshWarning(revisionError);
+            return;
+          }
+        }
+      }
+
+      const board = await apiBoard(false, {background});
+      applyDashboardBoard(board);
       setText('connectionText', 'ออนไลน์');
-      state.initialized = true;
+      byId('connectionText')?.classList.remove('refresh-stale');
       startAutoRefresh();
+
+      if (requestOptions.manual === true && window.Swal) {
+        window.Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'success',
+          title: 'อัปเดตข้อมูลแล้ว',
+          showConfirmButton: false,
+          timer: 1800
+        });
+      }
     } catch (error) {
-      setText('connectionText', window.navigator.onLine ? 'เชื่อมต่อไม่สำเร็จ' : 'ออฟไลน์');
       if (error.status === 401 || error.status === 403) {
         clearSession();
         window.location.replace(CONFIG.LOGIN_URL);
         return;
       }
+
+      if (state.initialized) {
+        showRefreshWarning(error);
+        startAutoRefresh();
+        return;
+      }
+
+      if (restoreDashboardCache()) {
+        showRefreshWarning(error);
+        startAutoRefresh();
+        return;
+      }
+
+      setText('connectionText', window.navigator.onLine ? 'เชื่อมต่อไม่สำเร็จ' : 'ออฟไลน์');
       showError(error);
     } finally {
-      setLoading(false);
+      setLoading(false, false);
     }
   }
 
@@ -365,6 +531,10 @@
     renderShiftSummary();
     fitFullscreen();
     scheduleChartResize();
+    if (state.compareMode) {
+      populateCompareOptions();
+      renderComparisonWorkspace();
+    }
   }
 
   function renderHeaderMeta() {
@@ -499,23 +669,29 @@
     }, chartOptions({legend: true, yTitle: 'คัน'}));
   }
 
-  function stageAverages(rows) {
+  function percentile(values, ratio) {
+    const sorted = (values || []).map(Number).filter(Number.isFinite).sort((a, b) => a - b);
+    if (!sorted.length) return 0;
+    const position = (sorted.length - 1) * ratio;
+    const lower = Math.floor(position);
+    const upper = Math.ceil(position);
+    if (lower === upper) return sorted[lower];
+    return sorted[lower] + (sorted[upper] - sorted[lower]) * (position - lower);
+  }
+
+  function stagePerformance(rows) {
     const targets = Array.isArray(state.analytics?.targets) ? state.analytics.targets : [];
     return targets.map((target) => {
       const values = rows
         .map((record) => record.segments && record.segments[target.code])
         .map(Number)
-        .filter((value) => (
-          Number.isFinite(value) &&
-          value >= 0 &&
-          value <= CONFIG.MAX_SEGMENT_SECONDS
-        ));
+        .filter((value) => Number.isFinite(value) && value >= 0 && value <= CONFIG.MAX_SEGMENT_SECONDS)
+        .map((seconds) => seconds / 60);
       return {
         code: target.code,
         label: target.label || STAGE_LABELS[target.code] || target.code,
-        average: values.length
-          ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length / 60)
-          : 0,
+        typical: Math.round(percentile(values, .5)),
+        slow: Math.round(percentile(values, .9)),
         target: number(target.targetMinutes),
         count: values.length
       };
@@ -523,12 +699,13 @@
   }
 
   function renderStageTimeChart() {
-    const stages = stageAverages(state.filtered);
+    const stages = stagePerformance(state.filtered);
     createChart('stageTimeChart', 'bar', {
       labels: stages.map((stage) => stage.label),
       datasets: [
-        {label: 'เวลาเฉลี่ย', data: stages.map((stage) => stage.average), backgroundColor: COLORS.blue, borderRadius: 5, barThickness: 14},
-        {label: 'เป้าหมายเวลา', data: stages.map((stage) => stage.target), backgroundColor: 'rgba(96,117,135,.18)', borderColor: COLORS.slate, borderWidth: 1, borderRadius: 5, barThickness: 6}
+        {label: 'เวลาทั่วไป', data: stages.map((stage) => stage.typical), backgroundColor: COLORS.blue, borderRadius: 5, barThickness: 8},
+        {label: 'งานกลุ่มช้า', data: stages.map((stage) => stage.slow), backgroundColor: COLORS.orange, borderRadius: 5, barThickness: 8},
+        {label: 'เป้าหมาย', data: stages.map((stage) => stage.target), backgroundColor: 'rgba(96,117,135,.18)', borderColor: COLORS.slate, borderWidth: 1, borderRadius: 5, barThickness: 5}
       ]
     }, chartOptions({legend: true, horizontal: true, xTitle: 'นาที'}));
   }
@@ -566,24 +743,26 @@
     setText('dayOverdue', rows.filter((r) => r.isOverdue).length.toLocaleString('th-TH'));
   }
 
-  function companyRankingRows() {
-    const rows = recordsForDay(state.selectedDate).filter((record) => record.companyName && record.totalSeconds > 0);
-    const map = new Map();
-    rows.forEach((record) => {
-      const current = map.get(record.companyName) || {name: record.companyName, seconds: 0, count: 0};
-      current.seconds += number(record.totalSeconds); current.count += 1; map.set(record.companyName, current);
-    });
-    return Array.from(map.values()).map((item) => ({
-      name: item.name, minutes: Math.round(item.seconds / item.count / 60), count: item.count
-    })).sort((a, b) => b.minutes - a.minutes).slice(0, 5);
+  function longestJobRows() {
+    return recordsForDay(state.selectedDate)
+      .filter((record) => number(record.totalSeconds) > 0)
+      .sort((left, right) => number(right.totalSeconds) - number(left.totalSeconds))
+      .slice(0, 5);
+  }
+
+  function rankingClass(record) {
+    if (record.isOverdue) return 'rank-overdue';
+    if (record.isWarning) return 'rank-warning';
+    if (record.isIncomplete) return 'rank-incomplete';
+    return 'rank-normal';
   }
 
   function renderCompanyRanking() {
-    const rows = companyRankingRows();
-    const max = Math.max(1, ...rows.map((row) => row.minutes));
+    const rows = longestJobRows();
+    const max = Math.max(1, ...rows.map((row) => number(row.totalSeconds)));
     byId('companyRanking').innerHTML = rows.length ? rows.map((row, index) =>
-      `<div class="ranking-row"><b>${index + 1}</b><span class="ranking-name" title="${escapeHtml(row.name)}">${escapeHtml(row.name)}</span><span class="ranking-track"><i style="width:${Math.max(4, row.minutes / max * 100)}%"></i></span><span class="ranking-value">${row.minutes} นาที</span></div>`
-    ).join('') : '<div class="empty-row">ยังไม่มีข้อมูลบริษัทในวันที่เลือก</div>';
+      `<button type="button" class="ranking-row" data-record-id="${escapeHtml(row.canonicalRecordId)}"><b>${index + 1}</b><span class="ranking-job-copy"><strong>${escapeHtml(row.appointmentNumber || row.autoId || '-')}</strong><span title="${escapeHtml(row.companyName || '')}">${escapeHtml(row.companyName || 'ไม่ระบุบริษัท')} · ${escapeHtml(row.stageLabel || '-')}</span></span><span class="ranking-track"><i class="${rankingClass(row)}" style="width:${Math.max(4, number(row.totalSeconds) / max * 100)}%"></i></span><span class="ranking-value">${escapeHtml(durationLabel(row.totalSeconds))}</span></button>`
+    ).join('') : '<div class="empty-row">ยังไม่มีงานในวันที่เลือก</div>';
   }
 
   function statusPill(record) {
@@ -647,16 +826,16 @@
         legend: {
           display: config.legend === true,
           position: 'top',
-          labels: {boxWidth: 11, boxHeight: 6, padding: 8, font: {size: 8}, color: COLORS.text}
+          labels: {boxWidth: 11, boxHeight: 6, padding: 8, font: {size: 9, family: 'Noto Sans Thai, Leelawadee UI, Tahoma'}, color: COLORS.text}
         },
-        tooltip: {backgroundColor: '#073d55', titleFont: {size: 10}, bodyFont: {size: 9}}
+        tooltip: {backgroundColor: '#073d55', titleFont: {size: 11, family: 'Noto Sans Thai, Tahoma'}, bodyFont: {size: 10, family: 'Noto Sans Thai, Tahoma'}}
       },
       scales: {
         x: {
           beginAtZero: horizontal,
           grid: {color: COLORS.grid},
           ticks: {
-            font: {size: 8},
+            font: {size: 9, family: 'Noto Sans Thai, Tahoma'},
             color: COLORS.text,
             maxTicksLimit: horizontal ? 7 : 14,
             callback: horizontal ? compactAxis : undefined
@@ -666,7 +845,7 @@
         y: {
           beginAtZero: true,
           grid: {color: COLORS.grid},
-          ticks: {font: {size: 8}, color: COLORS.text, maxTicksLimit: horizontal ? 8 : 7},
+          ticks: {font: {size: 9, family: 'Noto Sans Thai, Tahoma'}, color: COLORS.text, maxTicksLimit: horizontal ? 8 : 7},
           title: {display: Boolean(config.yTitle), text: config.yTitle, font: {size: 8}}
         }
       }
@@ -771,6 +950,162 @@
     downloadCsv(`SmartAlert_Shift_${isoDay(new Date())}.csv`, rows);
   }
 
+
+  function comparisonBaseRows() {
+    const from = byId('dateFrom').value || isoDay(new Date());
+    const to = byId('dateTo').value || from;
+    const status = byId('statusFilter').value;
+    const query = text(byId('searchInput').value).toLowerCase();
+    return state.records.filter((record) => {
+      if (!record.entryDayKey || record.entryDayKey < from || record.entryDayKey > to) return false;
+      if (status === 'ACTIVE' && !record.isActive) return false;
+      if (status === 'COMPLETED' && !record.isCompleted) return false;
+      if (status === 'OVERDUE' && !record.isOverdue) return false;
+      if (status === 'CANCELLED' && !record.isCancelled) return false;
+      if (status === 'INCOMPLETE' && !record.isIncomplete) return false;
+      if (query) {
+        const haystack = [record.autoId, record.appointmentNumber, record.companyName, record.vehicleRegistration, record.driverName]
+          .map(text).join(' ').toLowerCase();
+        if (!haystack.includes(query)) return false;
+      }
+      return true;
+    });
+  }
+
+  function compareOptions(type) {
+    const rows = type === 'DAY' ? state.records : comparisonBaseRows();
+    const map = new Map();
+    rows.forEach((record) => {
+      if (type === 'DAY' && record.entryDayKey) map.set(record.entryDayKey, shortThaiDate(record.entryDayKey));
+      if (type === 'SHIFT') map.set(record.shiftCode || 'OUTSIDE_SHIFT', record.shiftName || 'นอกกะ');
+      if (type === 'PROFILE') map.set(record.profileCode || 'FULL_INBOUND_LEGACY', record.profileLabel || PROFILE_LABELS[record.profileCode] || 'เต็มขั้นตอน');
+      if (type === 'RECORD') {
+        const key = record.canonicalRecordId;
+        if (key) map.set(key, `${record.appointmentNumber || record.autoId || '-'} · ${record.companyName || 'ไม่ระบุบริษัท'}`);
+      }
+    });
+    const result = Array.from(map.entries());
+    if (type === 'DAY') result.sort((a, b) => b[0].localeCompare(a[0]));
+    else result.sort((a, b) => a[1].localeCompare(b[1], 'th'));
+    return result;
+  }
+
+  function populateCompareOptions() {
+    const options = compareOptions(state.compareType);
+    const values = options.map(([value]) => value);
+    const html = options.map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join('');
+    byId('compareA').innerHTML = html || '<option value="">ไม่มีข้อมูล</option>';
+    byId('compareB').innerHTML = html || '<option value="">ไม่มีข้อมูล</option>';
+    state.compareA = values.includes(state.compareA) ? state.compareA : (values[0] || '');
+    state.compareB = values.includes(state.compareB) && state.compareB !== state.compareA
+      ? state.compareB
+      : (values.find((value) => value !== state.compareA) || values[0] || '');
+    byId('compareA').value = state.compareA;
+    byId('compareB').value = state.compareB;
+  }
+
+  function comparisonRows(type, value) {
+    if (!value) return [];
+    if (type === 'DAY') return state.records.filter((record) => record.entryDayKey === value);
+    const rows = comparisonBaseRows();
+    if (type === 'SHIFT') return rows.filter((record) => (record.shiftCode || 'OUTSIDE_SHIFT') === value);
+    if (type === 'PROFILE') return rows.filter((record) => (record.profileCode || 'FULL_INBOUND_LEGACY') === value);
+    if (type === 'RECORD') return rows.filter((record) => record.canonicalRecordId === value);
+    return [];
+  }
+
+  function comparisonLabel(type, value) {
+    const option = compareOptions(type).find(([key]) => key === value);
+    return option ? option[1] : value || '-';
+  }
+
+  function summaryMetrics(rows) {
+    const durations = rows.map((record) => number(record.totalSeconds)).filter((value) => value >= 0);
+    return {
+      gateIn: rows.length,
+      completed: rows.filter((record) => record.isCompleted).length,
+      active: rows.filter((record) => record.isActive).length,
+      overdue: rows.filter((record) => record.isOverdue).length,
+      median: Math.round(percentile(durations, .5)),
+      p90: Math.round(percentile(durations, .9)),
+      max: durations.length ? Math.max(...durations) : 0
+    };
+  }
+
+  function compareStageRows(rows) {
+    return STAGE_ORDER.map((code) => {
+      const stageRows = rows.filter((record) => record.isActive && record.stageCode === code);
+      return {
+        code,
+        label: STAGE_LABELS[code] || code,
+        count: stageRows.length,
+        overdue: stageRows.filter((record) => record.isOverdue).length
+      };
+    }).filter((item) => item.count > 0);
+  }
+
+  function recordCompareHtml(side, record, title) {
+    if (!record) return `<div class="empty-row">ไม่พบข้อมูลที่เลือก</div>`;
+    const targets = Array.isArray(state.analytics?.targets) ? state.analytics.targets : [];
+    const targetMap = new Map(targets.map((target) => [target.code, number(target.targetMinutes)]));
+    const timeline = [
+      ['WAITING_INBOUND_DOCUMENT','เข้า → ยื่นเอกสาร',record.submitRequired !== false],
+      ['WAITING_RECEIVING','ยื่นเอกสาร → รับสินค้า',true],
+      ['WAITING_DOCUMENT_RETURN','รับสินค้า → คืนเอกสาร',record.returnRequired !== false],
+      ['WAITING_GATE_OUT','คืนเอกสาร → ออก',true]
+    ].map(([code,label,applicable]) => {
+      const seconds = number(record.segments && record.segments[code]);
+      const targetSeconds = targetMap.get(code) * 60;
+      return {code,label,applicable,seconds,ratio: targetSeconds > 0 ? seconds / targetSeconds : 0};
+    });
+    return `<div class="compare-pane-head"><div><strong>${escapeHtml(record.appointmentNumber || title || record.autoId || '-')}</strong><span>${escapeHtml(record.companyName || 'ไม่ระบุบริษัท')}</span></div><b class="compare-badge">ฝั่ง ${side}</b></div><div class="record-compare"><div class="record-main">${[
+      ['ขั้นตอน',record.stageLabel || '-'],['สถานะ',record.statusLabel || '-'],['เวลารวม',durationLabel(record.totalSeconds)],['กะ',record.shiftName || 'นอกกะ'],['รูปแบบงาน',record.profileLabel || '-'],['ทะเบียนรถ',record.vehicleRegistration || '-']
+    ].map((item) => `<div class="record-main-cell"><span>${item[0]}</span><strong>${escapeHtml(item[1])}</strong></div>`).join('')}</div><div class="compare-group"><h3>เวลาแต่ละขั้นตอน</h3><div class="timeline-list">${timeline.map((item) => `<div class="timeline-row ${item.applicable ? '' : 'na'}"><span>${escapeHtml(item.label)}</span><span class="compare-track"><i style="width:${item.applicable ? Math.min(100, Math.max(4, item.ratio * 100)) : 0}%"></i></span><b class="timeline-value">${item.applicable ? durationLabel(item.seconds) : 'ไม่ใช้ขั้นตอนนี้'}</b></div>`).join('')}</div></div></div>`;
+  }
+
+  function comparePaneHtml(side, type, value, rows) {
+    const title = comparisonLabel(type, value);
+    if (type === 'RECORD') return recordCompareHtml(side, rows[0], title);
+    const metrics = summaryMetrics(rows);
+    const stages = compareStageRows(rows);
+    const maxStage = Math.max(1, ...stages.map((item) => item.count));
+    const longest = rows.slice().filter((record) => number(record.totalSeconds) > 0)
+      .sort((left, right) => number(right.totalSeconds) - number(left.totalSeconds)).slice(0, 4);
+    return `<div class="compare-pane-head"><div><strong>${escapeHtml(title)}</strong><span>${rows.length.toLocaleString('th-TH')} รายการ</span></div><b class="compare-badge">ฝั่ง ${side}</b></div><div class="compare-summary">${[['รถเข้า',metrics.gateIn],['ปิดงาน',metrics.completed],['คงค้าง',metrics.active],['เกินเวลา',metrics.overdue]].map((item) => `<div class="compare-summary-cell"><span>${item[0]}</span><strong>${item[1].toLocaleString('th-TH')}</strong></div>`).join('')}</div><div class="compare-group"><h3>สถานะและคอขวด</h3><div class="compare-stage-list">${stages.length ? stages.map((item) => `<div class="compare-stage-row"><span>${escapeHtml(item.label)}</span><span class="compare-track"><i style="width:${Math.max(4,item.count/maxStage*100)}%"></i></span><b>${item.count}${item.overdue ? ` · เกิน ${item.overdue}` : ''}</b></div>`).join('') : '<div class="empty-row">ไม่มีงานคงค้าง</div>'}</div></div><div class="compare-group"><h3>ความเร็วโดยรวม</h3><div class="compare-speed-grid"><div class="compare-speed-cell"><span>เวลาทั่วไป</span><strong>${durationLabel(metrics.median)}</strong></div><div class="compare-speed-cell"><span>งานกลุ่มช้า</span><strong>${durationLabel(metrics.p90)}</strong></div><div class="compare-speed-cell"><span>เวลาสูงสุด</span><strong>${durationLabel(metrics.max)}</strong></div></div></div><div class="compare-group"><h3>งานที่ใช้เวลานาน</h3><div class="compare-job-list">${longest.length ? longest.map((record) => `<div class="compare-job-row"><span class="compare-job-copy"><strong>${escapeHtml(record.appointmentNumber || record.autoId || '-')}</strong><span>${escapeHtml(record.companyName || 'ไม่ระบุบริษัท')}</span></span><span class="compare-track"><i style="width:${Math.max(4,number(record.totalSeconds)/Math.max(1,number(longest[0].totalSeconds))*100)}%"></i></span><b>${escapeHtml(durationLabel(record.totalSeconds))}</b></div>`).join('') : '<div class="empty-row">ไม่มีข้อมูลเวลา</div>'}</div></div>`;
+  }
+
+  function renderComparisonWorkspace() {
+    if (!state.compareMode) return;
+    const rowsA = comparisonRows(state.compareType, state.compareA);
+    const rowsB = comparisonRows(state.compareType, state.compareB);
+    byId('comparePaneA').innerHTML = comparePaneHtml('A', state.compareType, state.compareA, rowsA);
+    byId('comparePaneB').innerHTML = comparePaneHtml('B', state.compareType, state.compareB, rowsB);
+    const a = summaryMetrics(rowsA);
+    const b = summaryMetrics(rowsB);
+    const cells = [
+      ['รถเข้า',a.gateIn-b.gateIn,false],['ปิดงาน',a.completed-b.completed,true],['คงค้าง',a.active-b.active,false],['เกินเวลา',a.overdue-b.overdue,false]
+    ];
+    byId('compareDelta').innerHTML = `<div class="delta-title"><strong>ผลต่าง A เทียบ B</strong><span>เครื่องหมายบวกหมายถึงฝั่ง A มากกว่า</span></div>${cells.map(([label,value,higherGood]) => {
+      const good = value === 0 ? 'delta-neutral' : ((value > 0) === higherGood ? 'delta-good' : 'delta-bad');
+      return `<div class="delta-cell ${good}"><span>${label}</span><strong>${value > 0 ? '+' : ''}${value.toLocaleString('th-TH')}</strong></div>`;
+    }).join('')}`;
+  }
+
+  function setCompareMode(active) {
+    state.compareMode = active === true;
+    byId('comparisonWorkspace').hidden = !state.compareMode;
+    byId('mainDashboardGrid').hidden = state.compareMode;
+    byId('mainDashboardBottom').hidden = state.compareMode;
+    byId('compareModeButton').classList.toggle('is-active', state.compareMode);
+    setText('compareModeButton', state.compareMode ? '← ภาพรวมหลัก' : '⇄ เปรียบเทียบ');
+    if (state.compareMode) {
+      populateCompareOptions();
+      renderComparisonWorkspace();
+    } else {
+      scheduleChartResize();
+    }
+  }
+
   function toggleFullscreen() {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen?.().catch(() => {});
@@ -810,7 +1145,7 @@
 
   function startAutoRefresh() {
     if (state.timer) window.clearInterval(state.timer);
-    state.timer = window.setInterval(() => loadDashboard(false), CONFIG.REFRESH_MS);
+    state.timer = window.setInterval(() => loadDashboard(false, {background: true}), CONFIG.REFRESH_MS);
   }
 
   function updateClock() {
@@ -823,9 +1158,26 @@
 
   function bindEvents() {
     byId('backButton').addEventListener('click', () => { window.location.href = CONFIG.MODULE_URL; });
-    byId('refreshButton').addEventListener('click', () => loadDashboard(true));
+    byId('refreshButton').addEventListener('click', () => loadDashboard(false, {manual: true}));
     byId('fullscreenButton').addEventListener('click', toggleFullscreen);
     byId('exportButton').addEventListener('click', exportMenu);
+    byId('compareModeButton').addEventListener('click', () => setCompareMode(!state.compareMode));
+    byId('closeCompareButton').addEventListener('click', () => setCompareMode(false));
+    byId('compareType').addEventListener('change', () => {
+      state.compareType = byId('compareType').value || 'DAY';
+      state.compareA = '';
+      state.compareB = '';
+      populateCompareOptions();
+      renderComparisonWorkspace();
+    });
+    byId('compareA').addEventListener('change', () => { state.compareA = byId('compareA').value; renderComparisonWorkspace(); });
+    byId('compareB').addEventListener('change', () => { state.compareB = byId('compareB').value; renderComparisonWorkspace(); });
+    byId('swapCompareButton').addEventListener('click', () => {
+      const value = state.compareA; state.compareA = state.compareB; state.compareB = value;
+      byId('compareA').value = state.compareA; byId('compareB').value = state.compareB;
+      renderComparisonWorkspace();
+    });
+
     byId('resetButton').addEventListener('click', resetFilters);
     window.addEventListener('resize', scheduleChartResize);
     ['dateFrom','dateTo','shiftFilter','profileFilter','statusFilter'].forEach((id) => byId(id).addEventListener('change', applyFiltersAndRender));
@@ -844,6 +1196,10 @@
     });
     byId('alertList').addEventListener('click', (event) => {
       const button = event.target.closest('[data-record-id]'); if (button) showRecordDetail(findRecord(button.dataset.recordId));
+    });
+    byId('companyRanking').addEventListener('click', (event) => {
+      const row = event.target.closest('[data-record-id]');
+      if (row) showRecordDetail(findRecord(row.dataset.recordId));
     });
     byId('trackingTableBody').addEventListener('click', (event) => {
       const row = event.target.closest('[data-record-id]'); if (row) showRecordDetail(findRecord(row.dataset.recordId));
@@ -867,11 +1223,18 @@
     if (!token()) {
       window.location.replace(CONFIG.LOGIN_URL); return;
     }
+    if (window.Chart) {
+      window.Chart.defaults.font.family = 'Noto Sans Thai, Leelawadee UI, Tahoma, Segoe UI, sans-serif';
+      window.Chart.defaults.font.size = 10;
+      window.Chart.defaults.color = COLORS.text;
+      window.Chart.defaults.devicePixelRatio = Math.min(2, window.devicePixelRatio || 1);
+    }
     bindEvents();
     observeDashboardLayout();
     updateClock();
     window.setInterval(updateClock, 1000);
-    loadDashboard(false);
+    const restored = restoreDashboardCache();
+    loadDashboard(false, {background: restored});
   }
 
   document.addEventListener('DOMContentLoaded', initialize, {once: true});
