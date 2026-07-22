@@ -94,6 +94,7 @@
     analysisOpen: false,
     refreshWarningAt: 0,
     chartResizeTimer: null,
+    fullscreenResizeTimers: [],
     lastSuccessfulCheckAtEpochMs: 0,
     lastFullSnapshotAtEpochMs: 0,
     consecutiveRefreshFailures: 0,
@@ -2954,16 +2955,62 @@ function isMobileComparisonViewport() {
     }
   }
 
+  function resizeDashboardChartsNow() {
+    Object.values(state.charts || {}).forEach((chart) => {
+      try { chart?.resize?.(); } catch (error) {}
+    });
+    Object.values(state.compareCharts || {}).forEach((chart) => {
+      try { chart?.resize?.(); } catch (error) {}
+    });
+  }
+
+  function updateFullscreenViewportMetrics() {
+    const viewportHeight = Math.max(360, window.innerHeight || document.documentElement.clientHeight || 0);
+    const viewportWidth = Math.max(640, window.innerWidth || document.documentElement.clientWidth || 0);
+    document.documentElement.style.setProperty('--smartalert-fullscreen-height', `${viewportHeight}px`);
+    document.documentElement.style.setProperty('--smartalert-fullscreen-width', `${viewportWidth}px`);
+  }
+
   function fitFullscreen() {
     const fullscreenActive = Boolean(document.fullscreenElement);
     const fullscreenButton = byId('fullscreenButton');
+
+    updateFullscreenViewportMetrics();
     document.body.classList.toggle('is-fullscreen', fullscreenActive);
-    setText('fullscreenButton', fullscreenActive ? '⛶ ออกจากเต็มจอ' : '⛶ เต็มจอ');
+    setText(
+      'fullscreenButton',
+      fullscreenActive ? '⛶ ออกจากเต็มจอ' : '⛶ เต็มจอ'
+    );
+
     if (fullscreenButton) {
-      fullscreenButton.title = fullscreenActive ? 'ออกจากเต็มจอ' : 'เปิดเต็มจอ';
-      fullscreenButton.setAttribute('aria-label', fullscreenButton.title);
+      fullscreenButton.title = fullscreenActive
+        ? 'ออกจากเต็มจอ'
+        : 'เปิดเต็มจอ';
+      fullscreenButton.setAttribute(
+        'aria-label',
+        fullscreenButton.title
+      );
     }
-    Object.values(state.charts).forEach((chart) => chart && chart.resize());
+
+    (state.fullscreenResizeTimers || []).forEach((timer) => {
+      window.clearTimeout(timer);
+    });
+    state.fullscreenResizeTimers = [];
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        resizeDashboardChartsNow();
+      });
+    });
+
+    [80, 220, 480].forEach((delay) => {
+      state.fullscreenResizeTimers.push(
+        window.setTimeout(() => {
+          updateFullscreenViewportMetrics();
+          resizeDashboardChartsNow();
+        }, delay)
+      );
+    });
   }
 
   function scheduleChartResize() {
