@@ -10,10 +10,10 @@
   <title>Dashboard ภาพรวม Vendor / Receiving</title>
   <link rel="manifest" href="../manifest.webmanifest">
   <link rel="stylesheet" href="../core.bundle.css?v=20260722-round4-dashboard">
-  <link rel="stylesheet" href="./dashboard.bundle.css?v=20260723-round4-hotfix7-rev4-dashboard-header-title-align-v1">
+  <link rel="stylesheet" href="./dashboard.bundle.css?v=20260723-round4-hotfix7-rev5-dashboard-mobile-comparison-v1">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-  <script src="./dashboard.bundle.js?v=20260723-round4-hotfix7-rev3-dashboard-mobile-header-v1" defer></script>
+  <script src="./dashboard.bundle.js?v=20260723-round4-hotfix7-rev5-dashboard-mobile-comparison-v1" defer></script>
 </head>
 <body class="executive-dashboard" data-page="dashboard">
   <div id="dashboardLoading" class="loading-screen" aria-live="polite">
@@ -84,7 +84,35 @@
         <label class="compare-control-b"><span>ฝั่ง B</span><select id="compareB"></select></label>
         <button id="closeCompareButton" class="compare-close" type="button">กลับภาพรวม</button>
       </div>
-      <div class="comparison-grid">
+
+      <div
+        id="compareMobileLayout"
+        class="compare-mobile-layout"
+        role="group"
+        aria-label="รูปแบบการแสดงผลบนมือถือ"
+      >
+        <button
+          id="comparePairButton"
+          class="compare-layout-button is-active"
+          type="button"
+          aria-pressed="true"
+        >เทียบคู่</button>
+        <button
+          id="compareOverlayButton"
+          class="compare-layout-button"
+          type="button"
+          aria-pressed="false"
+        >ซ้อนกัน</button>
+      </div>
+
+      <article
+        id="compareOverlayPane"
+        class="compare-overlay-pane"
+        hidden
+        aria-live="polite"
+      ></article>
+
+      <div id="comparisonGrid" class="comparison-grid">
         <article id="comparePaneA" class="compare-pane compare-pane-a"></article>
         <article id="comparePaneB" class="compare-pane compare-pane-b"></article>
       </div>
