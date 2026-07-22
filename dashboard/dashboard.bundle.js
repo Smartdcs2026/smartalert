@@ -1,5 +1,6 @@
+/* ROUND4_HOTFIX3_REV3_ADMIN_SLA_ALIGNED_AGING: 2026.07.22 */
 /* SmartAlert Round 4 Hotfix 3 Rev1 — Main Dashboard + Optional Comparison
- * Build: 2026.07.22-round4-hotfix3-r1-main-plus-compare-v1
+ * Build: 2026.07.22-round4-hotfix3-r2-stable-deep-comparison-v1
  */
 (function (window, document) {
   'use strict';
@@ -10,9 +11,11 @@
     LOGIN_URL: '../login.html',
     MODULE_URL: '../module.html?id=vendors',
     REFRESH_MS: 60000,
-    API_TIMEOUT_MS: 70000,
-    BACKGROUND_TIMEOUT_MS: 45000,
-    CACHE_KEY: 'smartalert_dashboard_snapshot_v4_h3r1',
+    API_TIMEOUT_MS: 90000,
+    BACKGROUND_TIMEOUT_MS: 55000,
+    CACHE_KEY: 'smartalert_dashboard_snapshot_v4_h3r2',
+    LOCAL_CACHE_MAX_AGE_MS: 12 * 60 * 60 * 1000,
+    MAX_VALID_TOTAL_SECONDS: 7 * 24 * 60 * 60,
     CACHE_RECORD_LIMIT: 1500,
     MAX_TABLE_ROWS: 8,
     MAX_ALERT_ROWS: 6,
@@ -67,8 +70,10 @@
     initialized: false,
     compareMode: false,
     compareType: 'DAY',
+    compareView: 'OVERVIEW',
     compareA: '',
     compareB: '',
+    compareCharts: {},
     refreshWarningAt: 0,
     chartResizeTimer: null
   };
@@ -150,9 +155,13 @@
   function apiBoard(forceRefresh, options) {
     const requestOptions = options && typeof options === 'object' ? options : {};
     return apiGet('/api/modules/' + encodeURIComponent(state.moduleId) + '/operational-board', {
-      limit: 3000,
+      limit: 1200,
       forceRefresh: forceRefresh === true ? 'true' : '',
-      skipAutoClose: 'true'
+      skipAutoClose: 'true',
+      skipReconcile: 'true',
+      dashboardRead: 'true',
+      analyticsHistoryDays: 120,
+      analyticsRecordLimit: 8000
     }, {
       timeoutMs: requestOptions.background === true
         ? CONFIG.BACKGROUND_TIMEOUT_MS
@@ -267,6 +276,7 @@
       const serialized = JSON.stringify(payload);
       if (serialized.length <= 4200000) {
         window.sessionStorage.setItem(CONFIG.CACHE_KEY, serialized);
+        window.localStorage.setItem(CONFIG.CACHE_KEY, serialized);
       }
     } catch (error) {
       console.warn('บันทึก Dashboard Cache ไม่สำเร็จ', error);
@@ -275,7 +285,9 @@
 
   function restoreDashboardCache() {
     try {
-      const raw = window.sessionStorage.getItem(CONFIG.CACHE_KEY);
+      const raw =
+        window.sessionStorage.getItem(CONFIG.CACHE_KEY) ||
+        window.localStorage.getItem(CONFIG.CACHE_KEY);
       if (!raw) return false;
       const payload = JSON.parse(raw);
       if (!payload || payload.moduleId !== state.moduleId || !payload.board) return false;
@@ -288,7 +300,11 @@
       populateFilters();
       applyFiltersAndRender();
       state.initialized = true;
-      setText('connectionText', 'ใช้ข้อมูลล่าสุด');
+      const age = Math.max(0, Date.now() - number(payload.savedAt));
+      setText(
+        'connectionText',
+        age <= CONFIG.LOCAL_CACHE_MAX_AGE_MS ? 'แสดงข้อมูลล่าสุด · กำลังตรวจใหม่' : 'ข้อมูลสำรองเก่า · กำลังตรวจใหม่'
+      );
       byId('connectionText')?.classList.add('refresh-stale');
       return true;
     } catch (error) {
@@ -332,13 +348,21 @@
 
   function showError(error) {
     const message = error && error.message ? error.message : 'ไม่สามารถโหลด Dashboard ได้';
-    window.Swal?.fire({
-      icon: 'error', title: 'เปิด Dashboard ไม่สำเร็จ', text: message,
-      confirmButtonText: 'ลองใหม่', showCancelButton: true, cancelButtonText: 'กลับหน้า Module'
-    }).then((result) => {
-      if (result.isConfirmed) loadDashboard(false, {manual: true});
-      else if (result.dismiss) window.location.href = CONFIG.MODULE_URL;
-    });
+    setText('connectionText', 'เชื่อมต่อไม่สำเร็จ');
+    byId('connectionText')?.classList.add('refresh-stale');
+    const panel = byId('dashboardInlineError');
+    if (panel) {
+      panel.hidden = false;
+      panel.innerHTML =
+        '<strong>ยังโหลดข้อมูลใหม่ไม่สำเร็จ</strong>' +
+        '<span>' + escapeHtml(message) + '</span>' +
+        '<button id="inlineRetryButton" type="button">ลองใหม่</button>';
+      byId('inlineRetryButton')?.addEventListener('click', () => {
+        panel.hidden = true;
+        loadDashboard(false, {manual: true});
+      }, {once: true});
+    }
+    console.warn('Dashboard initial load failed', error);
   }
 
   function fallbackAnalytics(board) {
@@ -358,7 +382,21 @@
       statusCode: record.statusCode || 'INCOMPLETE', statusLabel: record.statusLabel || '',
       statusElapsedSeconds: number(record.statusElapsedSeconds),
       isOverdue: record.statusCode === 'OVERDUE', isWarning: record.statusCode === 'WARNING',
+      isSevere: false,
       isIncomplete: record.statusCode === 'INCOMPLETE' || record.dataConflict === true,
+      slaConfigured: record.stageSla?.configured === true,
+      slaSeverityCode: record.statusCode || 'INCOMPLETE',
+      slaSeverityLabel: record.statusLabel || '',
+      slaElapsedSeconds: number(record.stageSla?.elapsedSeconds || record.statusElapsedSeconds),
+      slaWarningSeconds: number(record.stageSla?.warningSeconds, null),
+      slaRedSeconds: number(record.stageSla?.redSeconds, null),
+      slaSevereSeconds: (
+        Number.isFinite(Number(record.stageSla?.redSeconds)) &&
+        Number.isFinite(Number(record.stageSla?.warningSeconds))
+      ) ? Number(record.stageSla.redSeconds) + Math.max(60, Number(record.stageSla.redSeconds) - Number(record.stageSla.warningSeconds)) : null,
+      slaRatioToRed: null,
+      slaRulesRevision: text(record.stageSla?.rulesRevision),
+      slaReason: text(record.stageSla?.reason),
       profileCode: record.workflowProfileCode || 'FULL_INBOUND_LEGACY',
       profileLabel: PROFILE_LABELS[record.workflowProfileCode] || 'เต็มขั้นตอน',
       shiftCode: record.entryShiftCode || 'OUTSIDE_SHIFT', shiftName: record.entryShift?.name || 'นอกกะ',
@@ -415,8 +453,16 @@
         }
       }
 
-      const board = await apiBoard(false, {background});
+      let board;
+      try {
+        board = await apiBoard(forceRefresh === true, {background});
+      } catch (firstError) {
+        if (background || requestOptions.retried === true) throw firstError;
+        await new Promise((resolve) => window.setTimeout(resolve, 1200));
+        board = await apiBoard(false, {background: true});
+      }
       applyDashboardBoard(board);
+      if (byId('dashboardInlineError')) byId('dashboardInlineError').hidden = true;
       setText('connectionText', 'ออนไลน์');
       byId('connectionText')?.classList.remove('refresh-stale');
       startAutoRefresh();
@@ -951,49 +997,98 @@
   }
 
 
+
   function comparisonBaseRows() {
-    const from = byId('dateFrom').value || isoDay(new Date());
-    const to = byId('dateTo').value || from;
-    const status = byId('statusFilter').value;
     const query = text(byId('searchInput').value).toLowerCase();
     return state.records.filter((record) => {
-      if (!record.entryDayKey || record.entryDayKey < from || record.entryDayKey > to) return false;
-      if (status === 'ACTIVE' && !record.isActive) return false;
-      if (status === 'COMPLETED' && !record.isCompleted) return false;
-      if (status === 'OVERDUE' && !record.isOverdue) return false;
-      if (status === 'CANCELLED' && !record.isCancelled) return false;
-      if (status === 'INCOMPLETE' && !record.isIncomplete) return false;
       if (query) {
-        const haystack = [record.autoId, record.appointmentNumber, record.companyName, record.vehicleRegistration, record.driverName]
-          .map(text).join(' ').toLowerCase();
+        const haystack = [
+          record.autoId, record.appointmentNumber, record.companyName,
+          record.vehicleRegistration, record.driverName
+        ].map(text).join(' ').toLowerCase();
         if (!haystack.includes(query)) return false;
       }
       return true;
     });
   }
 
+  function thaiMonthLabel(monthKeyValue) {
+    const parts = text(monthKeyValue).split('-');
+    if (parts.length !== 2) return monthKeyValue || '-';
+    return `${CONFIG.THAI_MONTHS[number(parts[1]) - 1] || parts[1]} ${number(parts[0]) + 543}`;
+  }
+
+  function recordHour(record) {
+    const date = parseDateTime(record.gateInAt) || new Date(number(record.gateInEpochMs));
+    if (!date || Number.isNaN(date.getTime())) return -1;
+    return number(new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Bangkok', hour: '2-digit', hour12: false
+    }).format(date));
+  }
+
+  function dayPartKey(record) {
+    const hour = recordHour(record);
+    if (hour < 0) return '';
+    const start = Math.floor(hour / 6) * 6;
+    const end = start + 6;
+    return `${record.entryDayKey}|${String(start).padStart(2, '0')}-${String(end).padStart(2, '0')}`;
+  }
+
   function compareOptions(type) {
-    const rows = type === 'DAY' ? state.records : comparisonBaseRows();
+    const rows = comparisonBaseRows();
     const map = new Map();
     rows.forEach((record) => {
-      if (type === 'DAY' && record.entryDayKey) map.set(record.entryDayKey, shortThaiDate(record.entryDayKey));
-      if (type === 'SHIFT') map.set(record.shiftCode || 'OUTSIDE_SHIFT', record.shiftName || 'นอกกะ');
-      if (type === 'PROFILE') map.set(record.profileCode || 'FULL_INBOUND_LEGACY', record.profileLabel || PROFILE_LABELS[record.profileCode] || 'เต็มขั้นตอน');
+      if (type === 'DAY' && record.entryDayKey) {
+        map.set(record.entryDayKey, shortThaiDate(record.entryDayKey));
+      }
+      if (type === 'SHIFT_DAY') {
+        const date = record.businessDate || record.entryDayKey;
+        const shift = record.shiftCode || 'OUTSIDE_SHIFT';
+        if (date) map.set(`${date}|${shift}`, `${shortThaiDate(date)} · ${record.shiftName || 'นอกกะ'}`);
+      }
+      if (type === 'DAY_PART') {
+        const key = dayPartKey(record);
+        if (key) {
+          const [day, hours] = key.split('|');
+          map.set(key, `${shortThaiDate(day)} · ${hours.replace('-', ':00–')}:00`);
+        }
+      }
+      if (type === 'PROFILE') {
+        map.set(
+          record.profileCode || 'FULL_INBOUND_LEGACY',
+          record.profileLabel || PROFILE_LABELS[record.profileCode] || 'เต็มขั้นตอน'
+        );
+      }
       if (type === 'RECORD') {
         const key = record.canonicalRecordId;
         if (key) map.set(key, `${record.appointmentNumber || record.autoId || '-'} · ${record.companyName || 'ไม่ระบุบริษัท'}`);
       }
     });
+
+    if (type === 'MONTH') {
+      (state.analytics?.monthlySummaries || []).forEach((item) => {
+        if (item.monthKey) map.set(item.monthKey, thaiMonthLabel(item.monthKey));
+      });
+      rows.forEach((record) => {
+        if (record.entryMonthKey) map.set(record.entryMonthKey, thaiMonthLabel(record.entryMonthKey));
+      });
+    }
+
     const result = Array.from(map.entries());
-    if (type === 'DAY') result.sort((a, b) => b[0].localeCompare(a[0]));
-    else result.sort((a, b) => a[1].localeCompare(b[1], 'th'));
+    if (['DAY', 'MONTH', 'SHIFT_DAY', 'DAY_PART'].includes(type)) {
+      result.sort((a, b) => b[0].localeCompare(a[0]));
+    } else {
+      result.sort((a, b) => a[1].localeCompare(b[1], 'th'));
+    }
     return result;
   }
 
   function populateCompareOptions() {
     const options = compareOptions(state.compareType);
     const values = options.map(([value]) => value);
-    const html = options.map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join('');
+    const html = options.map(([value, label]) =>
+      `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`
+    ).join('');
     byId('compareA').innerHTML = html || '<option value="">ไม่มีข้อมูล</option>';
     byId('compareB').innerHTML = html || '<option value="">ไม่มีข้อมูล</option>';
     state.compareA = values.includes(state.compareA) ? state.compareA : (values[0] || '');
@@ -1004,14 +1099,34 @@
     byId('compareB').value = state.compareB;
   }
 
-  function comparisonRows(type, value) {
-    if (!value) return [];
-    if (type === 'DAY') return state.records.filter((record) => record.entryDayKey === value);
+  function monthlySummary(value) {
+    return (state.analytics?.monthlySummaries || []).find((item) => item.monthKey === value) || null;
+  }
+
+  function comparisonDataset(type, value) {
+    if (!value) return {rows: [], summary: null, title: '-'};
     const rows = comparisonBaseRows();
-    if (type === 'SHIFT') return rows.filter((record) => (record.shiftCode || 'OUTSIDE_SHIFT') === value);
-    if (type === 'PROFILE') return rows.filter((record) => (record.profileCode || 'FULL_INBOUND_LEGACY') === value);
-    if (type === 'RECORD') return rows.filter((record) => record.canonicalRecordId === value);
-    return [];
+    let selected = [];
+    if (type === 'DAY') selected = rows.filter((record) => record.entryDayKey === value);
+    if (type === 'MONTH') selected = rows.filter((record) => record.entryMonthKey === value);
+    if (type === 'SHIFT_DAY') {
+      const [day, shift] = value.split('|');
+      selected = rows.filter((record) =>
+        (record.businessDate || record.entryDayKey) === day &&
+        (record.shiftCode || 'OUTSIDE_SHIFT') === shift
+      );
+    }
+    if (type === 'DAY_PART') selected = rows.filter((record) => dayPartKey(record) === value);
+    if (type === 'PROFILE') selected = rows.filter((record) =>
+      (record.profileCode || 'FULL_INBOUND_LEGACY') === value
+    );
+    if (type === 'RECORD') selected = rows.filter((record) => record.canonicalRecordId === value);
+    return {
+      rows: selected,
+      summary: type === 'MONTH' ? monthlySummary(value) : null,
+      title: comparisonLabel(type, value),
+      detailsAvailable: selected.length > 0
+    };
   }
 
   function comparisonLabel(type, value) {
@@ -1019,16 +1134,37 @@
     return option ? option[1] : value || '-';
   }
 
-  function summaryMetrics(rows) {
-    const durations = rows.map((record) => number(record.totalSeconds)).filter((value) => value >= 0);
+  function validDurations(rows) {
+    return rows.map((record) => number(record.totalSeconds, -1))
+      .filter((value) => value >= 0 && value <= CONFIG.MAX_VALID_TOTAL_SECONDS);
+  }
+
+  function summaryMetrics(dataset) {
+    const rows = dataset?.rows || [];
+    const saved = dataset?.summary || {};
+    const durations = validDurations(rows);
+    const hasSaved = Boolean(dataset?.summary);
+    const activeRows = rows.filter((record) => record.isActive);
+    const severity = comparisonSlaStatus(activeRows);
+    const severityMap = new Map(severity.map((item) => [item.code, item.count]));
     return {
-      gateIn: rows.length,
-      completed: rows.filter((record) => record.isCompleted).length,
-      active: rows.filter((record) => record.isActive).length,
-      overdue: rows.filter((record) => record.isOverdue).length,
-      median: Math.round(percentile(durations, .5)),
-      p90: Math.round(percentile(durations, .9)),
-      max: durations.length ? Math.max(...durations) : 0
+      gateIn: hasSaved ? number(saved.gateIn) : rows.length,
+      completed: hasSaved ? number(saved.completed) : rows.filter((record) => record.isCompleted).length,
+      active: hasSaved ? number(saved.active) : activeRows.length,
+      overdue: hasSaved ? number(saved.overdue) : activeRows.filter((record) => {
+        const code = recordSlaSeverity(record).code;
+        return code === 'OVERDUE' || code === 'SEVERE';
+      }).length,
+      warning: severityMap.get('WARNING') || 0,
+      severe: severityMap.get('SEVERE') || 0,
+      slaIncomplete: severityMap.get('INCOMPLETE') || 0,
+      cancelled: hasSaved ? number(saved.cancelled) : rows.filter((record) => record.isCancelled).length,
+      median: hasSaved ? number(saved.medianTotalSeconds) : Math.round(percentile(durations, .5)),
+      p90: hasSaved ? number(saved.p90TotalSeconds) : Math.round(percentile(durations, .9)),
+      max: hasSaved ? number(saved.maxTotalSeconds) : (durations.length ? Math.max(...durations) : 0),
+      compliance: hasSaved ? number(saved.slaCompliancePercent, 100) : null,
+      outliers: rows.filter((record) => number(record.totalSeconds) > CONFIG.MAX_VALID_TOTAL_SECONDS).length,
+      severity: severity
     };
   }
 
@@ -1039,13 +1175,141 @@
         code,
         label: STAGE_LABELS[code] || code,
         count: stageRows.length,
-        overdue: stageRows.filter((record) => record.isOverdue).length
+        overdue: stageRows.filter((record) => record.isOverdue).length,
+        oldest: stageRows.length ? Math.max(...stageRows.map((record) => number(record.statusElapsedSeconds))) : 0
       };
     }).filter((item) => item.count > 0);
   }
 
+  function comparisonHourly(rows) {
+    const result = Array.from({length: 24}, (_, hour) => ({hour, gateIn: 0, completed: 0, active: 0}));
+    rows.forEach((record) => {
+      const inHour = recordHour(record);
+      if (inHour >= 0 && inHour < 24) result[inHour].gateIn += 1;
+      const outDate = parseDateTime(record.gateOutAt);
+      if (outDate) {
+        const outHour = number(new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Asia/Bangkok', hour: '2-digit', hour12: false
+        }).format(outDate));
+        if (outHour >= 0 && outHour < 24) result[outHour].completed += 1;
+      }
+      if (record.isActive && inHour >= 0 && inHour < 24) {
+        for (let hour = inHour; hour < 24; hour += 1) result[hour].active += 1;
+      }
+    });
+    return result;
+  }
+
+  function comparisonStageTimes(rows) {
+    const targets = Array.isArray(state.analytics?.targets) ? state.analytics.targets : [];
+    return targets.map((target) => {
+      const values = rows.map((record) => record.segments && number(record.segments[target.code], -1))
+        .filter((value) => value >= 0 && value <= CONFIG.MAX_SEGMENT_SECONDS);
+      return {
+        code: target.code,
+        label: target.label || STAGE_LABELS[target.code] || target.code,
+        median: Math.round(percentile(values, .5)),
+        p90: Math.round(percentile(values, .9)),
+        target: number(target.targetMinutes) * 60,
+        count: values.length
+      };
+    }).filter((item) => item.count > 0 || item.target > 0);
+  }
+
+  function recordSlaSeverity(record) {
+    if (!record || record.isActive !== true) {
+      return {code: 'NOT_APPLICABLE', label: 'ไม่ใช่งานคงค้าง'};
+    }
+
+    const explicit = text(record.slaSeverityCode).toUpperCase();
+    const configured = record.slaConfigured === true;
+    const elapsed = Math.max(0, number(record.slaElapsedSeconds || record.statusElapsedSeconds));
+    const warning = Number.isFinite(Number(record.slaWarningSeconds))
+      ? Number(record.slaWarningSeconds)
+      : null;
+    const red = Number.isFinite(Number(record.slaRedSeconds))
+      ? Number(record.slaRedSeconds)
+      : null;
+    const severe = Number.isFinite(Number(record.slaSevereSeconds))
+      ? Number(record.slaSevereSeconds)
+      : (red !== null && warning !== null ? red + Math.max(60, red - warning) : null);
+
+    if (['NORMAL','WARNING','OVERDUE','SEVERE','INCOMPLETE'].includes(explicit)) {
+      return {
+        code: explicit,
+        label: text(record.slaSeverityLabel) || ({
+          NORMAL:'ปกติ', WARNING:'ใกล้เกินเวลา', OVERDUE:'เกินเวลา',
+          SEVERE:'เกินเวลารุนแรง', INCOMPLETE:'ข้อมูลเกณฑ์หรือเวลาไม่ครบ'
+        }[explicit]),
+        elapsed, warning, red, severe
+      };
+    }
+
+    if (!configured || warning === null || red === null || red <= warning) {
+      if (record.isOverdue) return {code:'OVERDUE', label:'เกินเวลา', elapsed, warning, red, severe};
+      if (record.isWarning) return {code:'WARNING', label:'ใกล้เกินเวลา', elapsed, warning, red, severe};
+      return {code:'INCOMPLETE', label:'ข้อมูลเกณฑ์หรือเวลาไม่ครบ', elapsed, warning, red, severe};
+    }
+
+    const code = severe !== null && elapsed >= severe
+      ? 'SEVERE'
+      : elapsed >= red
+        ? 'OVERDUE'
+        : elapsed >= warning
+          ? 'WARNING'
+          : 'NORMAL';
+    return {
+      code,
+      label: {
+        NORMAL:'ปกติ', WARNING:'ใกล้เกินเวลา', OVERDUE:'เกินเวลา',
+        SEVERE:'เกินเวลารุนแรง', INCOMPLETE:'ข้อมูลเกณฑ์หรือเวลาไม่ครบ'
+      }[code],
+      elapsed, warning, red, severe
+    };
+  }
+
+  function comparisonSlaStatus(rows) {
+    const categories = [
+      {code:'NORMAL', label:'ปกติ', hint:'ยังไม่ถึงช่วงเตือน', count:0},
+      {code:'WARNING', label:'ใกล้เกินเวลา', hint:'ถึงค่าเตือนที่ Admin ตั้ง', count:0},
+      {code:'OVERDUE', label:'เกินเวลา', hint:'เกินค่าแดงที่ Admin ตั้ง', count:0},
+      {code:'SEVERE', label:'เกินเวลารุนแรง', hint:'เกินค่าแดงบวกช่วงเตือนถึงค่าแดง', count:0},
+      {code:'INCOMPLETE', label:'ข้อมูลไม่ครบ', hint:'ไม่มีเกณฑ์หรือเวลาเริ่มขั้นตอน', count:0}
+    ];
+    const map = new Map(categories.map((item) => [item.code, item]));
+    rows.filter((record) => record.isActive).forEach((record) => {
+      const severity = recordSlaSeverity(record);
+      if (map.has(severity.code)) map.get(severity.code).count += 1;
+    });
+    return categories;
+  }
+
+  function comparisonTotalAge(rows) {
+    const buckets = [
+      {label:'ไม่เกิน 1 ชั่วโมง', min:0, max:3600, count:0},
+      {label:'มากกว่า 1–2 ชั่วโมง', min:3601, max:7200, count:0},
+      {label:'มากกว่า 2–4 ชั่วโมง', min:7201, max:14400, count:0},
+      {label:'เกิน 4 ชั่วโมง', min:14401, max:Infinity, count:0}
+    ];
+    rows.filter((record) => record.isActive).forEach((record) => {
+      const seconds = Math.max(0, number(record.totalSeconds));
+      const bucket = buckets.find((item) => seconds >= item.min && seconds <= item.max);
+      if (bucket) bucket.count += 1;
+    });
+    return buckets;
+  }
+
+  function destroyCompareCharts() {
+    Object.values(state.compareCharts || {}).forEach((chart) => chart && chart.destroy());
+    state.compareCharts = {};
+  }
+
+  function paneHeader(side, dataset) {
+    return `<div class="compare-pane-head"><div><strong>${escapeHtml(dataset.title)}</strong><span>${dataset.rows.length.toLocaleString('th-TH')} รายการ${dataset.summary && !dataset.detailsAvailable ? ' · สรุปรายเดือน' : ''}</span></div><b class="compare-badge">ฝั่ง ${side}</b></div>`;
+  }
+
   function recordCompareHtml(side, record, title) {
-    if (!record) return `<div class="empty-row">ไม่พบข้อมูลที่เลือก</div>`;
+    if (!record) return paneHeader(side, {title, rows: []}) + '<div class="empty-row">ไม่พบข้อมูลที่เลือก</div>';
     const targets = Array.isArray(state.analytics?.targets) ? state.analytics.targets : [];
     const targetMap = new Map(targets.map((target) => [target.code, number(target.targetMinutes)]));
     const timeline = [
@@ -1058,37 +1322,126 @@
       const targetSeconds = targetMap.get(code) * 60;
       return {code,label,applicable,seconds,ratio: targetSeconds > 0 ? seconds / targetSeconds : 0};
     });
-    return `<div class="compare-pane-head"><div><strong>${escapeHtml(record.appointmentNumber || title || record.autoId || '-')}</strong><span>${escapeHtml(record.companyName || 'ไม่ระบุบริษัท')}</span></div><b class="compare-badge">ฝั่ง ${side}</b></div><div class="record-compare"><div class="record-main">${[
-      ['ขั้นตอน',record.stageLabel || '-'],['สถานะ',record.statusLabel || '-'],['เวลารวม',durationLabel(record.totalSeconds)],['กะ',record.shiftName || 'นอกกะ'],['รูปแบบงาน',record.profileLabel || '-'],['ทะเบียนรถ',record.vehicleRegistration || '-']
-    ].map((item) => `<div class="record-main-cell"><span>${item[0]}</span><strong>${escapeHtml(item[1])}</strong></div>`).join('')}</div><div class="compare-group"><h3>เวลาแต่ละขั้นตอน</h3><div class="timeline-list">${timeline.map((item) => `<div class="timeline-row ${item.applicable ? '' : 'na'}"><span>${escapeHtml(item.label)}</span><span class="compare-track"><i style="width:${item.applicable ? Math.min(100, Math.max(4, item.ratio * 100)) : 0}%"></i></span><b class="timeline-value">${item.applicable ? durationLabel(item.seconds) : 'ไม่ใช้ขั้นตอนนี้'}</b></div>`).join('')}</div></div></div>`;
+    return paneHeader(side, {title: record.appointmentNumber || title || record.autoId || '-', rows:[record]}) +
+      `<div class="record-compare"><div class="record-main">${[
+        ['บริษัท',record.companyName || 'ไม่ระบุ'],['ขั้นตอน',record.stageLabel || '-'],['สถานะ',record.statusLabel || '-'],
+        ['เวลารวม',durationLabel(record.totalSeconds)],['กะ',record.shiftName || 'นอกกะ'],['รูปแบบงาน',record.profileLabel || '-']
+      ].map((item) => `<div class="record-main-cell"><span>${item[0]}</span><strong>${escapeHtml(item[1])}</strong></div>`).join('')}</div><div class="compare-group"><h3>เวลาแต่ละขั้นตอน</h3><div class="timeline-list">${timeline.map((item) => `<div class="timeline-row ${item.applicable ? '' : 'na'}"><span>${escapeHtml(item.label)}</span><span class="compare-track"><i style="width:${item.applicable ? Math.min(100, Math.max(4, item.ratio * 100)) : 0}%"></i></span><b class="timeline-value">${item.applicable ? durationLabel(item.seconds) : 'ไม่ใช้ขั้นตอนนี้'}</b></div>`).join('')}</div></div></div>`;
   }
 
-  function comparePaneHtml(side, type, value, rows) {
-    const title = comparisonLabel(type, value);
-    if (type === 'RECORD') return recordCompareHtml(side, rows[0], title);
-    const metrics = summaryMetrics(rows);
-    const stages = compareStageRows(rows);
+  function overviewPaneHtml(side, dataset) {
+    const metrics = summaryMetrics(dataset);
+    const stages = compareStageRows(dataset.rows);
     const maxStage = Math.max(1, ...stages.map((item) => item.count));
-    const longest = rows.slice().filter((record) => number(record.totalSeconds) > 0)
-      .sort((left, right) => number(right.totalSeconds) - number(left.totalSeconds)).slice(0, 4);
-    return `<div class="compare-pane-head"><div><strong>${escapeHtml(title)}</strong><span>${rows.length.toLocaleString('th-TH')} รายการ</span></div><b class="compare-badge">ฝั่ง ${side}</b></div><div class="compare-summary">${[['รถเข้า',metrics.gateIn],['ปิดงาน',metrics.completed],['คงค้าง',metrics.active],['เกินเวลา',metrics.overdue]].map((item) => `<div class="compare-summary-cell"><span>${item[0]}</span><strong>${item[1].toLocaleString('th-TH')}</strong></div>`).join('')}</div><div class="compare-group"><h3>สถานะและคอขวด</h3><div class="compare-stage-list">${stages.length ? stages.map((item) => `<div class="compare-stage-row"><span>${escapeHtml(item.label)}</span><span class="compare-track"><i style="width:${Math.max(4,item.count/maxStage*100)}%"></i></span><b>${item.count}${item.overdue ? ` · เกิน ${item.overdue}` : ''}</b></div>`).join('') : '<div class="empty-row">ไม่มีงานคงค้าง</div>'}</div></div><div class="compare-group"><h3>ความเร็วโดยรวม</h3><div class="compare-speed-grid"><div class="compare-speed-cell"><span>เวลาทั่วไป</span><strong>${durationLabel(metrics.median)}</strong></div><div class="compare-speed-cell"><span>งานกลุ่มช้า</span><strong>${durationLabel(metrics.p90)}</strong></div><div class="compare-speed-cell"><span>เวลาสูงสุด</span><strong>${durationLabel(metrics.max)}</strong></div></div></div><div class="compare-group"><h3>งานที่ใช้เวลานาน</h3><div class="compare-job-list">${longest.length ? longest.map((record) => `<div class="compare-job-row"><span class="compare-job-copy"><strong>${escapeHtml(record.appointmentNumber || record.autoId || '-')}</strong><span>${escapeHtml(record.companyName || 'ไม่ระบุบริษัท')}</span></span><span class="compare-track"><i style="width:${Math.max(4,number(record.totalSeconds)/Math.max(1,number(longest[0].totalSeconds))*100)}%"></i></span><b>${escapeHtml(durationLabel(record.totalSeconds))}</b></div>`).join('') : '<div class="empty-row">ไม่มีข้อมูลเวลา</div>'}</div></div>`;
+    const longest = dataset.rows.filter((record) => number(record.totalSeconds) > 0)
+      .sort((a,b) => number(b.totalSeconds) - number(a.totalSeconds)).slice(0, 5);
+    const severityHtml = dataset.detailsAvailable
+      ? `<div class="compare-severity-strip">${metrics.severity.map((item) => `<div class="severity-chip severity-${item.code.toLowerCase()}"><span>${escapeHtml(item.label)}</span><strong>${item.count.toLocaleString('th-TH')}</strong></div>`).join('')}</div>`
+      : `<div class="sla-context-note">ข้อมูลสรุปรายเดือนแสดงจำนวนเกินเวลารวม แต่ไม่แยกระดับเตือนอย่างละเอียด</div>`;
+    return paneHeader(side, dataset) +
+      `<div class="compare-summary">${[['รถเข้า',metrics.gateIn],['ปิดงาน',metrics.completed],['คงค้าง',metrics.active],['เกินเวลา',metrics.overdue]].map((item) => `<div class="compare-summary-cell"><span>${item[0]}</span><strong>${item[1].toLocaleString('th-TH')}</strong></div>`).join('')}</div>` + severityHtml +
+      `<div class="compare-view-grid"><div class="compare-group"><h3>สถานะและคอขวด</h3><div class="compare-stage-list">${stages.length ? stages.map((item) => `<div class="compare-stage-row"><span>${escapeHtml(item.label)}</span><span class="compare-track"><i style="width:${Math.max(4,item.count/maxStage*100)}%"></i></span><b>${item.count}${item.overdue ? ` · เกิน ${item.overdue}` : ''}</b></div>`).join('') : '<div class="empty-row">ไม่มีงานคงค้าง</div>'}</div></div>` +
+      `<div class="compare-group"><h3>ความเร็วโดยรวม</h3><div class="compare-speed-grid"><div class="compare-speed-cell"><span>เวลาทั่วไป</span><strong>${durationLabel(metrics.median)}</strong></div><div class="compare-speed-cell"><span>งานกลุ่มช้า</span><strong>${durationLabel(metrics.p90)}</strong></div><div class="compare-speed-cell"><span>ผ่านเป้าหมาย</span><strong>${metrics.compliance === null ? '-' : metrics.compliance.toFixed(1) + '%'}</strong></div></div>${metrics.outliers ? `<small class="data-warning">ตัดข้อมูลเวลาผิดปกติ ${metrics.outliers} รายการออกจากค่าสถิติ</small>` : ''}</div></div>` +
+      `<div class="compare-group"><h3>งานที่ใช้เวลานาน</h3><div class="compare-job-list">${longest.length ? longest.map((record) => `<div class="compare-job-row"><span class="compare-job-copy"><strong>${escapeHtml(record.appointmentNumber || record.autoId || '-')}</strong><span>${escapeHtml(record.companyName || 'ไม่ระบุบริษัท')}</span></span><span class="compare-track"><i style="width:${Math.max(4,number(record.totalSeconds)/Math.max(1,number(longest[0].totalSeconds))*100)}%"></i></span><b>${escapeHtml(durationLabel(record.totalSeconds))}</b></div>`).join('') : '<div class="empty-row">ไม่มีรายละเอียดงานในช่วงนี้</div>'}</div></div>`;
+  }
+
+  function chartPaneHtml(side, dataset, view) {
+    const title = view === 'FLOW' ? 'การไหลรายชั่วโมง' : view === 'STAGE_TIME' ? 'เวลาแต่ละขั้นตอน' : 'สถานะเวลาเทียบเกณฑ์ Admin';
+    return paneHeader(side, dataset) +
+      `<div class="compare-chart-block"><div class="compare-chart-title"><strong>${title}</strong><span>${dataset.detailsAvailable ? (view === 'BACKLOG' ? 'อิงค่าเตือนและค่าเกินเวลาของแต่ละขั้นตอน' : 'ใช้รายละเอียดในช่วงที่เลือก') : 'ไม่มีรายละเอียดลึกสำหรับข้อมูลสรุปเก่า'}</span></div><div class="compare-chart-canvas"><canvas id="compareChart${side}"></canvas></div></div>` +
+      (view === 'BACKLOG' ? `<div id="compareExtra${side}" class="compare-extra"></div>` : '');
+  }
+
+  function renderCompareChart(side, dataset, view) {
+    const canvas = byId(`compareChart${side}`);
+    if (!canvas || !window.Chart) return;
+    const accent = side === 'A' ? COLORS.blue : COLORS.purple;
+    let config;
+    if (view === 'FLOW') {
+      const hourly = comparisonHourly(dataset.rows);
+      config = {
+        type:'line',
+        data:{labels:hourly.map((item)=>String(item.hour).padStart(2,'0')+':00'),datasets:[
+          {label:'รถเข้า',data:hourly.map((item)=>item.gateIn),borderColor:accent,backgroundColor:accent+'22',fill:true,tension:.25},
+          {label:'ปิดงาน',data:hourly.map((item)=>item.completed),borderColor:COLORS.green,tension:.25},
+          {label:'คงค้างโดยประมาณ',data:hourly.map((item)=>item.active),borderColor:COLORS.orange,tension:.25}
+        ]},
+        options:compareChartOptions('คัน')
+      };
+    } else if (view === 'STAGE_TIME') {
+      const stages = comparisonStageTimes(dataset.rows);
+      config = {
+        type:'bar',
+        data:{labels:stages.map((item)=>item.label),datasets:[
+          {label:'เวลาทั่วไป',data:stages.map((item)=>Math.round(item.median/60)),backgroundColor:accent},
+          {label:'งานกลุ่มช้า',data:stages.map((item)=>Math.round(item.p90/60)),backgroundColor:COLORS.pink},
+          {label:'เป้าหมาย',data:stages.map((item)=>Math.round(item.target/60)),backgroundColor:'#c9d4dc'}
+        ]},
+        options:compareChartOptions('นาที', true)
+      };
+    } else {
+      const severity = comparisonSlaStatus(dataset.rows);
+      config = {
+        type:'bar',
+        data:{labels:severity.map((item)=>item.label),datasets:[{
+          label:'งานคงค้าง',
+          data:severity.map((item)=>item.count),
+          backgroundColor:[COLORS.green,COLORS.orange,COLORS.red,COLORS.purple,COLORS.slate]
+        }]},
+        options:compareChartOptions('คัน')
+      };
+      const stages = compareStageRows(dataset.rows);
+      const totalAge = comparisonTotalAge(dataset.rows);
+      byId(`compareExtra${side}`).innerHTML =
+        `<div class="sla-context-note"><strong>เกณฑ์หลัก:</strong> แต่ละรายการเทียบกับค่าเตือนและค่าเกินเวลาของขั้นตอนนั้นจาก Admin · “รุนแรง” คำนวณจากค่าแดงบวกช่วงห่างระหว่างค่าเตือนกับค่าแดง</div>` +
+        `<div class="compare-group"><h3>คอขวดตามขั้นตอน</h3>${stages.length ? stages.map((item)=>`<div class="compare-stage-row"><span>${escapeHtml(item.label)}</span><span class="compare-track"><i style="width:${Math.max(4,item.count/Math.max(1,...stages.map((x)=>x.count))*100)}%"></i></span><b>${item.count} · เก่าสุด ${durationLabel(item.oldest)}</b></div>`).join('') : '<div class="empty-row">ไม่มีงานคงค้าง</div>'}</div>` +
+        `<details class="total-age-details"><summary>ดูอายุงานรวมนับจาก Gate In</summary><p>ใช้ดูการสะสมของงานเท่านั้น ไม่ใช่เกณฑ์เตือนของแต่ละขั้นตอน</p><div class="total-age-grid">${totalAge.map((item)=>`<div><span>${escapeHtml(item.label)}</span><strong>${item.count.toLocaleString('th-TH')}</strong></div>`).join('')}</div></details>`;
+    }
+    state.compareCharts[side] = new window.Chart(canvas.getContext('2d'), config);
+  }
+
+  function compareChartOptions(unit, horizontal) {
+    return {
+      responsive:true,
+      maintainAspectRatio:false,
+      indexAxis:horizontal ? 'y' : 'x',
+      animation:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:9}}},tooltip:{callbacks:{label:(ctx)=>`${ctx.dataset.label}: ${ctx.parsed[horizontal?'x':'y']} ${unit}`}}},
+      scales:{x:{beginAtZero:true,grid:{color:COLORS.grid},ticks:{font:{size:8}}},y:{beginAtZero:true,grid:{color:COLORS.grid},ticks:{font:{size:8}}}}
+    };
+  }
+
+  function comparePaneHtml(side, dataset) {
+    if (state.compareType === 'RECORD') return recordCompareHtml(side, dataset.rows[0], dataset.title);
+    if (state.compareView === 'OVERVIEW') return overviewPaneHtml(side, dataset);
+    return chartPaneHtml(side, dataset, state.compareView);
   }
 
   function renderComparisonWorkspace() {
     if (!state.compareMode) return;
-    const rowsA = comparisonRows(state.compareType, state.compareA);
-    const rowsB = comparisonRows(state.compareType, state.compareB);
-    byId('comparePaneA').innerHTML = comparePaneHtml('A', state.compareType, state.compareA, rowsA);
-    byId('comparePaneB').innerHTML = comparePaneHtml('B', state.compareType, state.compareB, rowsB);
-    const a = summaryMetrics(rowsA);
-    const b = summaryMetrics(rowsB);
+    destroyCompareCharts();
+    const datasetA = comparisonDataset(state.compareType, state.compareA);
+    const datasetB = comparisonDataset(state.compareType, state.compareB);
+    byId('comparePaneA').innerHTML = comparePaneHtml('A', datasetA);
+    byId('comparePaneB').innerHTML = comparePaneHtml('B', datasetB);
+    if (state.compareView !== 'OVERVIEW' && state.compareType !== 'RECORD') {
+      renderCompareChart('A', datasetA, state.compareView);
+      renderCompareChart('B', datasetB, state.compareView);
+    }
+    const a = summaryMetrics(datasetA);
+    const b = summaryMetrics(datasetB);
     const cells = [
-      ['รถเข้า',a.gateIn-b.gateIn,false],['ปิดงาน',a.completed-b.completed,true],['คงค้าง',a.active-b.active,false],['เกินเวลา',a.overdue-b.overdue,false]
+      ['รถเข้า',a.gateIn-b.gateIn,false],['ปิดงาน',a.completed-b.completed,true],
+      ['คงค้าง',a.active-b.active,false],['ใกล้เกิน',a.warning-b.warning,false],
+      ['เกินเวลา',a.overdue-b.overdue,false],['รุนแรง',a.severe-b.severe,false],
+      ['เวลาทั่วไป',a.median-b.median,false],['งานกลุ่มช้า',a.p90-b.p90,false]
     ];
-    byId('compareDelta').innerHTML = `<div class="delta-title"><strong>ผลต่าง A เทียบ B</strong><span>เครื่องหมายบวกหมายถึงฝั่ง A มากกว่า</span></div>${cells.map(([label,value,higherGood]) => {
+    byId('compareDelta').innerHTML = `<div class="delta-title"><strong>ผลต่าง A เทียบ B</strong><span>ค่าบวกหมายถึงฝั่ง A มากกว่า</span></div>${cells.map(([label,value,higherGood],index) => {
       const good = value === 0 ? 'delta-neutral' : ((value > 0) === higherGood ? 'delta-good' : 'delta-bad');
-      return `<div class="delta-cell ${good}"><span>${label}</span><strong>${value > 0 ? '+' : ''}${value.toLocaleString('th-TH')}</strong></div>`;
+      const shown = index >= 6 ? durationLabel(Math.abs(value)) : `${value > 0 ? '+' : ''}${value.toLocaleString('th-TH')}`;
+      return `<div class="delta-cell ${good}"><span>${label}</span><strong>${value < 0 && index >= 6 ? '-' : ''}${shown}</strong></div>`;
     }).join('')}`;
+    scheduleChartResize();
   }
 
   function setCompareMode(active) {
@@ -1102,6 +1455,7 @@
       populateCompareOptions();
       renderComparisonWorkspace();
     } else {
+      destroyCompareCharts();
       scheduleChartResize();
     }
   }
@@ -1124,6 +1478,7 @@
     window.clearTimeout(state.chartResizeTimer);
     state.chartResizeTimer = window.setTimeout(() => {
       Object.values(state.charts).forEach((chart) => chart && chart.resize());
+      Object.values(state.compareCharts || {}).forEach((chart) => chart && chart.resize());
     }, 160);
   }
 
@@ -1168,6 +1523,10 @@
       state.compareA = '';
       state.compareB = '';
       populateCompareOptions();
+      renderComparisonWorkspace();
+    });
+    byId('compareView').addEventListener('change', () => {
+      state.compareView = byId('compareView').value || 'OVERVIEW';
       renderComparisonWorkspace();
     });
     byId('compareA').addEventListener('change', () => { state.compareA = byId('compareA').value; renderComparisonWorkspace(); });
