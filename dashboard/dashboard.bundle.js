@@ -1,3 +1,4 @@
+/* ROUND4_HOTFIX3_REV4_CURRENT_DATE_DEFAULTS: 2026.07.22 */
 /* ROUND4_HOTFIX3_REV3_ADMIN_SLA_ALIGNED_AGING: 2026.07.22 */
 /* SmartAlert Round 4 Hotfix 3 Rev1 — Main Dashboard + Optional Comparison
  * Build: 2026.07.22-round4-hotfix3-r2-stable-deep-comparison-v1
@@ -13,7 +14,7 @@
     REFRESH_MS: 60000,
     API_TIMEOUT_MS: 90000,
     BACKGROUND_TIMEOUT_MS: 55000,
-    CACHE_KEY: 'smartalert_dashboard_snapshot_v4_h3r2',
+    CACHE_KEY: 'smartalert_dashboard_snapshot_v4_h3r4',
     LOCAL_CACHE_MAX_AGE_MS: 12 * 60 * 60 * 1000,
     MAX_VALID_TOTAL_SECONDS: 7 * 24 * 60 * 60,
     CACHE_RECORD_LIMIT: 1500,
@@ -203,6 +204,50 @@
   function monthKey(date) {
     const key = isoDay(date);
     return key.slice(0, 7);
+  }
+
+  function addDayKey(dayKey, offsetDays) {
+    const base = new Date(`${dayKey}T12:00:00+07:00`);
+    if (Number.isNaN(base.getTime())) return isoDay(new Date());
+    return isoDay(
+      new Date(base.getTime() + number(offsetDays) * 86400000)
+    );
+  }
+
+  function addMonthKey(monthKeyValue, offsetMonths) {
+    const match = text(monthKeyValue).match(/^(\d{4})-(\d{2})$/);
+    if (!match) return monthKey(new Date());
+    const date = new Date(Date.UTC(
+      number(match[1]),
+      number(match[2]) - 1 + number(offsetMonths),
+      15,
+      5,
+      0,
+      0
+    ));
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+  }
+
+  function bangkokHour() {
+    const value = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Bangkok',
+      hour: '2-digit',
+      hour12: false
+    }).format(new Date());
+    return Math.max(0, Math.min(23, number(value)));
+  }
+
+  function currentDayPartKey(dayKey) {
+    const start = Math.floor(bangkokHour() / 6) * 6;
+    return `${dayKey}|${String(start).padStart(2, '0')}-${String(start + 6).padStart(2, '0')}`;
+  }
+
+  function previousDayPartKey(dayKey) {
+    const start = Math.floor(bangkokHour() / 6) * 6;
+    if (start >= 6) {
+      return `${dayKey}|${String(start - 6).padStart(2, '0')}-${String(start).padStart(2, '0')}`;
+    }
+    return `${addDayKey(dayKey, -1)}|18-24`;
   }
 
   function thaiDate(date) {
@@ -1037,49 +1082,139 @@
   function compareOptions(type) {
     const rows = comparisonBaseRows();
     const map = new Map();
+    const today = isoDay(new Date());
+    const yesterday = addDayKey(today, -1);
+    const currentMonth = monthKey(new Date());
+    const previousMonth = addMonthKey(currentMonth, -1);
+
+    if (type === 'DAY') {
+      map.set(today, shortThaiDate(today));
+      map.set(yesterday, shortThaiDate(yesterday));
+    }
+
+    if (type === 'MONTH') {
+      map.set(currentMonth, thaiMonthLabel(currentMonth));
+      map.set(previousMonth, thaiMonthLabel(previousMonth));
+    }
+
+    if (type === 'SHIFT_DAY') {
+      const currentShift = state.board?.currentShift || {};
+      const businessDay = text(currentShift.businessDate) || today;
+      const shiftCode = text(currentShift.code) || 'OUTSIDE_SHIFT';
+      const shiftName = text(currentShift.name) || 'นอกกะ';
+      const previousBusinessDay = addDayKey(businessDay, -1);
+
+      map.set(
+        `${businessDay}|${shiftCode}`,
+        `${shortThaiDate(businessDay)} · ${shiftName}`
+      );
+      map.set(
+        `${previousBusinessDay}|${shiftCode}`,
+        `${shortThaiDate(previousBusinessDay)} · ${shiftName}`
+      );
+    }
+
+    if (type === 'DAY_PART') {
+      ['00-06', '06-12', '12-18', '18-24'].forEach((hours) => {
+        map.set(
+          `${today}|${hours}`,
+          `${shortThaiDate(today)} · ${hours.replace('-', ':00–')}:00`
+        );
+      });
+      map.set(
+        `${yesterday}|18-24`,
+        `${shortThaiDate(yesterday)} · 18:00–24:00`
+      );
+    }
+
     rows.forEach((record) => {
       if (type === 'DAY' && record.entryDayKey) {
         map.set(record.entryDayKey, shortThaiDate(record.entryDayKey));
       }
+
       if (type === 'SHIFT_DAY') {
         const date = record.businessDate || record.entryDayKey;
         const shift = record.shiftCode || 'OUTSIDE_SHIFT';
-        if (date) map.set(`${date}|${shift}`, `${shortThaiDate(date)} · ${record.shiftName || 'นอกกะ'}`);
+        if (date) {
+          map.set(
+            `${date}|${shift}`,
+            `${shortThaiDate(date)} · ${record.shiftName || 'นอกกะ'}`
+          );
+        }
       }
+
       if (type === 'DAY_PART') {
         const key = dayPartKey(record);
         if (key) {
           const [day, hours] = key.split('|');
-          map.set(key, `${shortThaiDate(day)} · ${hours.replace('-', ':00–')}:00`);
+          map.set(
+            key,
+            `${shortThaiDate(day)} · ${hours.replace('-', ':00–')}:00`
+          );
         }
       }
+
       if (type === 'PROFILE') {
         map.set(
           record.profileCode || 'FULL_INBOUND_LEGACY',
-          record.profileLabel || PROFILE_LABELS[record.profileCode] || 'เต็มขั้นตอน'
+          record.profileLabel ||
+            PROFILE_LABELS[record.profileCode] ||
+            'เต็มขั้นตอน'
         );
       }
+
       if (type === 'RECORD') {
         const key = record.canonicalRecordId;
-        if (key) map.set(key, `${record.appointmentNumber || record.autoId || '-'} · ${record.companyName || 'ไม่ระบุบริษัท'}`);
+        if (key) {
+          map.set(
+            key,
+            `${record.appointmentNumber || record.autoId || '-'} · ` +
+              `${record.companyName || 'ไม่ระบุบริษัท'}`
+          );
+        }
       }
     });
 
     if (type === 'MONTH') {
       (state.analytics?.monthlySummaries || []).forEach((item) => {
-        if (item.monthKey) map.set(item.monthKey, thaiMonthLabel(item.monthKey));
+        if (item.monthKey) {
+          map.set(item.monthKey, thaiMonthLabel(item.monthKey));
+        }
       });
       rows.forEach((record) => {
-        if (record.entryMonthKey) map.set(record.entryMonthKey, thaiMonthLabel(record.entryMonthKey));
+        if (record.entryMonthKey) {
+          map.set(
+            record.entryMonthKey,
+            thaiMonthLabel(record.entryMonthKey)
+          );
+        }
       });
     }
 
     const result = Array.from(map.entries());
+
     if (['DAY', 'MONTH', 'SHIFT_DAY', 'DAY_PART'].includes(type)) {
-      result.sort((a, b) => b[0].localeCompare(a[0]));
+      result.sort((left, right) => {
+        const leftDay = type === 'MONTH'
+          ? `${left[0]}-01`
+          : left[0].split('|')[0];
+        const rightDay = type === 'MONTH'
+          ? `${right[0]}-01`
+          : right[0].split('|')[0];
+        const leftFuture = leftDay > today;
+        const rightFuture = rightDay > today;
+
+        if (leftFuture !== rightFuture) {
+          return leftFuture ? 1 : -1;
+        }
+        return right[0].localeCompare(left[0]);
+      });
     } else {
-      result.sort((a, b) => a[1].localeCompare(b[1], 'th'));
+      result.sort((left, right) =>
+        left[1].localeCompare(right[1], 'th')
+      );
     }
+
     return result;
   }
 
@@ -1089,12 +1224,67 @@
     const html = options.map(([value, label]) =>
       `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`
     ).join('');
-    byId('compareA').innerHTML = html || '<option value="">ไม่มีข้อมูล</option>';
-    byId('compareB').innerHTML = html || '<option value="">ไม่มีข้อมูล</option>';
-    state.compareA = values.includes(state.compareA) ? state.compareA : (values[0] || '');
-    state.compareB = values.includes(state.compareB) && state.compareB !== state.compareA
+
+    byId('compareA').innerHTML =
+      html || '<option value="">ไม่มีข้อมูล</option>';
+    byId('compareB').innerHTML =
+      html || '<option value="">ไม่มีข้อมูล</option>';
+
+    const today = isoDay(new Date());
+    const yesterday = addDayKey(today, -1);
+    const currentMonth = monthKey(new Date());
+    const previousMonth = addMonthKey(currentMonth, -1);
+    const currentShift = state.board?.currentShift || {};
+    const businessDay = text(currentShift.businessDate) || today;
+    const shiftCode = text(currentShift.code) || 'OUTSIDE_SHIFT';
+
+    let preferredA = '';
+    let preferredB = '';
+
+    if (state.compareType === 'DAY') {
+      preferredA = today;
+      preferredB = yesterday;
+    } else if (state.compareType === 'MONTH') {
+      preferredA = currentMonth;
+      preferredB = previousMonth;
+    } else if (state.compareType === 'SHIFT_DAY') {
+      preferredA = `${businessDay}|${shiftCode}`;
+      preferredB = `${addDayKey(businessDay, -1)}|${shiftCode}`;
+    } else if (state.compareType === 'DAY_PART') {
+      preferredA = currentDayPartKey(today);
+      preferredB = previousDayPartKey(today);
+    }
+
+    const existingA = values.includes(state.compareA)
+      ? state.compareA
+      : '';
+    const existingB = values.includes(state.compareB)
       ? state.compareB
-      : (values.find((value) => value !== state.compareA) || values[0] || '');
+      : '';
+
+    state.compareA =
+      existingA ||
+      (values.includes(preferredA) ? preferredA : '') ||
+      values[0] ||
+      '';
+
+    state.compareB =
+      (
+        existingB &&
+        existingB !== state.compareA
+          ? existingB
+          : ''
+      ) ||
+      (
+        values.includes(preferredB) &&
+        preferredB !== state.compareA
+          ? preferredB
+          : ''
+      ) ||
+      values.find((value) => value !== state.compareA) ||
+      state.compareA ||
+      '';
+
     byId('compareA').value = state.compareA;
     byId('compareB').value = state.compareB;
   }
