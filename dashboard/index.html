@@ -10,10 +10,10 @@
   <title>Dashboard ภาพรวม Vendor / Receiving</title>
   <link rel="manifest" href="../manifest.webmanifest">
   <link rel="stylesheet" href="../core.bundle.css?v=20260722-round4-dashboard">
-  <link rel="stylesheet" href="./dashboard.bundle.css?v=20260722-round4-hotfix3-r3-admin-sla-aligned-aging-v1">
+  <link rel="stylesheet" href="./dashboard.bundle.css?v=20260722-round4-hotfix3-r4-current-date-toolbar-backend-fix-v1">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-  <script src="./dashboard.bundle.js?v=20260722-round4-hotfix3-r3-admin-sla-aligned-aging-v1" defer></script>
+  <script src="./dashboard.bundle.js?v=20260722-round4-hotfix3-r4-current-date-toolbar-backend-fix-v1" defer></script>
 </head>
 <body class="executive-dashboard" data-page="dashboard">
   <div id="dashboardLoading" class="loading-screen" aria-live="polite">
@@ -78,8 +78,8 @@
           <strong>เปรียบเทียบข้อมูล</strong>
           <span>เลือกข้อมูลสองส่วนเพื่อดูตัวเลขและปัญหาในตำแหน่งเดียวกัน</span>
         </div>
-        <label><span>เปรียบเทียบตาม</span><select id="compareType"><option value="DAY">ภาพรวมรายวัน</option><option value="MONTH">ภาพรวมรายเดือน</option><option value="SHIFT_DAY">กะของแต่ละวัน</option><option value="DAY_PART">ช่วงเวลา 6 ชั่วโมง</option><option value="PROFILE">รูปแบบงาน</option><option value="RECORD">เลขนัดหมาย</option></select></label>
-        <label><span>รูปแบบแสดงผล</span><select id="compareView"><option value="OVERVIEW">ภาพรวมและคอขวด</option><option value="FLOW">การไหลรายชั่วโมง</option><option value="STAGE_TIME">เวลาแต่ละขั้นตอน</option><option value="BACKLOG">สถานะเวลาและปัญหา</option></select></label>
+        <label class="compare-type-control"><span>เปรียบเทียบตาม</span><select id="compareType"><option value="DAY">ภาพรวมรายวัน</option><option value="MONTH">ภาพรวมรายเดือน</option><option value="SHIFT_DAY">กะของแต่ละวัน</option><option value="DAY_PART">ช่วงเวลา 6 ชั่วโมง</option><option value="PROFILE">รูปแบบงาน</option><option value="RECORD">เลขนัดหมาย</option></select></label>
+        <label class="compare-view-control"><span>รูปแบบแสดงผล</span><select id="compareView"><option value="OVERVIEW">ภาพรวมและคอขวด</option><option value="FLOW">การไหลรายชั่วโมง</option><option value="STAGE_TIME">เวลาแต่ละขั้นตอน</option><option value="BACKLOG">สถานะเวลาและปัญหา</option></select></label>
         <label class="compare-control-a"><span>ฝั่ง A</span><select id="compareA"></select></label>
         <button id="swapCompareButton" class="compare-swap" type="button" title="สลับฝั่ง">⇄</button>
         <label class="compare-control-b"><span>ฝั่ง B</span><select id="compareB"></select></label>
