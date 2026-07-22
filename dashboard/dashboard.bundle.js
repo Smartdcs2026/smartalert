@@ -1,3 +1,4 @@
+/* ROUND4_HOTFIX7_REV3_DASHBOARD_MOBILE_HEADER: 2026.07.23 */
 /* ROUND4_HOTFIX7_NEAR_REALTIME_DASHBOARD_UI: 2026.07.22 */
 /* ROUND4_HOTFIX4_DASHBOARD_TRUSTED_COMPARISON: 2026.07.22 */
 /* ROUND4_HOTFIX3_REV4_CURRENT_DATE_DEFAULTS: 2026.07.22 */
@@ -380,6 +381,33 @@ function formatFreshnessAge(milliseconds) {
       : `${minutes} นาที`;
   }
 
+  function isCompactDashboardHeader() {
+    return Boolean(
+      window.matchMedia &&
+      window.matchMedia('(max-width: 760px)').matches
+    );
+  }
+
+  function formatFreshnessAgeCompact(milliseconds) {
+    const seconds = Math.max(
+      0,
+      Math.floor(number(milliseconds) / 1000)
+    );
+
+    if (seconds < 60) {
+      return `${seconds} วิ`;
+    }
+
+    const minutes = Math.floor(seconds / 60);
+
+    if (minutes < 60) {
+      return `${minutes} น.`;
+    }
+
+    const hours = Math.floor(minutes / 60);
+    return `${hours} ชม.`;
+  }
+
   function updateFreshnessStatus() {
     const now = Date.now();
     const lastCheck = number(
@@ -389,6 +417,10 @@ function formatFreshnessAge(milliseconds) {
       ? Math.max(0, now - lastCheck)
       : Number.POSITIVE_INFINITY;
     const element = byId('connectionText');
+    const compact = isCompactDashboardHeader();
+    const ageText = compact
+      ? formatFreshnessAgeCompact(age)
+      : formatFreshnessAge(age);
 
     element?.classList.remove(
       'refresh-stale',
@@ -397,7 +429,10 @@ function formatFreshnessAge(milliseconds) {
     );
 
     if (!state.initialized) {
-      setText('connectionText', 'กำลังเชื่อมต่อ');
+      setText(
+        'connectionText',
+        compact ? 'เชื่อมต่อ…' : 'กำลังเชื่อมต่อ'
+      );
       return;
     }
 
@@ -406,7 +441,9 @@ function formatFreshnessAge(milliseconds) {
     ) {
       setText(
         'connectionText',
-        'ออฟไลน์ · ใช้ข้อมูลล่าสุด'
+        compact
+          ? 'ออฟไลน์'
+          : 'ออฟไลน์ · ใช้ข้อมูลล่าสุด'
       );
       element?.classList.add(
         'refresh-critical'
@@ -419,8 +456,9 @@ function formatFreshnessAge(milliseconds) {
     ) {
       setText(
         'connectionText',
-        'สด · ตรวจล่าสุด ' +
-          formatFreshnessAge(age)
+        compact
+          ? `สด · ${ageText}`
+          : `สด · ตรวจล่าสุด ${ageText}`
       );
       setText(
         'autoRefreshLabel',
@@ -434,9 +472,9 @@ function formatFreshnessAge(milliseconds) {
     ) {
       setText(
         'connectionText',
-        'ล่าช้า ' +
-          formatFreshnessAge(age) +
-          ' · กำลังตรวจใหม่'
+        compact
+          ? `ช้า · ${ageText}`
+          : `ล่าช้า ${ageText} · กำลังตรวจใหม่`
       );
       element?.classList.add(
         'refresh-warning'
@@ -450,9 +488,9 @@ function formatFreshnessAge(milliseconds) {
 
     setText(
       'connectionText',
-      'ข้อมูลล่าช้า ' +
-        formatFreshnessAge(age) +
-        ' · กำลังเชื่อมต่อใหม่'
+      compact
+        ? `ล่าช้า · ${ageText}`
+        : `ข้อมูลล่าช้า ${ageText} · กำลังเชื่อมต่อใหม่`
     );
     element?.classList.add(
       'refresh-critical'
@@ -2003,9 +2041,36 @@ function formatFreshnessAge(milliseconds) {
   }
 
   function fitFullscreen() {
-    document.body.classList.toggle('is-fullscreen', Boolean(document.fullscreenElement));
-    setText('fullscreenButton', document.fullscreenElement ? '⛶ ออกจากเต็มจอ' : '⛶ เปิดเต็มจอ');
-    Object.values(state.charts).forEach((chart) => chart && chart.resize());
+    const fullscreenActive = Boolean(
+      document.fullscreenElement
+    );
+    const fullscreenButton = byId('fullscreenButton');
+    const fullscreenLabel = fullscreenActive
+      ? 'ออกจากเต็มจอ'
+      : 'เปิดเต็มจอ';
+
+    document.body.classList.toggle(
+      'is-fullscreen',
+      fullscreenActive
+    );
+    setText(
+      'fullscreenButton',
+      fullscreenActive
+        ? '⛶ ออกจากเต็มจอ'
+        : '⛶ เปิดเต็มจอ'
+    );
+
+    if (fullscreenButton) {
+      fullscreenButton.title = fullscreenLabel;
+      fullscreenButton.setAttribute(
+        'aria-label',
+        fullscreenLabel
+      );
+    }
+
+    Object.values(state.charts).forEach(
+      (chart) => chart && chart.resize()
+    );
   }
 
   function scheduleChartResize() {
@@ -2094,6 +2159,7 @@ function formatFreshnessAge(milliseconds) {
 
     byId('resetButton').addEventListener('click', resetFilters);
     window.addEventListener('resize', scheduleChartResize);
+    window.addEventListener('resize', updateFreshnessStatus);
     ['dateFrom','dateTo','shiftFilter','profileFilter','statusFilter'].forEach((id) => byId(id).addEventListener('change', applyFiltersAndRender));
     let searchTimer = null;
     byId('searchInput').addEventListener('input', () => {
