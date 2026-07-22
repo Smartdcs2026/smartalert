@@ -1,3 +1,4 @@
+/* ROUND4_FINAL_REV1_OPERATIONAL24H_THEMES: 2026.07.23 */
 /* ROUND4_HOTFIX7_REV5_DASHBOARD_MOBILE_COMPARISON: 2026.07.23 */
 /* ROUND4_HOTFIX7_REV3_DASHBOARD_MOBILE_HEADER: 2026.07.23 */
 /* ROUND4_HOTFIX7_NEAR_REALTIME_DASHBOARD_UI: 2026.07.22 */
@@ -22,7 +23,9 @@
     STALE_CRITICAL_MS: 60000,
     API_TIMEOUT_MS: 90000,
     BACKGROUND_TIMEOUT_MS: 55000,
-    CACHE_KEY: 'smartalert_dashboard_snapshot_v4_h7_realtime',
+    CACHE_KEY: 'smartalert_dashboard_snapshot_v4_final_r1',
+    THEME_KEY: 'smartalert_dashboard_theme_v1',
+    MAX_URGENT_ROWS: 8,
     LOCAL_CACHE_MAX_AGE_MS: 12 * 60 * 60 * 1000,
     MAX_VALID_TOTAL_SECONDS: 7 * 24 * 60 * 60,
     CACHE_RECORD_LIMIT: 1500,
@@ -85,6 +88,10 @@
     compareLayout: 'PAIR',
     compareCharts: {},
     compareResizeTimer: null,
+    flowRange: '24H',
+    urgentMode: 'SEVERE',
+    themePreference: 'deep',
+    analysisOpen: false,
     refreshWarningAt: 0,
     chartResizeTimer: null,
     lastSuccessfulCheckAtEpochMs: 0,
@@ -936,6 +943,528 @@ function formatFreshnessAge(milliseconds) {
     if (Array.from(select.options).some((option) => option.value === current)) select.value = current;
   }
 
+
+const THEME_LABELS = Object.freeze({
+  system: 'ระบบ',
+  light: 'สว่าง',
+  deep: 'น้ำเงิน',
+  plum: 'พลัม'
+});
+
+function cssValue(name, fallback) {
+  const value = window.getComputedStyle(document.body)
+    .getPropertyValue(name)
+    .trim();
+  return value || fallback || '';
+}
+
+function nullableNumber(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function resolvedTheme(preference) {
+  const clean = text(preference).toLowerCase();
+  if (clean === 'light' || clean === 'deep' || clean === 'plum') {
+    return clean;
+  }
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+    ? 'deep'
+    : 'light';
+}
+
+function loadThemePreference() {
+  try {
+    return text(window.localStorage.getItem(CONFIG.THEME_KEY)) || 'deep';
+  } catch (error) {
+    return 'deep';
+  }
+}
+
+function applyDashboardTheme(preference, persist) {
+  const clean = ['system', 'light', 'deep', 'plum'].includes(text(preference).toLowerCase())
+    ? text(preference).toLowerCase()
+    : 'deep';
+  const actual = resolvedTheme(clean);
+  state.themePreference = clean;
+  document.body.dataset.themePreference = clean;
+  document.body.dataset.theme = actual;
+  document.documentElement.style.colorScheme = actual === 'light' ? 'light' : 'dark';
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', cssValue('--topbar-bg-solid', actual === 'light' ? '#063f59' : '#031726'));
+  document.querySelectorAll('[data-theme-value]').forEach((button) => {
+    const active = button.dataset.themeValue === clean;
+    button.classList.toggle('is-active', active);
+    button.setAttribute('aria-pressed', String(active));
+    button.title = `ธีม${THEME_LABELS[button.dataset.themeValue] || button.dataset.themeValue}`;
+  });
+  if (persist !== false) {
+    try { window.localStorage.setItem(CONFIG.THEME_KEY, clean); } catch (error) {}
+  }
+  if (state.initialized) {
+    renderOperationalFlow();
+    renderOperationalStageChart();
+    if (state.compareMode) renderComparisonWorkspace();
+  }
+}
+
+function themePalette() {
+  return {
+    text: cssValue('--text', '#eaf6ff'),
+    muted: cssValue('--muted', '#9fb4c4'),
+    grid: cssValue('--chart-grid', 'rgba(170,210,230,.14)'),
+    panel: cssValue('--panel', '#08243a'),
+    tooltip: cssValue('--tooltip', '#020d17'),
+    blue: cssValue('--blue', '#4b9cff'),
+    green: cssValue('--green', '#62d48e'),
+    orange: cssValue('--orange', '#ffab2e'),
+    red: cssValue('--red', '#ff5a62'),
+    purple: cssValue('--purple', '#9b70e8'),
+    magenta: cssValue('--magenta', '#f426a0'),
+    sky: cssValue('--sky', '#57b7ff'),
+    slate: cssValue('--slate', '#8496a4')
+  };
+}
+
+function currentActiveRecords() {
+  return state.records.filter((record) => record.isActive === true);
+}
+
+function rollingWindow(hours, offsetHours) {
+  const endMs = Date.now() - number(offsetHours) * 60 * 60 * 1000;
+  return {
+    startMs: endMs - number(hours, 24) * 60 * 60 * 1000,
+    endMs
+  };
+}
+
+function recordTouchesWindow(record, range) {
+  const inMs = nullableNumber(record.gateInEpochMs);
+  const outMs = nullableNumber(record.gateOutEpochMs);
+  const latestMs = nullableNumber(record.latestEpochMs);
+  return (
+    (inMs !== null && inMs >= range.startMs && inMs < range.endMs) ||
+    (outMs !== null && outMs >= range.startMs && outMs < range.endMs) ||
+    (record.isCancelled && latestMs !== null && latestMs >= range.startMs && latestMs < range.endMs)
+  );
+}
+
+function recordsInWindow(range) {
+  return state.records.filter((record) => recordTouchesWindow(record, range));
+}
+
+function countStage(records, stageCode) {
+  return records.filter((record) => record.stageCode === stageCode).length;
+}
+
+function severityCode(record) {
+  if (record.isIncomplete) return 'INCOMPLETE';
+  if (record.isSevere) return 'SEVERE';
+  if (record.isOverdue) return 'OVERDUE';
+  if (record.isWarning) return 'WARNING';
+  return 'NORMAL';
+}
+
+function formatSigned(value) {
+  const amount = number(value);
+  return `${amount > 0 ? '+' : ''}${amount.toLocaleString('th-TH')}`;
+}
+
+function percentDelta(current, previous) {
+  const nowValue = number(current);
+  const oldValue = number(previous);
+  if (oldValue === 0) {
+    if (nowValue === 0) return '• เท่าช่วงก่อน';
+    return `▲ ${nowValue.toLocaleString('th-TH')} จากช่วงก่อน`;
+  }
+  const percent = Math.round((nowValue - oldValue) / Math.abs(oldValue) * 100);
+  if (percent === 0) return '• ใกล้เคียงช่วงก่อน';
+  return `${percent > 0 ? '▲' : '▼'} ${Math.abs(percent)}% เทียบช่วงก่อน`;
+}
+
+function shortDateTime(ms) {
+  if (!Number.isFinite(Number(ms))) return '-';
+  return new Intl.DateTimeFormat('th-TH', {
+    timeZone: 'Asia/Bangkok',
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  }).format(new Date(Number(ms)));
+}
+
+function stageColor(code) {
+  const p = themePalette();
+  return {
+    WAITING_INBOUND_DOCUMENT: p.purple,
+    WAITING_RECEIVING: p.orange,
+    WAITING_DOCUMENT_RETURN: p.green,
+    WAITING_GATE_OUT: p.sky,
+    DATA_CONFLICT: p.slate
+  }[code] || p.slate;
+}
+
+function renderOperationalCurrentState() {
+  const active = currentActiveRecords();
+  const range = rollingWindow(24, 0);
+  const cancelled24 = state.records.filter((record) => {
+    const latest = nullableNumber(record.latestEpochMs);
+    return record.isCancelled && latest !== null && latest >= range.startMs && latest < range.endMs;
+  });
+  const severe = active.filter((record) => record.isSevere);
+  const overdue = active.filter((record) => record.isOverdue && !record.isSevere);
+  const warning = active.filter((record) => record.isWarning);
+  const incomplete = active.filter((record) => record.isIncomplete);
+
+  const values = {
+    opsActiveNow: active.length,
+    opsWaitingDocument: countStage(active, 'WAITING_INBOUND_DOCUMENT'),
+    opsWaitingReceiving: countStage(active, 'WAITING_RECEIVING'),
+    opsWaitingReturn: countStage(active, 'WAITING_DOCUMENT_RETURN'),
+    opsWaitingGateOut: countStage(active, 'WAITING_GATE_OUT'),
+    opsWarning: warning.length,
+    opsOverdue: overdue.length,
+    opsSevere: severe.length,
+    opsIncomplete: incomplete.length,
+    opsCancelled24: cancelled24.length
+  };
+  Object.entries(values).forEach(([id, value]) => setText(id, number(value).toLocaleString('th-TH')));
+  setText('currentStateAsOf', `ณ ${state.board?.generatedAt || thaiDate(new Date())}`);
+}
+
+function rollingPerformance(range) {
+  const rows = recordsInWindow(range);
+  const gateIn = rows.filter((record) => {
+    const ms = nullableNumber(record.gateInEpochMs);
+    return ms !== null && ms >= range.startMs && ms < range.endMs;
+  });
+  const completed = rows.filter((record) => {
+    const ms = nullableNumber(record.gateOutEpochMs);
+    return record.isCompleted && ms !== null && ms >= range.startMs && ms < range.endMs;
+  });
+  const completedTimes = completed
+    .map((record) => nullableNumber(record.totalSeconds))
+    .filter((value) => value !== null && value >= 0 && value <= CONFIG.MAX_VALID_TOTAL_SECONDS);
+  const evaluated = rows.filter((record) => !record.isIncomplete);
+  const compliant = evaluated.filter((record) => !record.isWarning && !record.isOverdue && !record.isSevere);
+  return {
+    rows,
+    gateIn,
+    completed,
+    net: gateIn.length - completed.length,
+    median: percentile(completedTimes, .5),
+    p90: percentile(completedTimes, .9),
+    compliance: evaluated.length ? compliant.length / evaluated.length * 100 : null,
+    slow: completed.slice().sort((a, b) => number(b.totalSeconds) - number(a.totalSeconds)).slice(0, 3)
+  };
+}
+
+function renderOperationalRolling() {
+  const currentRange = rollingWindow(24, 0);
+  const previousRange = rollingWindow(24, 24);
+  const current = rollingPerformance(currentRange);
+  const previous = rollingPerformance(previousRange);
+
+  setText('rollingRangeLabel', `${shortDateTime(currentRange.startMs)} – ${shortDateTime(currentRange.endMs)}`);
+  setText('rollingGateIn', current.gateIn.length.toLocaleString('th-TH'));
+  setText('rollingCompleted', current.completed.length.toLocaleString('th-TH'));
+  setText('rollingNet', formatSigned(current.net));
+  setText('rollingMedian', current.median ? durationLabel(current.median) : '-');
+  setText('rollingSlowCount', current.slow.length.toLocaleString('th-TH'));
+  setText('rollingCompliance', current.compliance === null ? '-' : `${current.compliance.toFixed(0)}%`);
+  setText('rollingGateInDelta', percentDelta(current.gateIn.length, previous.gateIn.length));
+  setText('rollingCompletedDelta', percentDelta(current.completed.length, previous.completed.length));
+  setText('rollingNetDetail', `${previous.net >= 0 ? '+' : ''}${previous.net} ใน 24 ชม.ก่อน`);
+  setText('rollingMedianDelta', current.median && previous.median
+    ? `${current.median <= previous.median ? '▼ เร็วขึ้น' : '▲ ช้าลง'} ${durationLabel(Math.abs(current.median - previous.median))}`
+    : 'Median ของงานปิด');
+  setText('rollingComplianceDetail', `${current.rows.filter((record) => !record.isIncomplete).length.toLocaleString('th-TH')} รายการที่ตรวจสอบสถานะได้`);
+  byId('rollingSlowButton').dataset.recordIds = current.slow.map((record) => record.canonicalRecordId).join('|');
+}
+
+function hourBuckets24() {
+  const end = new Date();
+  end.setMinutes(0, 0, 0);
+  end.setHours(end.getHours() + 1);
+  const startMs = end.getTime() - 24 * 60 * 60 * 1000;
+  const buckets = Array.from({length: 24}, (_, index) => ({
+    startMs: startMs + index * 3600000,
+    endMs: startMs + (index + 1) * 3600000,
+    gateIn: 0,
+    completed: 0,
+    backlog: 0,
+    overdue: 0
+  }));
+  buckets.forEach((bucket) => {
+    state.records.forEach((record) => {
+      const inMs = nullableNumber(record.gateInEpochMs);
+      const outMs = nullableNumber(record.gateOutEpochMs);
+      if (inMs !== null && inMs >= bucket.startMs && inMs < bucket.endMs) bucket.gateIn += 1;
+      if (outMs !== null && outMs >= bucket.startMs && outMs < bucket.endMs) bucket.completed += 1;
+      if (inMs !== null && inMs < bucket.endMs && (outMs === null || outMs >= bucket.endMs) && !record.isCancelled) bucket.backlog += 1;
+      if (record.isActive && record.isOverdue && inMs !== null && inMs < bucket.endMs) bucket.overdue += 1;
+    });
+  });
+  return buckets;
+}
+
+function dayBuckets(days) {
+  const result = [];
+  const now = new Date();
+  for (let offset = days - 1; offset >= 0; offset -= 1) {
+    const date = new Date(now.getTime() - offset * 86400000);
+    const key = isoDay(date);
+    const startMs = new Date(`${key}T00:00:00+07:00`).getTime();
+    const endMs = startMs + 86400000;
+    const bucket = {key, startMs, endMs, gateIn: 0, completed: 0, backlog: 0, overdue: 0};
+    state.records.forEach((record) => {
+      const inMs = nullableNumber(record.gateInEpochMs);
+      const outMs = nullableNumber(record.gateOutEpochMs);
+      if (inMs !== null && inMs >= startMs && inMs < endMs) bucket.gateIn += 1;
+      if (outMs !== null && outMs >= startMs && outMs < endMs) bucket.completed += 1;
+      if (inMs !== null && inMs < endMs && (outMs === null || outMs >= endMs) && !record.isCancelled) bucket.backlog += 1;
+      if (record.isActive && record.isOverdue && inMs !== null && inMs < endMs) bucket.overdue += 1;
+    });
+    result.push(bucket);
+  }
+  return result;
+}
+
+function renderOperationalFlow() {
+  const palette = themePalette();
+  const range = state.flowRange || '24H';
+  const rows = range === '24H' ? hourBuckets24() : dayBuckets(range === '7D' ? 7 : 30);
+  const labels = range === '24H'
+    ? rows.map((item) => new Intl.DateTimeFormat('th-TH', {timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false}).format(new Date(item.startMs)))
+    : rows.map((item) => shortThaiDate(item.key));
+  setText('flowRangeLabel', range === '24H' ? '24 ชั่วโมงล่าสุดแบบเลื่อนต่อเนื่อง' : range === '7D' ? '7 วันล่าสุด' : '30 วันล่าสุด');
+  document.querySelectorAll('[data-flow-range]').forEach((button) => button.classList.toggle('is-active', button.dataset.flowRange === range));
+  createChart('opsFlowChart', 'bar', {
+    labels,
+    datasets: [
+      {type: 'bar', label: 'รถเข้า', data: rows.map((item) => item.gateIn), backgroundColor: palette.blue, borderRadius: 3, maxBarThickness: 18},
+      {type: 'bar', label: 'ปิดงานแล้ว', data: rows.map((item) => item.completed), backgroundColor: palette.green, borderRadius: 3, maxBarThickness: 18},
+      {type: 'line', label: 'คงค้างสะสม', data: rows.map((item) => item.backlog), borderColor: palette.orange, backgroundColor: palette.orange, tension: .28, pointRadius: 2, borderWidth: 2},
+      {type: 'line', label: 'เกินเวลาปัจจุบัน', data: rows.map((item) => item.overdue), borderColor: palette.red, backgroundColor: palette.red, tension: .28, pointRadius: 2, borderWidth: 2}
+    ]
+  }, chartOptions({legend: true, yTitle: 'คัน'}));
+}
+
+function renderOperationalStageChart() {
+  const active = currentActiveRecords();
+  const stages = [
+    ['WAITING_INBOUND_DOCUMENT', 'รอยื่นเอกสาร'],
+    ['WAITING_RECEIVING', 'รอรับสินค้า'],
+    ['WAITING_DOCUMENT_RETURN', 'รอคืนเอกสาร'],
+    ['WAITING_GATE_OUT', 'รอออกจากพื้นที่'],
+    ['DATA_CONFLICT', 'ข้อมูลต้องตรวจสอบ']
+  ].map(([code, label]) => ({code, label, value: countStage(active, code)}))
+    .filter((item) => item.value > 0);
+  setText('opsStageTotal', active.length.toLocaleString('th-TH'));
+  byId('opsStageLegend').innerHTML = stages.length ? stages.map((item) => {
+    const percent = active.length ? Math.round(item.value / active.length * 100) : 0;
+    return `<div><i style="background:${stageColor(item.code)}"></i><span>${escapeHtml(item.label)}</span><b>${item.value} (${percent}%)</b></div>`;
+  }).join('') : '<div class="empty-row">ไม่มีงานคงค้าง</div>';
+  const palette = themePalette();
+  createChart('opsStageChart', 'doughnut', {
+    labels: stages.map((item) => item.label),
+    datasets: [{
+      data: stages.map((item) => item.value),
+      backgroundColor: stages.map((item) => stageColor(item.code)),
+      borderWidth: 2,
+      borderColor: palette.panel
+    }]
+  }, {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '67%',
+    animation: {duration: 220},
+    plugins: {legend: {display: false}, tooltip: {backgroundColor: palette.tooltip}}
+  });
+}
+
+function urgentRecords(mode) {
+  const clean = mode || state.urgentMode || 'SEVERE';
+  return currentActiveRecords().filter((record) => severityCode(record) === clean)
+    .sort((a, b) => number(b.statusElapsedSeconds) - number(a.statusElapsedSeconds));
+}
+
+function slaLimitLabel(record) {
+  const seconds = nullableNumber(record.slaRedSeconds);
+  if (seconds === null) return '-';
+  return durationLabel(seconds);
+}
+
+function renderUrgentActions() {
+  const active = currentActiveRecords();
+  const counts = {
+    SEVERE: active.filter((record) => record.isSevere).length,
+    OVERDUE: active.filter((record) => record.isOverdue && !record.isSevere).length,
+    WARNING: active.filter((record) => record.isWarning).length,
+    INCOMPLETE: active.filter((record) => record.isIncomplete).length
+  };
+  setText('urgentSevereCount', counts.SEVERE);
+  setText('urgentOverdueCount', counts.OVERDUE);
+  setText('urgentWarningCount', counts.WARNING);
+  setText('urgentIncompleteCount', counts.INCOMPLETE);
+  document.querySelectorAll('[data-urgent-mode]').forEach((button) => button.classList.toggle('is-active', button.dataset.urgentMode === state.urgentMode));
+  const rows = urgentRecords(state.urgentMode).slice(0, CONFIG.MAX_URGENT_ROWS);
+  byId('urgentTableBody').innerHTML = rows.length ? rows.map((record) => `
+    <tr data-record-id="${escapeHtml(record.canonicalRecordId)}">
+      <td><b>${escapeHtml(record.appointmentNumber || record.autoId || '-')}</b></td>
+      <td>${escapeHtml(record.companyName || '-')}</td>
+      <td>${escapeHtml(record.stageLabel || STAGE_LABELS[record.stageCode] || '-')}</td>
+      <td>${escapeHtml(durationLabel(record.statusElapsedSeconds))}</td>
+      <td><span class="sla-pill severity-${severityCode(record).toLowerCase()}">${escapeHtml(slaLimitLabel(record))}</span></td>
+    </tr>`).join('') : `<tr><td colspan="5"><div class="empty-row">ไม่มีรายการในกลุ่มนี้</div></td></tr>`;
+}
+
+function renderBottlenecks() {
+  const active = currentActiveRecords();
+  const groups = new Map();
+  active.forEach((record) => {
+    const code = record.stageCode || 'DATA_CONFLICT';
+    const item = groups.get(code) || {code, label: record.stageLabel || STAGE_LABELS[code] || code, values: []};
+    item.values.push(number(record.statusElapsedSeconds));
+    groups.set(code, item);
+  });
+  const rows = Array.from(groups.values()).map((item) => ({
+    code: item.code,
+    label: item.label,
+    count: item.values.length,
+    average: item.values.length ? item.values.reduce((sum, value) => sum + value, 0) / item.values.length : 0,
+    maximum: item.values.length ? Math.max(...item.values) : 0
+  })).sort((a, b) => b.count - a.count || b.average - a.average).slice(0, 5);
+  const maxAverage = Math.max(1, ...rows.map((item) => item.average));
+  byId('bottleneckTableBody').innerHTML = rows.length ? rows.map((item, index) => `
+    <tr>
+      <td>${index + 1}</td>
+      <td>${escapeHtml(item.label)}</td>
+      <td><span class="bottleneck-duration">${escapeHtml(durationLabel(item.average))}</span></td>
+      <td><div class="bottleneck-bar"><i style="width:${Math.max(6, item.average / maxAverage * 100)}%;background:${stageColor(item.code)}"></i></div><b>${escapeHtml(durationLabel(item.maximum))}</b></td>
+      <td><strong>${item.count.toLocaleString('th-TH')}</strong></td>
+    </tr>`).join('') : `<tr><td colspan="5"><div class="empty-row">ไม่มีงานคงค้าง</div></td></tr>`;
+}
+
+function currentShiftSummary() {
+  const current = state.board?.currentShift || null;
+  const summaries = Array.isArray(state.board?.shiftSummaries) ? state.board.shiftSummaries : [];
+  const summary = current ? summaries.find((item) => {
+    const code = item.code || item.ShiftCode;
+    const date = item.businessDate || item.BusinessDate;
+    return code === current.code && (!current.businessDate || !date || date === current.businessDate);
+  }) || summaries.find((item) => (item.code || item.ShiftCode) === current.code) : null;
+  return {current, summary};
+}
+
+function renderOperationalShift() {
+  const {current, summary} = currentShiftSummary();
+  const active = currentActiveRecords();
+  const fallbackStages = {
+    WAITING_INBOUND_DOCUMENT: countStage(active, 'WAITING_INBOUND_DOCUMENT'),
+    WAITING_RECEIVING: countStage(active, 'WAITING_RECEIVING'),
+    WAITING_DOCUMENT_RETURN: countStage(active, 'WAITING_DOCUMENT_RETURN'),
+    WAITING_GATE_OUT: countStage(active, 'WAITING_GATE_OUT')
+  };
+  const stages = summary?.stages || fallbackStages;
+  const opening = number(summary?.openingBalance || summary?.OpeningBalance);
+  const gateIn = number(summary?.gateIn || summary?.GateIn);
+  const completed = number(summary?.gateOutActual || summary?.GateOutActual);
+  const closing = number(summary?.closingBalance || summary?.ClosingBalance);
+  const carryOut = number(summary?.carryOut || summary?.CarryOverToNextShift || closing);
+  const overdue = number(summary?.overdueActive || summary?.OverdueAtEnd);
+  const workload = opening + gateIn;
+  const efficiency = workload ? Math.min(100, completed / workload * 100) : null;
+
+  setText('opsShiftName', current ? (current.name || `กะ ${current.code}`) : 'นอกกะ');
+  setText('opsShiftTime', current ? `${current.start || timeOnly(current.startAt)} – ${current.end || timeOnly(current.endAt)}` : 'ไม่อยู่ในช่วงกะ');
+  setText('opsShiftBusinessDate', current?.businessDate ? `วันปฏิบัติงาน ${shortThaiDate(current.businessDate)}` : '-');
+  setText('opsShiftGateIn', gateIn.toLocaleString('th-TH'));
+  setText('opsShiftCompleted', completed.toLocaleString('th-TH'));
+  setText('opsShiftCarryIn', opening.toLocaleString('th-TH'));
+  setText('opsShiftClosing', closing.toLocaleString('th-TH'));
+  setText('opsShiftCarryOut', carryOut.toLocaleString('th-TH'));
+  setText('opsShiftOverdue', overdue.toLocaleString('th-TH'));
+  setText('opsShiftEfficiency', efficiency === null ? '-' : `${efficiency.toFixed(0)}%`);
+
+  let progress = 0;
+  const start = parseDateTime(current?.startAt);
+  const end = parseDateTime(current?.endAt);
+  if (start && end && end > start) progress = Math.max(0, Math.min(100, (Date.now() - start.getTime()) / (end.getTime() - start.getTime()) * 100));
+  byId('opsShiftProgressBar').style.width = `${progress}%`;
+  setText('opsShiftProgressText', `${progress.toFixed(0)}%`);
+
+  const flow = [
+    ['WAITING_INBOUND_DOCUMENT', 'รอยื่นเอกสาร'],
+    ['WAITING_RECEIVING', 'รอรับสินค้า'],
+    ['WAITING_DOCUMENT_RETURN', 'รอคืนเอกสาร'],
+    ['WAITING_GATE_OUT', 'รอออกจากพื้นที่']
+  ];
+  byId('shiftProcessFlow').innerHTML = flow.map(([code, label], index) => `${index ? '<span class="flow-arrow">→</span>' : ''}<div><i style="background:${stageColor(code)}"></i><span>${label}</span><strong>${number(stages[code]).toLocaleString('th-TH')}</strong></div>`).join('');
+
+  setText('headerShiftName', current ? `${current.name || `กะ ${current.code}`} (${current.start || timeOnly(current.startAt)}–${current.end || timeOnly(current.endAt)})` : 'นอกกะ');
+}
+
+function renderExecutiveDashboard() {
+  renderHeaderMeta();
+  renderOperationalCurrentState();
+  renderOperationalRolling();
+  renderOperationalFlow();
+  renderOperationalStageChart();
+  renderUrgentActions();
+  renderBottlenecks();
+  renderOperationalShift();
+  scheduleChartResize();
+}
+
+function showCurrentGroup(mode) {
+  let rows = currentActiveRecords();
+  const clean = text(mode).toUpperCase();
+  if (STAGE_ORDER.includes(clean)) rows = rows.filter((record) => record.stageCode === clean);
+  else if (clean === 'WARNING') rows = rows.filter((record) => record.isWarning);
+  else if (clean === 'OVERDUE') rows = rows.filter((record) => record.isOverdue && !record.isSevere);
+  else if (clean === 'SEVERE') rows = rows.filter((record) => record.isSevere);
+  else if (clean === 'INCOMPLETE') rows = rows.filter((record) => record.isIncomplete);
+  else if (clean === 'CANCELLED') {
+    const range = rollingWindow(24, 0);
+    rows = state.records.filter((record) => record.isCancelled && number(record.latestEpochMs, 0) >= range.startMs);
+  }
+  rows.sort((a, b) => number(b.statusElapsedSeconds) - number(a.statusElapsedSeconds));
+  window.Swal?.fire({
+    title: clean === 'ALL' ? `อยู่ในระบบ ${rows.length} คัน` : `${escapeHtml(rows[0]?.stageLabel || clean)} ${rows.length} รายการ`,
+    width: 980,
+    html: rows.length ? `<div class="modal-record-list">${rows.map((record) => `<button type="button" data-current-modal-id="${escapeHtml(record.canonicalRecordId)}"><b>${escapeHtml(record.appointmentNumber || record.autoId || '-')}</b><span>${escapeHtml(record.companyName || '-')}</span><span>${escapeHtml(record.stageLabel || '-')}</span><strong>${escapeHtml(durationLabel(record.statusElapsedSeconds))}</strong></button>`).join('')}</div>` : '<p>ไม่มีรายการ</p>',
+    confirmButtonText: 'ปิด',
+    didOpen: () => document.querySelectorAll('[data-current-modal-id]').forEach((button) => button.addEventListener('click', () => showRecordDetail(findRecord(button.dataset.currentModalId))))
+  });
+}
+
+function showSlowJobs() {
+  const ids = text(byId('rollingSlowButton')?.dataset.recordIds).split('|').filter(Boolean);
+  const rows = ids.map(findRecord).filter(Boolean);
+  window.Swal?.fire({
+    title: 'งานกลุ่มช้า 24 ชั่วโมงล่าสุด',
+    width: 820,
+    html: rows.length ? `<div class="modal-record-list">${rows.map((record) => `<button type="button" data-slow-id="${escapeHtml(record.canonicalRecordId)}"><b>${escapeHtml(record.appointmentNumber || record.autoId || '-')}</b><span>${escapeHtml(record.companyName || '-')}</span><span>${escapeHtml(record.stageLabel || 'ปิดงานแล้ว')}</span><strong>${escapeHtml(durationLabel(record.totalSeconds))}</strong></button>`).join('')}</div>` : '<p>ยังไม่มีงานปิดในช่วง 24 ชั่วโมงล่าสุด</p>',
+    confirmButtonText: 'ปิด',
+    didOpen: () => document.querySelectorAll('[data-slow-id]').forEach((button) => button.addEventListener('click', () => showRecordDetail(findRecord(button.dataset.slowId))))
+  });
+}
+
+function toggleAnalysis(force) {
+  state.analysisOpen = typeof force === 'boolean' ? force : !state.analysisOpen;
+  const panel = byId('analysisPanel');
+  if (panel) panel.hidden = !state.analysisOpen;
+  byId('analysisButton')?.classList.toggle('is-active', state.analysisOpen);
+  if (state.analysisOpen) {
+    renderCalendar();
+    renderSelectedDay();
+    renderCompanyRanking();
+    renderTrackingTable();
+    panel?.scrollIntoView({behavior: 'smooth', block: 'start'});
+  }
+}
+
+
   function applyFiltersAndRender() {
     const from = byId('dateFrom').value || isoDay(new Date());
     const to = byId('dateTo').value || from;
@@ -962,19 +1491,12 @@ function formatFreshnessAge(milliseconds) {
       return true;
     });
 
-    renderHeaderMeta();
-    renderKpis();
-    renderStatusChart();
-    renderAlerts();
-    renderHourlyChart();
-    renderStageTimeChart();
+    renderExecutiveDashboard();
     renderCalendar();
     renderSelectedDay();
     renderCompanyRanking();
     renderTrackingTable();
-    renderShiftSummary();
     fitFullscreen();
-    scheduleChartResize();
     if (state.compareMode) {
       populateCompareOptions();
       renderComparisonWorkspace();
@@ -984,16 +1506,13 @@ function formatFreshnessAge(milliseconds) {
   function renderHeaderMeta() {
     const board = state.board || {};
     const module = board.module || {};
-    document.title = `Dashboard ภาพรวม ${module.name || 'Vendor / Receiving'}`;
+    document.title = `Dashboard ${module.name || 'Vendor / Receiving'}`;
     setText('dataRevision', `ข้อมูลชุด ${text(board.snapshotId || board.dataRevision).slice(0, 18) || '-'}`);
     setText('lastUpdated', `อัปเดตล่าสุด ${board.generatedAt || state.analytics?.generatedAt || '-'}`);
     const truncated = state.analytics?.historyWindow?.truncated === true;
-    setText(
-      'autoRefreshLabel',
-      truncated
-        ? 'ข้อมูลย้อนหลังถึงขีดจำกัด โปรดตรวจคุณภาพข้อมูล'
-        : 'ตรวจการเปลี่ยนแปลงทุก 5 วินาที'
-    );
+    setText('autoRefreshLabel', truncated
+      ? 'ข้อมูลย้อนหลังถึงขีดจำกัด โปรดตรวจคุณภาพข้อมูล'
+      : 'ตรวจการเปลี่ยนแปลงทุก 5 วินาที');
   }
 
   function previousPeriodRecords() {
@@ -1254,15 +1773,13 @@ function formatFreshnessAge(milliseconds) {
   }
 
   function chartOptions(config) {
+    const palette = themePalette();
     const horizontal = config.horizontal === true;
     const compactAxis = (value) => {
       const numeric = Number(value);
       if (!Number.isFinite(numeric)) return value;
       if (Math.abs(numeric) < 1000) return numeric.toLocaleString('th-TH');
-      return new Intl.NumberFormat('th-TH', {
-        notation: 'compact',
-        maximumFractionDigits: 1
-      }).format(numeric);
+      return new Intl.NumberFormat('th-TH', {notation: 'compact', maximumFractionDigits: 1}).format(numeric);
     };
     return {
       responsive: true,
@@ -1272,31 +1789,12 @@ function formatFreshnessAge(milliseconds) {
       indexAxis: horizontal ? 'y' : 'x',
       animation: {duration: 220},
       plugins: {
-        legend: {
-          display: config.legend === true,
-          position: 'top',
-          labels: {boxWidth: 11, boxHeight: 6, padding: 8, font: {size: 9, family: 'Noto Sans Thai, Leelawadee UI, Tahoma'}, color: COLORS.text}
-        },
-        tooltip: {backgroundColor: '#073d55', titleFont: {size: 11, family: 'Noto Sans Thai, Tahoma'}, bodyFont: {size: 10, family: 'Noto Sans Thai, Tahoma'}}
+        legend: {display: config.legend === true, position: 'top', labels: {boxWidth: 11, boxHeight: 6, padding: 9, font: {size: 9, family: 'Noto Sans Thai, Leelawadee UI, Tahoma'}, color: palette.muted}},
+        tooltip: {backgroundColor: palette.tooltip, titleColor: palette.text, bodyColor: palette.text, titleFont: {size: 11, family: 'Noto Sans Thai, Tahoma'}, bodyFont: {size: 10, family: 'Noto Sans Thai, Tahoma'}}
       },
       scales: {
-        x: {
-          beginAtZero: horizontal,
-          grid: {color: COLORS.grid},
-          ticks: {
-            font: {size: 9, family: 'Noto Sans Thai, Tahoma'},
-            color: COLORS.text,
-            maxTicksLimit: horizontal ? 7 : 14,
-            callback: horizontal ? compactAxis : undefined
-          },
-          title: {display: Boolean(config.xTitle), text: config.xTitle, font: {size: 8}}
-        },
-        y: {
-          beginAtZero: true,
-          grid: {color: COLORS.grid},
-          ticks: {font: {size: 9, family: 'Noto Sans Thai, Tahoma'}, color: COLORS.text, maxTicksLimit: horizontal ? 8 : 7},
-          title: {display: Boolean(config.yTitle), text: config.yTitle, font: {size: 8}}
-        }
+        x: {beginAtZero: horizontal, grid: {color: palette.grid}, ticks: {font: {size: 9, family: 'Noto Sans Thai, Tahoma'}, color: palette.muted, maxTicksLimit: horizontal ? 7 : 14, callback: horizontal ? compactAxis : undefined}, title: {display: Boolean(config.xTitle), text: config.xTitle, color: palette.muted, font: {size: 8}}},
+        y: {beginAtZero: true, grid: {color: palette.grid}, ticks: {font: {size: 9, family: 'Noto Sans Thai, Tahoma'}, color: palette.muted, maxTicksLimit: horizontal ? 8 : 7}, title: {display: Boolean(config.yTitle), text: config.yTitle, color: palette.muted, font: {size: 8}}}
       }
     };
   }
@@ -1322,10 +1820,12 @@ function formatFreshnessAge(milliseconds) {
   }
 
   function showAllAlerts() {
-    const rows = activeFilteredRecords().filter((record) => record.statusCode !== 'NORMAL' || record.isIncomplete);
+    const rows = currentActiveRecords()
+      .filter((record) => severityCode(record) !== 'NORMAL')
+      .sort((a, b) => trackingPriority(b) - trackingPriority(a));
     window.Swal?.fire({
-      title: `เตือนสำคัญ ${rows.length} รายการ`, width: 900,
-      html: rows.length ? `<div style="max-height:60vh;overflow:auto;text-align:left">${rows.map((record) => `<button type="button" data-alert-modal-id="${escapeHtml(record.canonicalRecordId)}" style="width:100%;display:grid;grid-template-columns:1fr 1fr auto;gap:8px;padding:10px;border:0;border-bottom:1px solid #e5e7eb;background:#fff;text-align:left"><b>${escapeHtml(record.appointmentNumber || record.autoId || '-')}</b><span>${escapeHtml(record.companyName || '-')}</span><strong>${escapeHtml(record.statusLabel || record.stageLabel || '-')}</strong></button>`).join('')}</div>` : '<p>ไม่มีรายการเตือน</p>',
+      title: `งานที่ต้องติดตาม ${rows.length} รายการ`, width: 980,
+      html: rows.length ? `<div class="modal-record-list">${rows.map((record) => `<button type="button" data-alert-modal-id="${escapeHtml(record.canonicalRecordId)}"><b>${escapeHtml(record.appointmentNumber || record.autoId || '-')}</b><span>${escapeHtml(record.companyName || '-')}</span><span>${escapeHtml(record.stageLabel || '-')}</span><strong>${escapeHtml(record.statusLabel || severityCode(record))}</strong></button>`).join('')}</div>` : '<p>ไม่มีรายการเตือน</p>',
       confirmButtonText: 'ปิด', didOpen: () => {
         document.querySelectorAll('[data-alert-modal-id]').forEach((button) => button.addEventListener('click', () => showRecordDetail(findRecord(button.dataset.alertModalId))));
       }
@@ -2431,15 +2931,18 @@ function isMobileComparisonViewport() {
     state.compareMode = active === true;
     byId('comparisonWorkspace').hidden = !state.compareMode;
     byId('mainDashboardGrid').hidden = state.compareMode;
+    byId('analysisPanel').hidden = true;
+    state.analysisOpen = false;
     byId('mainDashboardBottom').hidden = state.compareMode;
     byId('compareModeButton').classList.toggle('is-active', state.compareMode);
     setText('compareModeButton', state.compareMode ? '← ภาพรวมหลัก' : '⇄ เปรียบเทียบ');
     if (state.compareMode) {
       populateCompareOptions();
       renderComparisonWorkspace();
+      byId('comparisonWorkspace').scrollIntoView({behavior: 'smooth', block: 'start'});
     } else {
       destroyCompareCharts();
-      scheduleChartResize();
+      renderExecutiveDashboard();
     }
   }
 
@@ -2452,36 +2955,15 @@ function isMobileComparisonViewport() {
   }
 
   function fitFullscreen() {
-    const fullscreenActive = Boolean(
-      document.fullscreenElement
-    );
+    const fullscreenActive = Boolean(document.fullscreenElement);
     const fullscreenButton = byId('fullscreenButton');
-    const fullscreenLabel = fullscreenActive
-      ? 'ออกจากเต็มจอ'
-      : 'เปิดเต็มจอ';
-
-    document.body.classList.toggle(
-      'is-fullscreen',
-      fullscreenActive
-    );
-    setText(
-      'fullscreenButton',
-      fullscreenActive
-        ? '⛶ ออกจากเต็มจอ'
-        : '⛶ เปิดเต็มจอ'
-    );
-
+    document.body.classList.toggle('is-fullscreen', fullscreenActive);
+    setText('fullscreenButton', fullscreenActive ? '⛶ ออกจากเต็มจอ' : '⛶ เต็มจอ');
     if (fullscreenButton) {
-      fullscreenButton.title = fullscreenLabel;
-      fullscreenButton.setAttribute(
-        'aria-label',
-        fullscreenLabel
-      );
+      fullscreenButton.title = fullscreenActive ? 'ออกจากเต็มจอ' : 'เปิดเต็มจอ';
+      fullscreenButton.setAttribute('aria-label', fullscreenButton.title);
     }
-
-    Object.values(state.charts).forEach(
-      (chart) => chart && chart.resize()
-    );
+    Object.values(state.charts).forEach((chart) => chart && chart.resize());
   }
 
   function scheduleChartResize() {
@@ -2543,83 +3025,53 @@ function isMobileComparisonViewport() {
   }
 
   function bindEvents() {
-    byId('backButton').addEventListener('click', () => { window.location.href = CONFIG.MODULE_URL; });
-    byId('refreshButton').addEventListener('click', () => loadDashboard(false, {manual: true}));
-    byId('fullscreenButton').addEventListener('click', toggleFullscreen);
-    byId('exportButton').addEventListener('click', exportMenu);
-    byId('compareModeButton').addEventListener('click', () => setCompareMode(!state.compareMode));
-    byId('closeCompareButton').addEventListener('click', () => setCompareMode(false));
-    byId('comparePairButton')?.addEventListener(
-      'click',
-      () => setCompareLayout('PAIR')
-    );
-    byId('compareOverlayButton')?.addEventListener(
-      'click',
-      () => setCompareLayout('OVERLAY')
-    );
-    byId('compareType').addEventListener('change', () => {
-      state.compareType = byId('compareType').value || 'DAY';
-      state.compareA = '';
-      state.compareB = '';
-      populateCompareOptions();
-      renderComparisonWorkspace();
-    });
-    byId('compareView').addEventListener('change', () => {
-      state.compareView = byId('compareView').value || 'OVERVIEW';
-      renderComparisonWorkspace();
-    });
-    byId('compareA').addEventListener('change', () => { state.compareA = byId('compareA').value; renderComparisonWorkspace(); });
-    byId('compareB').addEventListener('change', () => { state.compareB = byId('compareB').value; renderComparisonWorkspace(); });
-    byId('swapCompareButton').addEventListener('click', () => {
-      const value = state.compareA; state.compareA = state.compareB; state.compareB = value;
-      byId('compareA').value = state.compareA; byId('compareB').value = state.compareB;
-      renderComparisonWorkspace();
-    });
+    byId('backButton')?.addEventListener('click', () => { window.location.href = CONFIG.MODULE_URL; });
+    byId('refreshButton')?.addEventListener('click', () => loadDashboard(false, {manual: true}));
+    byId('fullscreenButton')?.addEventListener('click', toggleFullscreen);
+    byId('exportButton')?.addEventListener('click', exportMenu);
+    byId('analysisButton')?.addEventListener('click', () => toggleAnalysis());
+    byId('closeAnalysisButton')?.addEventListener('click', () => toggleAnalysis(false));
+    byId('compareModeButton')?.addEventListener('click', () => setCompareMode(!state.compareMode));
+    byId('closeCompareButton')?.addEventListener('click', () => setCompareMode(false));
+    byId('comparePairButton')?.addEventListener('click', () => setCompareLayout('PAIR'));
+    byId('compareOverlayButton')?.addEventListener('click', () => setCompareLayout('OVERLAY'));
+    byId('compareType')?.addEventListener('change', () => { state.compareType = byId('compareType').value || 'DAY'; state.compareA = ''; state.compareB = ''; populateCompareOptions(); renderComparisonWorkspace(); });
+    byId('compareView')?.addEventListener('change', () => { state.compareView = byId('compareView').value || 'OVERVIEW'; renderComparisonWorkspace(); });
+    byId('compareA')?.addEventListener('change', () => { state.compareA = byId('compareA').value; renderComparisonWorkspace(); });
+    byId('compareB')?.addEventListener('change', () => { state.compareB = byId('compareB').value; renderComparisonWorkspace(); });
+    byId('swapCompareButton')?.addEventListener('click', () => { const value = state.compareA; state.compareA = state.compareB; state.compareB = value; byId('compareA').value = state.compareA; byId('compareB').value = state.compareB; renderComparisonWorkspace(); });
 
-    byId('resetButton').addEventListener('click', resetFilters);
+    document.querySelector('.theme-switcher')?.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-theme-value]');
+      if (button) applyDashboardTheme(button.dataset.themeValue, true);
+    });
+    document.querySelectorAll('[data-flow-range]').forEach((button) => button.addEventListener('click', () => { state.flowRange = button.dataset.flowRange || '24H'; renderOperationalFlow(); }));
+    byId('urgentTabs')?.addEventListener('click', (event) => { const button = event.target.closest('[data-urgent-mode]'); if (!button) return; state.urgentMode = button.dataset.urgentMode; renderUrgentActions(); });
+    document.querySelector('.current-state-grid')?.addEventListener('click', (event) => { const button = event.target.closest('[data-current-mode]'); if (button) showCurrentGroup(button.dataset.currentMode); });
+    byId('urgentTableBody')?.addEventListener('click', (event) => { const row = event.target.closest('[data-record-id]'); if (row) showRecordDetail(findRecord(row.dataset.recordId)); });
+    byId('rollingSlowButton')?.addEventListener('click', showSlowJobs);
+    byId('showAllAlerts')?.addEventListener('click', showAllAlerts);
+
+    byId('resetButton')?.addEventListener('click', resetFilters);
+    ['dateFrom','dateTo','shiftFilter','profileFilter','statusFilter'].forEach((id) => byId(id)?.addEventListener('change', applyFiltersAndRender));
+    let searchTimer = null;
+    byId('searchInput')?.addEventListener('input', () => { window.clearTimeout(searchTimer); searchTimer = window.setTimeout(applyFiltersAndRender, 220); });
+    byId('calendarPrev')?.addEventListener('click', () => shiftCalendarMonth(-1));
+    byId('calendarNext')?.addEventListener('click', () => shiftCalendarMonth(1));
+    byId('calendarGrid')?.addEventListener('click', (event) => { const button = event.target.closest('[data-calendar-date]'); if (!button) return; state.selectedDate = button.dataset.calendarDate; state.calendarMonth = state.selectedDate.slice(0, 7); renderCalendar(); renderSelectedDay(); renderCompanyRanking(); });
+    byId('companyRanking')?.addEventListener('click', (event) => { const row = event.target.closest('[data-record-id]'); if (row) showRecordDetail(findRecord(row.dataset.recordId)); });
+    byId('trackingTableBody')?.addEventListener('click', (event) => { const row = event.target.closest('[data-record-id]'); if (row) showRecordDetail(findRecord(row.dataset.recordId)); });
+
     window.addEventListener('resize', scheduleChartResize);
     window.addEventListener('resize', updateFreshnessStatus);
-    window.addEventListener('resize', () => {
-      window.clearTimeout(
-        state.compareResizeTimer
-      );
-
-      state.compareResizeTimer =
-        window.setTimeout(() => {
-          if (state.compareMode) {
-            renderComparisonWorkspace();
-          }
-        }, 180);
-    });
-    ['dateFrom','dateTo','shiftFilter','profileFilter','statusFilter'].forEach((id) => byId(id).addEventListener('change', applyFiltersAndRender));
-    let searchTimer = null;
-    byId('searchInput').addEventListener('input', () => {
-      window.clearTimeout(searchTimer); searchTimer = window.setTimeout(applyFiltersAndRender, 220);
-    });
-    byId('calendarPrev').addEventListener('click', () => shiftCalendarMonth(-1));
-    byId('calendarNext').addEventListener('click', () => shiftCalendarMonth(1));
-    byId('calendarGrid').addEventListener('click', (event) => {
-      const button = event.target.closest('[data-calendar-date]');
-      if (!button) return;
-      state.selectedDate = button.dataset.calendarDate;
-      state.calendarMonth = state.selectedDate.slice(0, 7);
-      renderCalendar(); renderSelectedDay(); renderCompanyRanking();
-    });
-    byId('alertList').addEventListener('click', (event) => {
-      const button = event.target.closest('[data-record-id]'); if (button) showRecordDetail(findRecord(button.dataset.recordId));
-    });
-    byId('companyRanking').addEventListener('click', (event) => {
-      const row = event.target.closest('[data-record-id]');
-      if (row) showRecordDetail(findRecord(row.dataset.recordId));
-    });
-    byId('trackingTableBody').addEventListener('click', (event) => {
-      const row = event.target.closest('[data-record-id]'); if (row) showRecordDetail(findRecord(row.dataset.recordId));
-    });
-    byId('showAllAlerts').addEventListener('click', showAllAlerts);
+    window.addEventListener('resize', () => { window.clearTimeout(state.compareResizeTimer); state.compareResizeTimer = window.setTimeout(() => { if (state.compareMode) renderComparisonWorkspace(); }, 180); });
     document.addEventListener('fullscreenchange', fitFullscreen);
     window.addEventListener('resize', fitFullscreen);
     window.addEventListener('online', () => setText('connectionText', 'ออนไลน์'));
     window.addEventListener('offline', () => setText('connectionText', 'ออฟไลน์'));
+
+    const media = window.matchMedia?.('(prefers-color-scheme: dark)');
+    media?.addEventListener?.('change', () => { if (state.themePreference === 'system') applyDashboardTheme('system', false); });
   }
 
   function observeDashboardLayout() {
@@ -2640,6 +3092,7 @@ function isMobileComparisonViewport() {
       window.Chart.defaults.color = COLORS.text;
       window.Chart.defaults.devicePixelRatio = Math.min(2, window.devicePixelRatio || 1);
     }
+    applyDashboardTheme(loadThemePreference(), false);
     bindEvents();
     observeDashboardLayout();
     updateClock();
