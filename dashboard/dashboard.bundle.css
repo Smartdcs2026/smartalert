@@ -784,3 +784,55 @@ body.is-fullscreen .compare-chart-canvas{height:100%;min-height:240px;max-height
     height:34px!important;
   }
 }
+
+
+/* =========================================================
+   Round 4 Hotfix 7 Rev4 — Header Title Alignment
+   - Remove ambiguous "รถ" badge
+   - Back button and title share one aligned row on mobile
+   ========================================================= */
+
+/* Protect against stale HTML that may still contain the old badge. */
+.topbar .brand-mark{
+  display:none!important;
+}
+
+@media (max-width:760px){
+  .brand-block{
+    grid-template-columns:31px minmax(0,1fr)!important;
+    column-gap:8px!important;
+  }
+
+  .brand-copy{
+    height:34px!important;
+    display:flex!important;
+    align-items:center!important;
+    min-width:0!important;
+  }
+
+  .brand-copy h1{
+    width:100%!important;
+    display:flex!important;
+    align-items:center!important;
+    min-height:34px!important;
+  }
+
+  .brand-copy h1::after{
+    width:100%;
+    line-height:1.15!important;
+  }
+}
+
+@media (max-width:390px){
+  .brand-block{
+    grid-template-columns:30px minmax(0,1fr)!important;
+    column-gap:7px!important;
+  }
+}
+
+@media (max-width:760px){
+  body.is-fullscreen .brand-block{
+    grid-template-columns:30px minmax(0,1fr)!important;
+    column-gap:6px!important;
+  }
+}
