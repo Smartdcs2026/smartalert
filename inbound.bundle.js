@@ -1,3 +1,4 @@
+/* ROUND4_HOTFIX4_INBOUND_FIRST_SCAN_RECOVERY: 2026.07.22 */
 /* INBOUND_SCHEDULE_RECONCILIATION_HOTFIX6_BUILD: 2026.07.22 */
 /* INBOUND_EFFECTIVE_ACTIVATION_HOTFIX5_BUILD: 2026.07.22 */
 /* INBOUND_READ_AFTER_WRITE_HOTFIX4_BUILD: 2026.07.22 */
@@ -2551,7 +2552,7 @@
         {
           method: 'POST',
           timeoutMs:
-            Math.min(Number(CONFIG.SAVE_TIMEOUT_MS || 15000), 15000),
+            Math.min(Number(CONFIG.SAVE_TIMEOUT_MS || 30000), 30000),
           requestId:
             body.clientRequestId,
           body
@@ -4987,78 +4988,29 @@
     });
 
     if (operation.kind === KIND.RESOLVE_SCAN) {
-      const lookup = await state.api.lookupInboundWorkflow(
-        operation.moduleId,
-        operation.autoId,
-        {
-          entryCode: operation.autoId,
-          autoId: operation.autoId,
-          lookupMethod,
-          method: lookupMethod,
-          qrText: payload.qrText || operation.autoId,
-          cacheBust: Date.now()
-        }
-      );
-
-      const action = deriveWorkflowAction(lookup);
-      const expectation = validateReplayExpectation(
-        operation,
-        lookup,
-        action
-      );
-
-      if (expectation.safeToWrite !== true) {
-        return {
-          action: 'NO_WRITE_REQUIRED',
-          noWrite: true,
-          reconciled: true,
-          stateChanged: expectation.stateChanged === true,
-          message: expectation.message,
-          lookup
-        };
-      }
-
-      const enrichedPayload = enrichPayloadFromLookup(payload, lookup);
-
-      if (action === KIND.SUBMIT_DOCUMENT) {
-        const result = await state.api.submitInboundDocument(
+      if (
+        state.api &&
+        typeof state.api.processInboundWorkflowScan === 'function'
+      ) {
+        const result = await state.api.processInboundWorkflowScan(
           operation.moduleId,
-          Object.assign({}, enrichedPayload, {
-            note: payload.note || 'ส่งซ้ำจากคิว Inbound หลังเครือข่ายกลับมา',
-            scanSource: 'QUEUE_REPLAY',
-            originalScanSource: cleanText(
-              payload.originalScanSource ||
-              payload.source ||
-              operation.source ||
-              'SCAN'
-            )
+          Object.assign({}, payload, {
+            entryCode: operation.autoId,
+            autoId: operation.autoId,
+            clientRequestId: operation.clientRequestId,
+            requestId: operation.requestId,
+            scanSource: 'QUEUE_REPLAY_ATOMIC',
+            verificationRequired: true
           })
         );
-        return { action, lookup, result };
+
+        return result;
       }
 
-      if (action === KIND.RETURN_DOCUMENT) {
-        const result = await state.api.returnInboundDocument(
-          operation.moduleId,
-          Object.assign({}, enrichedPayload, {
-            note: payload.note || 'ส่งซ้ำจากคิว Inbound หลังเครือข่ายกลับมา',
-            scanSource: 'QUEUE_REPLAY',
-            originalScanSource: cleanText(
-              payload.originalScanSource ||
-              payload.source ||
-              operation.source ||
-              'SCAN'
-            )
-          })
-        );
-        return { action, lookup, result };
-      }
-
-      return {
-        action: 'NO_WRITE_REQUIRED',
-        noWrite: true,
-        lookup
-      };
+      throw new QueueError(
+        'PROCESS_SCAN_API_MISSING',
+        'ไม่พบ Atomic Process Scan API สำหรับส่งคำสั่งเดิมซ้ำ'
+      );
     }
 
     if (operation.kind === KIND.SUBMIT_DOCUMENT) {
@@ -6289,7 +6241,7 @@
   const CONFIG = window.APP_CONFIG || {};
   const API = window.VehicleAPI;
   const PENDING_QUEUE = window.InboundPendingQueue;
-  const BUILD = '2026.07.21-baseline2-final-hotfix5-optional-inbound-v1';
+  const BUILD = '2026.07.22-round4-hotfix4-first-scan-recovery-v1';
   const FAST_SCAN_MODE = false; // Online = authoritative direct commit; Queue ใช้เฉพาะ Offline/Timeout
   const FAST_QUEUE_FLUSH_DELAY_MS = 35;
   const FAST_QUEUE_RETRY_BASE_MS = 1200;
@@ -6978,6 +6930,7 @@
     const cleanCode = normalizeCode(rawCode);
     const source = meta && meta.source ? String(meta.source) : 'SCAN';
     const requestId = createStableRequestId();
+    const scanStartedAtMs = Date.now();
     const workflowExpectation = getWorkflowExpectation(cleanCode);
 
     if (!cleanCode) {
@@ -7101,14 +7054,24 @@
               meta
             );
             if (queued) {
-              beep('warn');
               blockDuplicate(cleanCode, HARD_BLOCK_AFTER_SAVE_MS);
+              scheduleFastQueueFlush(0);
+
               setScanMessage(
                 navigator.onLine === false
                   ? 'ออฟไลน์ · เก็บรายการไว้ในเครื่องแล้ว: ' + cleanCode
-                  : 'Backend ยังไม่ยืนยันผล · ระบบจะตรวจซ้ำด้วย Request ID เดิม: ' + cleanCode,
-                'WARN'
+                  : 'รับคำขอแล้ว · กำลังยืนยันผลอัตโนมัติ: ' + cleanCode,
+                navigator.onLine === false ? 'WARN' : 'BUSY'
               );
+
+              if (navigator.onLine !== false) {
+                void monitorPendingScanCommit(
+                  cleanCode,
+                  workflowExpectation,
+                  requestId,
+                  scanStartedAtMs
+                );
+              }
               return;
             }
           }
@@ -7171,48 +7134,79 @@
     }
   }
 
-  async function verifyProcessScanCommitAfterTransient(autoId, expectation, requestId) {
-    if (!API || typeof API.lookupInboundWorkflow !== 'function' || navigator.onLine === false) {
+  async function verifyProcessScanCommitAfterTransient(
+    autoId,
+    expectation,
+    requestId
+  ) {
+    if (
+      !API ||
+      navigator.onLine === false ||
+      typeof API.getInboundWorkflowState !== 'function'
+    ) {
       return null;
     }
 
-    const expectedAction = text(expectation && expectation.expectedActionCode).toUpperCase();
-    const delays = [220, 650];
+    const expectedAction = text(
+      expectation && expectation.expectedActionCode
+    ).toUpperCase();
+    const delays = [250, 700, 1400];
 
     for (let index = 0; index < delays.length; index += 1) {
-      await new Promise((resolve) => window.setTimeout(resolve, delays[index]));
+      await new Promise((resolve) =>
+        window.setTimeout(resolve, delays[index])
+      );
+
       try {
-        const raw = await API.lookupInboundWorkflow(state.moduleId, autoId, {
-          method: 'VERIFY',
-          lookupMethod: 'VERIFY',
-          scanSource: 'DIRECT_TIMEOUT_VERIFY',
-          clientRequestId: requestId,
-          requestId
-        });
+        const raw = await API.getInboundWorkflowState(
+          state.moduleId,
+          autoId,
+          {
+            method: 'VERIFY',
+            lookupMethod: 'VERIFY',
+            cacheBust: Date.now(),
+            clientRequestId: requestId,
+            requestId
+          }
+        );
+
         const lookup = normalizeLookup(raw, {autoId});
-        const workflow = lookup && lookup.state ? lookup.state : {};
+        const workflow = lookup && lookup.state
+          ? lookup.state
+          : {};
         const status = text(workflow.statusCode).toUpperCase();
+        const committedByRequest =
+          text(workflow.requestId) === text(requestId);
+
         const submitCommitted = Boolean(
           workflow.documentSubmittedAt ||
-          ['DOCUMENT_SUBMITTED', 'RECEIVING_COMPLETED', 'DOCUMENT_RETURNED', 'GATE_OUT_COMPLETED'].includes(status)
+          [
+            'DOCUMENT_SUBMITTED',
+            'RECEIVING_COMPLETED',
+            'DOCUMENT_RETURNED',
+            'GATE_OUT_COMPLETED'
+          ].includes(status)
         );
         const returnCommitted = Boolean(
           workflow.documentReturnedAt ||
-          ['DOCUMENT_RETURNED', 'GATE_OUT_COMPLETED'].includes(status)
+          ['DOCUMENT_RETURNED','GATE_OUT_COMPLETED'].includes(status)
         );
-        const committed = expectedAction === 'RETURN_DOCUMENT'
-          ? returnCommitted
-          : expectedAction === 'SUBMIT_DOCUMENT'
-            ? submitCommitted
-            : false;
 
-        if (committed) {
+        const actionCommitted =
+          expectedAction === 'RETURN_DOCUMENT'
+            ? returnCommitted
+            : expectedAction === 'SUBMIT_DOCUMENT'
+              ? submitCommitted
+              : false;
+
+        if (committedByRequest || actionCommitted) {
           return Object.assign({}, raw || {}, {
             committed: true,
             idempotentReplay: true,
             resolvedAction: expectedAction,
             requestId,
-            message: 'Backend บันทึกสำเร็จแล้ว ระบบตรวจยืนยันด้วย Request ID เดิม'
+            message:
+              'Backend บันทึกสำเร็จแล้ว ระบบยืนยันด้วย Request ID เดิม'
           });
         }
       } catch (error) {
@@ -7221,6 +7215,109 @@
     }
 
     return null;
+  }
+
+async function monitorPendingScanCommit(
+    autoId,
+    expectation,
+    requestId,
+    startedAtMs
+  ) {
+    if (
+      !API ||
+      typeof API.getInboundWorkflowState !== 'function' ||
+      navigator.onLine === false
+    ) {
+      return false;
+    }
+
+    const expectedAction = text(
+      expectation && expectation.expectedActionCode
+    ).toUpperCase();
+    const delays = [900, 1400, 2200, 3200, 4800, 6500];
+
+    for (let index = 0; index < delays.length; index += 1) {
+      await new Promise((resolve) =>
+        window.setTimeout(resolve, delays[index])
+      );
+
+      try {
+        const raw = await API.getInboundWorkflowState(
+          state.moduleId,
+          autoId,
+          {
+            method: 'VERIFY',
+            lookupMethod: 'VERIFY',
+            cacheBust: Date.now(),
+            clientRequestId: requestId,
+            requestId
+          }
+        );
+
+        const lookup = normalizeLookup(raw, {autoId});
+        const workflow = lookup && lookup.state
+          ? lookup.state
+          : {};
+        const status = text(workflow.statusCode).toUpperCase();
+        const sameRequest =
+          text(workflow.requestId) === text(requestId);
+
+        const committedAtText =
+          expectedAction === 'RETURN_DOCUMENT'
+            ? workflow.documentReturnedAt
+            : workflow.documentSubmittedAt;
+        const committedAt = parseDateTime(committedAtText);
+        const recentAction = Boolean(
+          committedAt &&
+          committedAt.getTime() >= Number(startedAtMs) - 5000
+        );
+
+        const stageAdvanced =
+          expectedAction === 'RETURN_DOCUMENT'
+            ? Boolean(
+                workflow.documentReturnedAt ||
+                ['DOCUMENT_RETURNED','GATE_OUT_COMPLETED'].includes(status)
+              )
+            : expectedAction === 'SUBMIT_DOCUMENT'
+              ? Boolean(
+                  workflow.documentSubmittedAt ||
+                  [
+                    'DOCUMENT_SUBMITTED',
+                    'RECEIVING_COMPLETED',
+                    'DOCUMENT_RETURNED',
+                    'GATE_OUT_COMPLETED'
+                  ].includes(status)
+                )
+              : false;
+
+        if (sameRequest || (stageAdvanced && recentAction)) {
+          handleProcessScanResult(
+            Object.assign({}, raw || {}, {
+              committed: true,
+              idempotentReplay: true,
+              resolvedAction: expectedAction,
+              requestId,
+              message:
+                'บันทึกสำเร็จแล้ว · ระบบยืนยันอัตโนมัติโดยไม่ต้องสแกนซ้ำ'
+            }),
+            autoId
+          );
+          setScanMessage(
+            'บันทึกสำเร็จแล้ว: ' + autoId,
+            'SUCCESS'
+          );
+          scheduleRevisionCheckAfterWrite();
+          return true;
+        }
+      } catch (error) {
+        if (!isTransientQueueError(error)) {
+          console.warn('ตรวจยืนยันคำสั่งสแกนไม่สำเร็จ', error);
+          return false;
+        }
+      }
+    }
+
+    return false;
   }
 
   function handleProcessScanResult(result, fallbackAutoId) {
