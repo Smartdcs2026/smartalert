@@ -1,3 +1,4 @@
+/* ROUND4_HOTFIX7_REALTIME_FRESHNESS_STATUS: 2026.07.22 */
 /* ROUND4_HOTFIX3_REV4_COMPARISON_TOOLBAR_FIX: 2026.07.22 */
 /* ROUND4_HOTFIX3_REV3_ADMIN_SLA_ALIGNED_AGING */
 :root{
@@ -443,4 +444,42 @@ body.is-fullscreen .compare-chart-canvas{height:100%;min-height:240px;max-height
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
+}
+
+
+.live-state{
+  min-width:190px;
+  justify-content:flex-end;
+}
+
+.live-state .refresh-warning{
+  color:#fbb215!important;
+}
+
+.live-state .refresh-critical{
+  color:#ff6699!important;
+}
+
+.live-state .refresh-warning::before,
+.live-state .refresh-critical::before{
+  content:"";
+  display:inline-block;
+  width:8px;
+  height:8px;
+  margin-right:6px;
+  border-radius:50%;
+  background:currentColor;
+}
+
+@media(max-width:820px){
+  .live-state{
+    min-width:0;
+    max-width:190px;
+  }
+
+  .live-state span{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
 }
