@@ -435,3 +435,12 @@ body.is-fullscreen .compare-chart-canvas{height:100%;min-height:240px;max-height
     font-size:12px;
   }
 }
+
+
+/* Round 4 Hotfix 4 — Data provenance */
+.compare-pane-head span{
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
