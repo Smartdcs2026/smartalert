@@ -10,12 +10,258 @@
   <title>Dashboard Vendor / Receiving</title>
   <link rel="manifest" href="../manifest.webmanifest">
   <link rel="stylesheet" href="../core.bundle.css?v=20260722-round4-dashboard">
-  <link rel="stylesheet" href="./dashboard.bundle.css?v=20260723-round4-final-rev2-executive-fullscreen-fix-v1">
+  <link rel="stylesheet" href="./dashboard.bundle.css?v=20260723-round4-final-rev4-topbar-responsive-v1">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-  <script src="./dashboard.bundle.js?v=20260723-round4-final-rev2-executive-fullscreen-fix-v1" defer></script>
+  <script src="./dashboard.bundle.js?v=20260723-round4-final-rev4-topbar-responsive-v1" defer></script>
+<style id="smartalertFullscreenCriticalRev3">
+  /*
+   * ROUND 4 FINAL REV3
+   * Critical Fullscreen Hard Layout.
+   * Inline intentionally: prevents stale CSS from leaving the
+   * left dashboard stack collapsed.
+   */
+  html:fullscreen,
+  html:fullscreen body,
+  body.is-fullscreen {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 100% !important;
+  }
+
+  html:fullscreen body,
+  body.is-fullscreen {
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+
+  html:fullscreen body .ops-topbar,
+  body.is-fullscreen .ops-topbar {
+    position: static !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    height: 56px !important;
+    min-height: 56px !important;
+    padding: 5px 12px !important;
+  }
+
+  html:fullscreen body #dashboardStage,
+  body.is-fullscreen #dashboardStage {
+    display: block !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: calc(100vh - 56px) !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 6px !important;
+    overflow: hidden !important;
+  }
+
+  html:fullscreen body #mainDashboardGrid:not([hidden]),
+  body.is-fullscreen #mainDashboardGrid:not([hidden]) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: 104px minmax(0, 1fr) !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    gap: 6px !important;
+    overflow: hidden !important;
+  }
+
+  html:fullscreen body .current-state-section,
+  body.is-fullscreen .current-state-section {
+    height: 104px !important;
+    min-height: 104px !important;
+    overflow: hidden !important;
+  }
+
+  html:fullscreen body .current-state-grid,
+  body.is-fullscreen .current-state-grid {
+    display: grid !important;
+    grid-template-columns: repeat(10, minmax(0, 1fr)) !important;
+    grid-auto-rows: minmax(0, 1fr) !important;
+    min-height: 56px !important;
+  }
+
+  html:fullscreen body .ops-content-grid,
+  body.is-fullscreen .ops-content-grid {
+    display: grid !important;
+    grid-template-columns:
+      minmax(0, 1.57fr)
+      minmax(410px, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    gap: 6px !important;
+    overflow: hidden !important;
+  }
+
+  /*
+   * Do not use Grid for the two stacks in fullscreen.
+   * Flex prevents legacy grid-template rows from collapsing panels.
+   */
+  html:fullscreen body .ops-left-stack,
+  body.is-fullscreen .ops-left-stack,
+  html:fullscreen body .ops-right-stack,
+  body.is-fullscreen .ops-right-stack {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    align-content: normal !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    gap: 6px !important;
+    overflow: hidden !important;
+  }
+
+  html:fullscreen body .rolling-section,
+  body.is-fullscreen .rolling-section {
+    flex: 0 0 19% !important;
+    height: 19% !important;
+    min-height: 116px !important;
+  }
+
+  html:fullscreen body .flow-section,
+  body.is-fullscreen .flow-section {
+    flex: 1 1 49% !important;
+    height: auto !important;
+    min-height: 248px !important;
+  }
+
+  html:fullscreen body .shift-section,
+  body.is-fullscreen .shift-section {
+    flex: 0 0 31% !important;
+    height: 31% !important;
+    min-height: 180px !important;
+  }
+
+  html:fullscreen body .urgent-section,
+  body.is-fullscreen .urgent-section {
+    flex: 0 0 58% !important;
+    height: 58% !important;
+    min-height: 310px !important;
+  }
+
+  html:fullscreen body .bottleneck-section,
+  body.is-fullscreen .bottleneck-section {
+    flex: 1 1 42% !important;
+    height: auto !important;
+    min-height: 218px !important;
+  }
+
+  html:fullscreen body .rolling-section,
+  html:fullscreen body .flow-section,
+  html:fullscreen body .shift-section,
+  html:fullscreen body .urgent-section,
+  html:fullscreen body .bottleneck-section,
+  body.is-fullscreen .rolling-section,
+  body.is-fullscreen .flow-section,
+  body.is-fullscreen .shift-section,
+  body.is-fullscreen .urgent-section,
+  body.is-fullscreen .bottleneck-section {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: none !important;
+    overflow: hidden !important;
+  }
+
+  html:fullscreen body .flow-layout,
+  body.is-fullscreen .flow-layout,
+  html:fullscreen body .shift-layout,
+  body.is-fullscreen .shift-layout {
+    min-height: 0 !important;
+    height: 100% !important;
+  }
+
+  html:fullscreen body .urgent-table-wrap,
+  html:fullscreen body .bottleneck-table-wrap,
+  body.is-fullscreen .urgent-table-wrap,
+  body.is-fullscreen .bottleneck-table-wrap {
+    min-height: 0 !important;
+    height: 100% !important;
+    overflow: auto !important;
+  }
+
+  html:fullscreen body #mainDashboardBottom,
+  body.is-fullscreen #mainDashboardBottom,
+  html:fullscreen body .ops-footer,
+  body.is-fullscreen .ops-footer {
+    display: none !important;
+  }
+
+  /* Safe scrolling fallback for smaller fullscreen screens. */
+  @media (max-width: 1180px), (max-height: 720px) {
+    html:fullscreen body,
+    body.is-fullscreen {
+      overflow: auto !important;
+    }
+
+    html:fullscreen body #dashboardStage,
+    body.is-fullscreen #dashboardStage {
+      height: auto !important;
+      min-height: calc(100vh - 56px) !important;
+      overflow: visible !important;
+    }
+
+    html:fullscreen body #mainDashboardGrid:not([hidden]),
+    body.is-fullscreen #mainDashboardGrid:not([hidden]) {
+      height: auto !important;
+      min-height: 100% !important;
+      grid-template-rows: auto auto !important;
+      overflow: visible !important;
+    }
+
+    html:fullscreen body .current-state-section,
+    body.is-fullscreen .current-state-section {
+      height: auto !important;
+      min-height: 0 !important;
+    }
+
+    html:fullscreen body .current-state-grid,
+    body.is-fullscreen .current-state-grid {
+      grid-template-columns:
+        repeat(5, minmax(0, 1fr)) !important;
+    }
+
+    html:fullscreen body .ops-content-grid,
+    body.is-fullscreen .ops-content-grid {
+      height: auto !important;
+      grid-template-columns: 1fr !important;
+      overflow: visible !important;
+    }
+
+    html:fullscreen body .ops-left-stack,
+    html:fullscreen body .ops-right-stack,
+    body.is-fullscreen .ops-left-stack,
+    body.is-fullscreen .ops-right-stack {
+      height: auto !important;
+      overflow: visible !important;
+    }
+
+    html:fullscreen body .rolling-section,
+    html:fullscreen body .flow-section,
+    html:fullscreen body .shift-section,
+    html:fullscreen body .urgent-section,
+    html:fullscreen body .bottleneck-section,
+    body.is-fullscreen .rolling-section,
+    body.is-fullscreen .flow-section,
+    body.is-fullscreen .shift-section,
+    body.is-fullscreen .urgent-section,
+    body.is-fullscreen .bottleneck-section {
+      flex: none !important;
+      height: auto !important;
+      min-height: 280px !important;
+    }
+  }
+</style>
 </head>
-<body class="executive-dashboard" data-page="dashboard" data-theme="deep" data-theme-preference="deep">
+<body class="executive-dashboard" data-page="dashboard" data-theme="deep" data-theme-preference="deep" data-dashboard-build="R4F-R4-TOPBAR-RESP">
   <div id="dashboardLoading" class="loading-screen" aria-live="polite">
     <div class="loading-card">
       <div class="loading-spinner" aria-hidden="true"></div>
