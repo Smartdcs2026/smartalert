@@ -1,3 +1,4 @@
+/* ROUND4_HOTFIX4_DASHBOARD_TRUSTED_COMPARISON: 2026.07.22 */
 /* ROUND4_HOTFIX3_REV4_CURRENT_DATE_DEFAULTS: 2026.07.22 */
 /* ROUND4_HOTFIX3_REV3_ADMIN_SLA_ALIGNED_AGING: 2026.07.22 */
 /* SmartAlert Round 4 Hotfix 3 Rev1 — Main Dashboard + Optional Comparison
@@ -14,7 +15,7 @@
     REFRESH_MS: 60000,
     API_TIMEOUT_MS: 90000,
     BACKGROUND_TIMEOUT_MS: 55000,
-    CACHE_KEY: 'smartalert_dashboard_snapshot_v4_h3r4',
+    CACHE_KEY: 'smartalert_dashboard_snapshot_v4_h4_truth',
     LOCAL_CACHE_MAX_AGE_MS: 12 * 60 * 60 * 1000,
     MAX_VALID_TOTAL_SECONDS: 7 * 24 * 60 * 60,
     CACHE_RECORD_LIMIT: 1500,
@@ -190,6 +191,66 @@
     const parsed = new Date(valueText);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
+
+
+  function strictThaiDateMs(value) {
+    const source = text(value);
+    const match = source.match(
+      /^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})$/
+    );
+    if (!match) return null;
+
+    const parsed = new Date(
+      `${match[3]}-${match[2]}-${match[1]}` +
+      `T${match[4]}:${match[5]}:${match[6]}+07:00`
+    );
+    if (Number.isNaN(parsed.getTime())) return null;
+
+    const formatted = new Intl.DateTimeFormat('en-GB', {
+      timeZone:'Asia/Bangkok',
+      day:'2-digit',
+      month:'2-digit',
+      year:'numeric',
+      hour:'2-digit',
+      minute:'2-digit',
+      second:'2-digit',
+      hour12:false
+    }).format(parsed).replace(',', '');
+
+    return formatted === source ? parsed.getTime() : null;
+  }
+
+  function trustedComparisonRecord(record) {
+    const source = record && typeof record === 'object' ? record : {};
+    const textMs = strictThaiDateMs(source.gateInAt);
+    const epochMs = number(source.gateInEpochMs, null);
+    if (textMs === null) return false;
+    if (
+      epochMs !== null &&
+      Math.abs(epochMs - textMs) > 2000
+    ) return false;
+    const resolved = epochMs !== null ? epochMs : textMs;
+    if (resolved > Date.now() + 5 * 60 * 1000) return false;
+    const expectedDay = isoDay(resolved);
+    const expectedMonth = expectedDay.slice(0, 7);
+    if (source.entryDayKey && source.entryDayKey !== expectedDay) return false;
+    if (source.entryMonthKey && source.entryMonthKey !== expectedMonth) return false;
+    return true;
+  }
+
+  function trustedMonthlySummary(summary) {
+    const source = summary && typeof summary === 'object' ? summary : {};
+    const month = text(source.monthKey);
+    const currentMonth = monthKey(new Date());
+    return (
+      /^\d{4}-\d{2}$/.test(month) &&
+      month <= currentMonth &&
+      number(source.recordCount) > 0 &&
+      text(source.validationStatus).toUpperCase() === 'VERIFIED' &&
+      strictThaiDateMs(source.verifiedAt) !== null
+    );
+  }
+
 
   function isoDay(date) {
     const d = date instanceof Date ? date : new Date(date);
@@ -1044,17 +1105,11 @@
 
 
   function comparisonBaseRows() {
-    const query = text(byId('searchInput').value).toLowerCase();
-    return state.records.filter((record) => {
-      if (query) {
-        const haystack = [
-          record.autoId, record.appointmentNumber, record.companyName,
-          record.vehicleRegistration, record.driverName
-        ].map(text).join(' ').toLowerCase();
-        if (!haystack.includes(query)) return false;
-      }
-      return true;
-    });
+    /*
+     * โหมดเปรียบเทียบต้องไม่แอบใช้ Search/Filter จากหน้าภาพรวม
+     * และต้องใช้เฉพาะ Record ที่วันที่ Gate In ตรวจสอบได้จริง
+     */
+    return state.records.filter(trustedComparisonRecord);
   }
 
   function thaiMonthLabel(monthKeyValue) {
@@ -1083,53 +1138,17 @@
     const rows = comparisonBaseRows();
     const map = new Map();
     const today = isoDay(new Date());
-    const yesterday = addDayKey(today, -1);
-    const currentMonth = monthKey(new Date());
-    const previousMonth = addMonthKey(currentMonth, -1);
-
-    if (type === 'DAY') {
-      map.set(today, shortThaiDate(today));
-      map.set(yesterday, shortThaiDate(yesterday));
-    }
-
-    if (type === 'MONTH') {
-      map.set(currentMonth, thaiMonthLabel(currentMonth));
-      map.set(previousMonth, thaiMonthLabel(previousMonth));
-    }
-
-    if (type === 'SHIFT_DAY') {
-      const currentShift = state.board?.currentShift || {};
-      const businessDay = text(currentShift.businessDate) || today;
-      const shiftCode = text(currentShift.code) || 'OUTSIDE_SHIFT';
-      const shiftName = text(currentShift.name) || 'นอกกะ';
-      const previousBusinessDay = addDayKey(businessDay, -1);
-
-      map.set(
-        `${businessDay}|${shiftCode}`,
-        `${shortThaiDate(businessDay)} · ${shiftName}`
-      );
-      map.set(
-        `${previousBusinessDay}|${shiftCode}`,
-        `${shortThaiDate(previousBusinessDay)} · ${shiftName}`
-      );
-    }
-
-    if (type === 'DAY_PART') {
-      ['00-06', '06-12', '12-18', '18-24'].forEach((hours) => {
-        map.set(
-          `${today}|${hours}`,
-          `${shortThaiDate(today)} · ${hours.replace('-', ':00–')}:00`
-        );
-      });
-      map.set(
-        `${yesterday}|18-24`,
-        `${shortThaiDate(yesterday)} · 18:00–24:00`
-      );
-    }
 
     rows.forEach((record) => {
       if (type === 'DAY' && record.entryDayKey) {
         map.set(record.entryDayKey, shortThaiDate(record.entryDayKey));
+      }
+
+      if (type === 'MONTH' && record.entryMonthKey) {
+        map.set(
+          record.entryMonthKey,
+          thaiMonthLabel(record.entryMonthKey)
+        );
       }
 
       if (type === 'SHIFT_DAY') {
@@ -1149,7 +1168,8 @@
           const [day, hours] = key.split('|');
           map.set(
             key,
-            `${shortThaiDate(day)} · ${hours.replace('-', ':00–')}:00`
+            `${shortThaiDate(day)} · ` +
+            `${hours.replace('-', ':00–')}:00`
           );
         }
       }
@@ -1169,31 +1189,23 @@
           map.set(
             key,
             `${record.appointmentNumber || record.autoId || '-'} · ` +
-              `${record.companyName || 'ไม่ระบุบริษัท'}`
+            `${record.companyName || 'ไม่ระบุบริษัท'}`
           );
         }
       }
     });
 
     if (type === 'MONTH') {
-      (state.analytics?.monthlySummaries || []).forEach((item) => {
-        if (item.monthKey) {
+      (state.analytics?.monthlySummaries || [])
+        .filter(trustedMonthlySummary)
+        .forEach((item) => {
           map.set(item.monthKey, thaiMonthLabel(item.monthKey));
-        }
-      });
-      rows.forEach((record) => {
-        if (record.entryMonthKey) {
-          map.set(
-            record.entryMonthKey,
-            thaiMonthLabel(record.entryMonthKey)
-          );
-        }
-      });
+        });
     }
 
     const result = Array.from(map.entries());
 
-    if (['DAY', 'MONTH', 'SHIFT_DAY', 'DAY_PART'].includes(type)) {
+    if (['DAY','MONTH','SHIFT_DAY','DAY_PART'].includes(type)) {
       result.sort((left, right) => {
         const leftDay = type === 'MONTH'
           ? `${left[0]}-01`
@@ -1203,10 +1215,7 @@
           : right[0].split('|')[0];
         const leftFuture = leftDay > today;
         const rightFuture = rightDay > today;
-
-        if (leftFuture !== rightFuture) {
-          return leftFuture ? 1 : -1;
-        }
+        if (leftFuture !== rightFuture) return leftFuture ? 1 : -1;
         return right[0].localeCompare(left[0]);
       });
     } else {
@@ -1221,19 +1230,21 @@
   function populateCompareOptions() {
     const options = compareOptions(state.compareType);
     const values = options.map(([value]) => value);
-    const html = options.map(([value, label]) =>
+    const optionsHtml = options.map(([value, label]) =>
       `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`
     ).join('');
 
+    const emptyLabel = state.compareType === 'MONTH'
+      ? 'ไม่มีเดือนอื่นที่มีข้อมูลยืนยันแล้ว'
+      : 'ไม่มีข้อมูลสำหรับเปรียบเทียบ';
+
     byId('compareA').innerHTML =
-      html || '<option value="">ไม่มีข้อมูล</option>';
+      optionsHtml || `<option value="">${emptyLabel}</option>`;
     byId('compareB').innerHTML =
-      html || '<option value="">ไม่มีข้อมูล</option>';
+      `<option value="">${emptyLabel}</option>` + optionsHtml;
 
     const today = isoDay(new Date());
-    const yesterday = addDayKey(today, -1);
     const currentMonth = monthKey(new Date());
-    const previousMonth = addMonthKey(currentMonth, -1);
     const currentShift = state.board?.currentShift || {};
     const businessDay = text(currentShift.businessDate) || today;
     const shiftCode = text(currentShift.code) || 'OUTSIDE_SHIFT';
@@ -1242,63 +1253,89 @@
     let preferredB = '';
 
     if (state.compareType === 'DAY') {
-      preferredA = today;
-      preferredB = yesterday;
+      preferredA = values.includes(today)
+        ? today
+        : (values.find((value) => value <= today) || '');
     } else if (state.compareType === 'MONTH') {
-      preferredA = currentMonth;
-      preferredB = previousMonth;
+      preferredA = values.includes(currentMonth)
+        ? currentMonth
+        : (values.find((value) => value <= currentMonth) || '');
     } else if (state.compareType === 'SHIFT_DAY') {
-      preferredA = `${businessDay}|${shiftCode}`;
-      preferredB = `${addDayKey(businessDay, -1)}|${shiftCode}`;
+      const currentKey = `${businessDay}|${shiftCode}`;
+      preferredA = values.includes(currentKey)
+        ? currentKey
+        : (values[0] || '');
     } else if (state.compareType === 'DAY_PART') {
-      preferredA = currentDayPartKey(today);
-      preferredB = previousDayPartKey(today);
+      const currentKey = currentDayPartKey(today);
+      preferredA = values.includes(currentKey)
+        ? currentKey
+        : (values[0] || '');
     }
 
     const existingA = values.includes(state.compareA)
       ? state.compareA
       : '';
-    const existingB = values.includes(state.compareB)
-      ? state.compareB
-      : '';
-
     state.compareA =
       existingA ||
-      (values.includes(preferredA) ? preferredA : '') ||
+      preferredA ||
       values[0] ||
       '';
 
-    state.compareB =
-      (
-        existingB &&
-        existingB !== state.compareA
-          ? existingB
-          : ''
-      ) ||
-      (
-        values.includes(preferredB) &&
-        preferredB !== state.compareA
-          ? preferredB
-          : ''
-      ) ||
-      values.find((value) => value !== state.compareA) ||
-      state.compareA ||
-      '';
+    const existingB = (
+      values.includes(state.compareB) &&
+      state.compareB !== state.compareA
+    ) ? state.compareB : '';
+
+    if (existingB) {
+      state.compareB = existingB;
+    } else {
+      const aIndex = values.indexOf(state.compareA);
+      state.compareB =
+        (
+          aIndex >= 0
+            ? values.slice(aIndex + 1).find(Boolean)
+            : ''
+        ) ||
+        values.find((value) => value !== state.compareA) ||
+        '';
+    }
 
     byId('compareA').value = state.compareA;
     byId('compareB').value = state.compareB;
   }
 
   function monthlySummary(value) {
-    return (state.analytics?.monthlySummaries || []).find((item) => item.monthKey === value) || null;
+    return (state.analytics?.monthlySummaries || []).find((item) =>
+      item.monthKey === value && trustedMonthlySummary(item)
+    ) || null;
   }
 
   function comparisonDataset(type, value) {
-    if (!value) return {rows: [], summary: null, title: '-'};
+    if (!value) {
+      return {
+        rows: [],
+        summary: null,
+        title: 'ไม่มีข้อมูลที่ยืนยันแล้ว',
+        detailsAvailable: false,
+        sourceMode: 'NONE'
+      };
+    }
+
     const rows = comparisonBaseRows();
     let selected = [];
-    if (type === 'DAY') selected = rows.filter((record) => record.entryDayKey === value);
-    if (type === 'MONTH') selected = rows.filter((record) => record.entryMonthKey === value);
+
+    if (type === 'DAY') {
+      selected = rows.filter((record) =>
+        record.entryDayKey === value
+      );
+    }
+
+    if (type === 'MONTH') {
+      selected = rows.filter((record) =>
+        record.entryMonthKey === value
+      );
+    }
+
     if (type === 'SHIFT_DAY') {
       const [day, shift] = value.split('|');
       selected = rows.filter((record) =>
@@ -1306,16 +1343,40 @@
         (record.shiftCode || 'OUTSIDE_SHIFT') === shift
       );
     }
-    if (type === 'DAY_PART') selected = rows.filter((record) => dayPartKey(record) === value);
-    if (type === 'PROFILE') selected = rows.filter((record) =>
-      (record.profileCode || 'FULL_INBOUND_LEGACY') === value
-    );
-    if (type === 'RECORD') selected = rows.filter((record) => record.canonicalRecordId === value);
+
+    if (type === 'DAY_PART') {
+      selected = rows.filter((record) =>
+        dayPartKey(record) === value
+      );
+    }
+
+    if (type === 'PROFILE') {
+      selected = rows.filter((record) =>
+        (record.profileCode || 'FULL_INBOUND_LEGACY') === value
+      );
+    }
+
+    if (type === 'RECORD') {
+      selected = rows.filter((record) =>
+        record.canonicalRecordId === value
+      );
+    }
+
+    const verifiedSummary =
+      type === 'MONTH' && selected.length === 0
+        ? monthlySummary(value)
+        : null;
+
     return {
       rows: selected,
-      summary: type === 'MONTH' ? monthlySummary(value) : null,
+      summary: verifiedSummary,
       title: comparisonLabel(type, value),
-      detailsAvailable: selected.length > 0
+      detailsAvailable: selected.length > 0,
+      sourceMode: selected.length > 0
+        ? 'LIVE_VERIFIED_RECORDS'
+        : verifiedSummary
+          ? 'VERIFIED_MONTHLY_SUMMARY'
+          : 'NONE'
     };
   }
 
@@ -1333,7 +1394,7 @@
     const rows = dataset?.rows || [];
     const saved = dataset?.summary || {};
     const durations = validDurations(rows);
-    const hasSaved = Boolean(dataset?.summary);
+    const hasSaved = rows.length === 0 && trustedMonthlySummary(dataset?.summary);
     const activeRows = rows.filter((record) => record.isActive);
     const severity = comparisonSlaStatus(activeRows);
     const severityMap = new Map(severity.map((item) => [item.code, item.count]));
@@ -1495,7 +1556,34 @@
   }
 
   function paneHeader(side, dataset) {
-    return `<div class="compare-pane-head"><div><strong>${escapeHtml(dataset.title)}</strong><span>${dataset.rows.length.toLocaleString('th-TH')} รายการ${dataset.summary && !dataset.detailsAvailable ? ' · สรุปรายเดือน' : ''}</span></div><b class="compare-badge">ฝั่ง ${side}</b></div>`;
+    const sourceText =
+      dataset.sourceMode === 'LIVE_VERIFIED_RECORDS'
+        ? 'รายการจริงที่วันที่ผ่านการตรวจสอบ'
+        : dataset.sourceMode === 'VERIFIED_MONTHLY_SUMMARY'
+          ? (
+              'สรุปรายเดือนที่ตรวจสอบแล้ว' +
+              (
+                dataset.summary?.verifiedAt
+                  ? ` · ${dataset.summary.verifiedAt}`
+                  : ''
+              )
+            )
+          : 'ไม่พบข้อมูลที่ยืนยันแล้ว';
+
+    const count = dataset.rows.length > 0
+      ? dataset.rows.length
+      : number(dataset.summary?.recordCount);
+
+    return (
+      `<div class="compare-pane-head">` +
+        `<div>` +
+          `<strong>${escapeHtml(dataset.title)}</strong>` +
+          `<span>${count.toLocaleString('th-TH')} รายการ · ` +
+            `${escapeHtml(sourceText)}</span>` +
+        `</div>` +
+        `<b class="compare-badge">ฝั่ง ${side}</b>` +
+      `</div>`
+    );
   }
 
   function recordCompareHtml(side, record, title) {
