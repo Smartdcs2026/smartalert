@@ -10,10 +10,10 @@
   <title>Dashboard ภาพรวม Vendor / Receiving</title>
   <link rel="manifest" href="../manifest.webmanifest">
   <link rel="stylesheet" href="../core.bundle.css?v=20260722-round4-dashboard">
-  <link rel="stylesheet" href="./dashboard.bundle.css?v=20260722-round4-hotfix2-dense-layout-v1">
+  <link rel="stylesheet" href="./dashboard.bundle.css?v=20260722-round4-hotfix3-r1-main-plus-compare-v1">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-  <script src="./dashboard.bundle.js?v=20260722-round4-hotfix2-dense-layout-v1" defer></script>
+  <script src="./dashboard.bundle.js?v=20260722-round4-hotfix3-r1-main-plus-compare-v1" defer></script>
 </head>
 <body class="executive-dashboard" data-page="dashboard">
   <div id="dashboardLoading" class="loading-screen" aria-live="polite">
@@ -40,6 +40,7 @@
         <span id="currentDate">--/--/----</span>
         <strong id="currentTime">--:--:--</strong>
       </div>
+      <button id="compareModeButton" class="topbar-button compare-button" type="button">⇄ เปรียบเทียบ</button>
       <button id="exportButton" class="topbar-button" type="button">ส่งออก</button>
       <button id="fullscreenButton" class="topbar-button fullscreen-button" type="button">⛶ เปิดเต็มจอ</button>
     </div>
@@ -68,7 +69,27 @@
       <button id="refreshButton" class="refresh-button" type="button">↻ รีเฟรช</button>
     </section>
 
-    <section class="main-grid">
+
+    <section id="comparisonWorkspace" class="comparison-workspace panel" hidden aria-live="polite">
+      <div class="comparison-toolbar">
+        <div class="comparison-heading">
+          <strong>เปรียบเทียบข้อมูล</strong>
+          <span>เลือกข้อมูลสองส่วนเพื่อดูตัวเลขและปัญหาในตำแหน่งเดียวกัน</span>
+        </div>
+        <label><span>เปรียบเทียบตาม</span><select id="compareType"><option value="DAY">วัน</option><option value="SHIFT">กะ</option><option value="PROFILE">รูปแบบงาน</option><option value="RECORD">เลขนัดหมาย</option></select></label>
+        <label class="compare-control-a"><span>ฝั่ง A</span><select id="compareA"></select></label>
+        <button id="swapCompareButton" class="compare-swap" type="button" title="สลับฝั่ง">⇄</button>
+        <label class="compare-control-b"><span>ฝั่ง B</span><select id="compareB"></select></label>
+        <button id="closeCompareButton" class="compare-close" type="button">กลับภาพรวม</button>
+      </div>
+      <div class="comparison-grid">
+        <article id="comparePaneA" class="compare-pane compare-pane-a"></article>
+        <article id="comparePaneB" class="compare-pane compare-pane-b"></article>
+      </div>
+      <div id="compareDelta" class="compare-delta"></div>
+    </section>
+
+    <section id="mainDashboardGrid" class="main-grid">
       <div class="left-column">
         <article class="panel chart-panel status-panel">
           <div class="panel-title"><h2>สถานะปัจจุบัน</h2><span id="statusTotalLabel">รวม 0 คัน</span></div>
@@ -88,7 +109,7 @@
         </article>
 
         <article class="panel chart-panel stage-time-panel">
-          <div class="panel-title"><h2>เวลาเฉลี่ยแต่ละขั้นตอน</h2><span>นาที</span></div>
+          <div class="panel-title"><h2>เวลาของแต่ละขั้นตอน</h2><span>เวลาทั่วไป · งานกลุ่มช้า · เป้าหมาย</span></div>
           <div class="chart-canvas"><canvas id="stageTimeChart"></canvas></div>
         </article>
       </div>
@@ -102,13 +123,13 @@
         </article>
 
         <article class="panel ranking-panel">
-          <div class="panel-title"><h2>บริษัทที่ใช้เวลาสูงสุด</h2><span>เฉลี่ยรวม</span></div>
+          <div class="panel-title"><h2>งานที่ใช้เวลานานสุด</h2><span>เลขนัดหมาย · บริษัท</span></div>
           <div id="companyRanking" class="ranking-list"></div>
         </article>
       </div>
     </section>
 
-    <section class="bottom-grid">
+    <section id="mainDashboardBottom" class="bottom-grid">
       <article class="panel tracking-panel">
         <div class="panel-title"><h2>รายการที่ต้องติดตาม</h2><span id="trackingCount">0 รายการ</span></div>
         <div class="table-wrap">
