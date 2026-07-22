@@ -399,14 +399,9 @@ function formatFreshnessAge(milliseconds) {
       document.documentElement?.clientWidth || 0
     );
 
-    if (width <= 760) {
-      return 'compact';
-    }
-
-    if (width <= 1760) {
-      return 'narrow';
-    }
-
+    if (width <= 640) return 'mobile';
+    if (width <= 980) return 'tablet';
+    if (width <= 1760) return 'compact';
     return 'full';
   }
 
@@ -416,23 +411,21 @@ function formatFreshnessAge(milliseconds) {
       Math.floor(number(milliseconds) / 1000)
     );
 
-    if (seconds < 60) {
-      return `${seconds} วิ`;
-    }
+    if (seconds < 60) return `${seconds}วิ`;
 
     const minutes = Math.floor(seconds / 60);
+    const remainSeconds = seconds % 60;
 
     if (minutes < 60) {
-      const remainSeconds = seconds % 60;
       return remainSeconds
-        ? `${minutes}น ${remainSeconds}วิ`
+        ? `${minutes}น${remainSeconds}วิ`
         : `${minutes}น`;
     }
 
     const hours = Math.floor(minutes / 60);
     const remainMinutes = minutes % 60;
     return remainMinutes
-      ? `${hours}ชม ${remainMinutes}น`
+      ? `${hours}ชม${remainMinutes}น`
       : `${hours}ชม`;
   }
 
@@ -441,9 +434,11 @@ function formatFreshnessAge(milliseconds) {
 
     const element = byId('connectionText');
     const liveBox = element?.closest('.ops-header-live');
+    const title = fullText || shortText || '';
 
-    element?.setAttribute('title', fullText || shortText || '');
-    liveBox?.setAttribute('title', fullText || shortText || '');
+    element?.setAttribute('title', title);
+    liveBox?.setAttribute('title', title);
+    element?.setAttribute('aria-label', title);
   }
 
   function updateFreshnessStatus() {
@@ -456,11 +451,8 @@ function formatFreshnessAge(milliseconds) {
       : Number.POSITIVE_INFINITY;
     const element = byId('connectionText');
     const density = getDashboardHeaderDensity();
-    const compact = density === 'compact';
-    const narrow = density === 'narrow';
-    const ageText = compact || narrow
-      ? formatFreshnessAgeCompact(age)
-      : formatFreshnessAge(age);
+    const fullMode = density === 'full';
+    const ageCompact = formatFreshnessAgeCompact(age);
 
     element?.classList.remove(
       'refresh-stale',
@@ -470,7 +462,7 @@ function formatFreshnessAge(milliseconds) {
 
     if (!state.initialized) {
       setHeaderConnectionMessage(
-        compact ? 'เชื่อมต่อ…' : 'กำลังเชื่อมต่อ',
+        density === 'mobile' ? 'เชื่อมต่อ…' : 'กำลังเชื่อมต่อ',
         'กำลังเชื่อมต่อ'
       );
       return;
@@ -478,10 +470,8 @@ function formatFreshnessAge(milliseconds) {
 
     if (window.navigator.onLine === false) {
       setHeaderConnectionMessage(
-        compact
-          ? 'ออฟไลน์'
-          : 'ออฟไลน์ · ใช้ข้อมูลล่าสุด',
-        'ออฟไลน์ · ใช้ข้อมูลล่าสุด'
+        'ออฟไลน์ · ข้อมูลล่าสุด',
+        'ออฟไลน์ · ใช้ข้อมูลชุดล่าสุดที่ยืนยันแล้ว'
       );
       element?.classList.add('refresh-critical');
       return;
@@ -489,13 +479,10 @@ function formatFreshnessAge(milliseconds) {
 
     if (age <= CONFIG.STALE_WARNING_MS) {
       const fullText = `สด · ตรวจล่าสุด ${formatFreshnessAge(age)}`;
-      const displayText = compact
-        ? `สด · ${ageText}`
-        : narrow
-          ? `สด · ${ageText}`
-          : fullText;
-
-      setHeaderConnectionMessage(displayText, fullText);
+      setHeaderConnectionMessage(
+        fullMode ? fullText : `สด · ${ageCompact}`,
+        fullText
+      );
       setText(
         'autoRefreshLabel',
         'ตรวจการเปลี่ยนแปลงทุก 5 วินาที'
@@ -504,14 +491,13 @@ function formatFreshnessAge(milliseconds) {
     }
 
     if (age <= CONFIG.STALE_CRITICAL_MS) {
-      const fullText = `ล่าช้า ${formatFreshnessAge(age)} · กำลังตรวจใหม่`;
-      const displayText = compact
-        ? `ช้า · ${ageText}`
-        : narrow
-          ? `ช้า ${ageText} · ตรวจใหม่`
-          : fullText;
-
-      setHeaderConnectionMessage(displayText, fullText);
+      const fullText = `ข้อมูลล่าช้า ${formatFreshnessAge(age)} · กำลังตรวจใหม่`;
+      setHeaderConnectionMessage(
+        fullMode
+          ? `ช้า · ${formatFreshnessAge(age)}`
+          : `ช้า · ${ageCompact}`,
+        fullText
+      );
       element?.classList.add('refresh-warning');
       setText(
         'autoRefreshLabel',
@@ -521,13 +507,12 @@ function formatFreshnessAge(milliseconds) {
     }
 
     const fullText = `ข้อมูลล่าช้า ${formatFreshnessAge(age)} · กำลังเชื่อมต่อใหม่`;
-    const displayText = compact
-      ? `ล่าช้า · ${ageText}`
-      : narrow
-        ? `ล่าช้า ${ageText} · เชื่อมต่อใหม่`
-        : fullText;
-
-    setHeaderConnectionMessage(displayText, fullText);
+    setHeaderConnectionMessage(
+      fullMode
+        ? `ล่าช้า · ${formatFreshnessAge(age)}`
+        : `ล่าช้า · ${ageCompact}`,
+      fullText
+    );
     element?.classList.add('refresh-critical');
     setText(
       'autoRefreshLabel',
