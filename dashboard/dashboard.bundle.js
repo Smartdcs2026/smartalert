@@ -1,3 +1,4 @@
+/* ROUND4_HOTFIX7_NEAR_REALTIME_DASHBOARD_UI: 2026.07.22 */
 /* ROUND4_HOTFIX4_DASHBOARD_TRUSTED_COMPARISON: 2026.07.22 */
 /* ROUND4_HOTFIX3_REV4_CURRENT_DATE_DEFAULTS: 2026.07.22 */
 /* ROUND4_HOTFIX3_REV3_ADMIN_SLA_ALIGNED_AGING: 2026.07.22 */
@@ -12,10 +13,14 @@
     TOKEN_KEY: 'alertvendor_access_token_v2',
     LOGIN_URL: '../login.html',
     MODULE_URL: '../module.html?id=vendors',
-    REFRESH_MS: 60000,
+    REVISION_POLL_MS: 5000,
+    SAFETY_FULL_REFRESH_MS: 60000,
+    REVISION_TIMEOUT_MS: 12000,
+    STALE_WARNING_MS: 20000,
+    STALE_CRITICAL_MS: 60000,
     API_TIMEOUT_MS: 90000,
     BACKGROUND_TIMEOUT_MS: 55000,
-    CACHE_KEY: 'smartalert_dashboard_snapshot_v4_h4_truth',
+    CACHE_KEY: 'smartalert_dashboard_snapshot_v4_h7_realtime',
     LOCAL_CACHE_MAX_AGE_MS: 12 * 60 * 60 * 1000,
     MAX_VALID_TOTAL_SECONDS: 7 * 24 * 60 * 60,
     CACHE_RECORD_LIMIT: 1500,
@@ -77,7 +82,11 @@
     compareB: '',
     compareCharts: {},
     refreshWarningAt: 0,
-    chartResizeTimer: null
+    chartResizeTimer: null,
+    lastSuccessfulCheckAtEpochMs: 0,
+    lastFullSnapshotAtEpochMs: 0,
+    consecutiveRefreshFailures: 0,
+    nextRetryAtEpochMs: 0
   };
 
   const byId = (id) => document.getElementById(id);
@@ -176,7 +185,7 @@
       revisionOnly: 'true',
       knownRevision: knownRevision || '',
       skipAutoClose: 'true'
-    }, {timeoutMs: 25000});
+    }, {timeoutMs: CONFIG.REVISION_TIMEOUT_MS});
   }
 
   function parseDateTime(value) {
@@ -353,6 +362,146 @@
   }
 
 
+function formatFreshnessAge(milliseconds) {
+    const seconds = Math.max(
+      0,
+      Math.floor(number(milliseconds) / 1000)
+    );
+
+    if (seconds < 60) {
+      return `${seconds} วินาที`;
+    }
+
+    const minutes = Math.floor(seconds / 60);
+    const remainSeconds = seconds % 60;
+
+    return remainSeconds
+      ? `${minutes} นาที ${remainSeconds} วินาที`
+      : `${minutes} นาที`;
+  }
+
+  function updateFreshnessStatus() {
+    const now = Date.now();
+    const lastCheck = number(
+      state.lastSuccessfulCheckAtEpochMs
+    );
+    const age = lastCheck
+      ? Math.max(0, now - lastCheck)
+      : Number.POSITIVE_INFINITY;
+    const element = byId('connectionText');
+
+    element?.classList.remove(
+      'refresh-stale',
+      'refresh-warning',
+      'refresh-critical'
+    );
+
+    if (!state.initialized) {
+      setText('connectionText', 'กำลังเชื่อมต่อ');
+      return;
+    }
+
+    if (
+      window.navigator.onLine === false
+    ) {
+      setText(
+        'connectionText',
+        'ออฟไลน์ · ใช้ข้อมูลล่าสุด'
+      );
+      element?.classList.add(
+        'refresh-critical'
+      );
+      return;
+    }
+
+    if (
+      age <= CONFIG.STALE_WARNING_MS
+    ) {
+      setText(
+        'connectionText',
+        'สด · ตรวจล่าสุด ' +
+          formatFreshnessAge(age)
+      );
+      setText(
+        'autoRefreshLabel',
+        'ตรวจการเปลี่ยนแปลงทุก 5 วินาที'
+      );
+      return;
+    }
+
+    if (
+      age <= CONFIG.STALE_CRITICAL_MS
+    ) {
+      setText(
+        'connectionText',
+        'ล่าช้า ' +
+          formatFreshnessAge(age) +
+          ' · กำลังตรวจใหม่'
+      );
+      element?.classList.add(
+        'refresh-warning'
+      );
+      setText(
+        'autoRefreshLabel',
+        'ยังใช้ข้อมูลชุดล่าสุดที่ยืนยันแล้ว'
+      );
+      return;
+    }
+
+    setText(
+      'connectionText',
+      'ข้อมูลล่าช้า ' +
+        formatFreshnessAge(age) +
+        ' · กำลังเชื่อมต่อใหม่'
+    );
+    element?.classList.add(
+      'refresh-critical'
+    );
+    setText(
+      'autoRefreshLabel',
+      'ข้อมูลบนจอยังไม่ใช่สถานะวินาทีปัจจุบัน'
+    );
+  }
+
+  function markRefreshSuccess(fullSnapshot) {
+    const now = Date.now();
+
+    state.lastSuccessfulCheckAtEpochMs = now;
+    state.consecutiveRefreshFailures = 0;
+    state.nextRetryAtEpochMs = 0;
+
+    if (fullSnapshot === true) {
+      state.lastFullSnapshotAtEpochMs = now;
+    }
+
+    updateFreshnessStatus();
+  }
+
+  function markRefreshFailure(error) {
+    state.consecutiveRefreshFailures += 1;
+
+    const retryDelay = Math.min(
+      30000,
+      3000 * Math.pow(
+        2,
+        Math.max(
+          0,
+          state.consecutiveRefreshFailures - 1
+        )
+      )
+    );
+
+    state.nextRetryAtEpochMs =
+      Date.now() + retryDelay;
+
+    updateFreshnessStatus();
+
+    console.warn(
+      'Dashboard background refresh failed',
+      error
+    );
+  }
+
   function dashboardCachePayload() {
     const records = Array.isArray(state.records)
       ? state.records.slice(0, CONFIG.CACHE_RECORD_LIMIT)
@@ -406,12 +555,16 @@
       populateFilters();
       applyFiltersAndRender();
       state.initialized = true;
+      state.lastSuccessfulCheckAtEpochMs =
+        number(payload.savedAt) || 0;
+      state.lastFullSnapshotAtEpochMs =
+        number(payload.savedAt) || 0;
       const age = Math.max(0, Date.now() - number(payload.savedAt));
       setText(
         'connectionText',
         age <= CONFIG.LOCAL_CACHE_MAX_AGE_MS ? 'แสดงข้อมูลล่าสุด · กำลังตรวจใหม่' : 'ข้อมูลสำรองเก่า · กำลังตรวจใหม่'
       );
-      byId('connectionText')?.classList.add('refresh-stale');
+      updateFreshnessStatus();
       return true;
     } catch (error) {
       return false;
@@ -430,26 +583,16 @@
     populateFilters();
     applyFiltersAndRender();
     state.initialized = true;
+    markRefreshSuccess(true);
     persistDashboardCache();
   }
 
   function showRefreshWarning(error) {
-    const now = Date.now();
-    setText('connectionText', 'อัปเดตช้า · ใช้ข้อมูลล่าสุด');
-    byId('connectionText')?.classList.add('refresh-stale');
-    if (!window.Swal || now - state.refreshWarningAt < 300000) return;
-    state.refreshWarningAt = now;
-    window.Swal.fire({
-      toast: true,
-      position: 'top-end',
-      icon: 'warning',
-      title: 'อัปเดตข้อมูลยังไม่สำเร็จ',
-      text: 'Dashboard ยังคงแสดงข้อมูลชุดล่าสุดและจะลองใหม่อัตโนมัติ',
-      showConfirmButton: false,
-      timer: 5000,
-      timerProgressBar: true
-    });
-    console.warn('Dashboard background refresh failed', error);
+    /*
+     * Dashboard สำหรับเปิดจอแสดงผลต้องไม่ถูก Popup บัง
+     * เก็บ Snapshot ล่าสุดไว้และแสดงสถานะบน Header เท่านั้น
+     */
+    markRefreshFailure(error);
   }
 
   function showError(error) {
@@ -517,76 +660,177 @@
   }
 
   async function loadDashboard(forceRefresh, options) {
-    const requestOptions = options && typeof options === 'object' ? options : {};
-    const background = requestOptions.background === true || state.initialized === true;
-    if (state.loading) return;
-    setLoading(true, !background);
-    setText('connectionText', background ? 'กำลังตรวจข้อมูลใหม่' : 'กำลังเชื่อมต่อ');
+    const requestOptions =
+      options && typeof options === 'object'
+        ? options
+        : {};
+    const background =
+      requestOptions.background === true ||
+      state.initialized === true;
+    const now = Date.now();
+
+    if (state.loading) {
+      return;
+    }
+
+    if (
+      background &&
+      state.nextRetryAtEpochMs &&
+      now < state.nextRetryAtEpochMs &&
+      requestOptions.manual !== true
+    ) {
+      updateFreshnessStatus();
+      return;
+    }
+
+    setLoading(
+      true,
+      !background
+    );
+
+    if (!state.initialized) {
+      setText(
+        'connectionText',
+        'กำลังเชื่อมต่อ'
+      );
+    }
 
     try {
       let user = state.user;
-      if (!user) user = await apiMe();
+
+      if (!user) {
+        user = await apiMe();
+      }
+
       state.user = user || {};
 
       if (!state.user.authenticated) {
         clearSession();
-        window.location.replace(CONFIG.LOGIN_URL);
+        window.location.replace(
+          CONFIG.LOGIN_URL
+        );
         return;
       }
 
-      const sessionUser = state.user.user || state.user;
-      const role = text(sessionUser.role).toUpperCase();
+      const sessionUser =
+        state.user.user ||
+        state.user;
+      const role = text(
+        sessionUser.role
+      ).toUpperCase();
+
       if (role === 'INBOUND') {
-        window.location.replace('../inbound.html');
+        window.location.replace(
+          '../inbound.html'
+        );
         return;
       }
 
-      const knownRevision = text(state.board && state.board.dataRevision);
-      if (state.initialized && knownRevision && forceRefresh !== true) {
+      const knownRevision = text(
+        state.board &&
+        state.board.dataRevision
+      );
+
+      const safetyFullRefreshDue =
+        state.initialized &&
+        (
+          !state.lastFullSnapshotAtEpochMs ||
+          now -
+            state.lastFullSnapshotAtEpochMs >=
+            CONFIG.SAFETY_FULL_REFRESH_MS
+        );
+
+      if (
+        state.initialized &&
+        knownRevision &&
+        forceRefresh !== true &&
+        requestOptions.manual !== true &&
+        safetyFullRefreshDue !== true
+      ) {
         try {
-          const revision = await apiBoardRevision(knownRevision);
-          if (revision && revision.unchanged === true) {
-            setText('connectionText', 'ออนไลน์');
-            byId('connectionText')?.classList.remove('refresh-stale');
-            setText('autoRefreshLabel', 'ตรวจแล้ว ข้อมูลยังเป็นชุดล่าสุด');
+          const revision =
+            await apiBoardRevision(
+              knownRevision
+            );
+
+          markRefreshSuccess(false);
+
+          if (
+            revision &&
+            revision.unchanged === true
+          ) {
             return;
           }
         } catch (revisionError) {
           if (background) {
-            showRefreshWarning(revisionError);
+            showRefreshWarning(
+              revisionError
+            );
             return;
           }
         }
       }
 
       let board;
+
       try {
-        board = await apiBoard(forceRefresh === true, {background});
+        board = await apiBoard(
+          forceRefresh === true ||
+          requestOptions.manual === true,
+          {background}
+        );
       } catch (firstError) {
-        if (background || requestOptions.retried === true) throw firstError;
-        await new Promise((resolve) => window.setTimeout(resolve, 1200));
-        board = await apiBoard(false, {background: true});
+        if (
+          background ||
+          requestOptions.retried === true
+        ) {
+          throw firstError;
+        }
+
+        await new Promise((resolve) =>
+          window.setTimeout(
+            resolve,
+            900
+          )
+        );
+
+        board = await apiBoard(
+          false,
+          {background: true}
+        );
       }
+
       applyDashboardBoard(board);
-      if (byId('dashboardInlineError')) byId('dashboardInlineError').hidden = true;
-      setText('connectionText', 'ออนไลน์');
-      byId('connectionText')?.classList.remove('refresh-stale');
+
+      if (byId('dashboardInlineError')) {
+        byId('dashboardInlineError').hidden = true;
+      }
+
       startAutoRefresh();
 
-      if (requestOptions.manual === true && window.Swal) {
+      if (
+        requestOptions.manual === true &&
+        window.Swal
+      ) {
         window.Swal.fire({
           toast: true,
           position: 'top-end',
           icon: 'success',
           title: 'อัปเดตข้อมูลแล้ว',
           showConfirmButton: false,
-          timer: 1800
+          timer: 1400
         });
       }
+
     } catch (error) {
-      if (error.status === 401 || error.status === 403) {
+      if (
+        error.status === 401 ||
+        error.status === 403
+      ) {
         clearSession();
-        window.location.replace(CONFIG.LOGIN_URL);
+        window.location.replace(
+          CONFIG.LOGIN_URL
+        );
         return;
       }
 
@@ -602,8 +846,15 @@
         return;
       }
 
-      setText('connectionText', window.navigator.onLine ? 'เชื่อมต่อไม่สำเร็จ' : 'ออฟไลน์');
+      setText(
+        'connectionText',
+        window.navigator.onLine
+          ? 'เชื่อมต่อไม่สำเร็จ'
+          : 'ออฟไลน์'
+      );
+
       showError(error);
+
     } finally {
       setLoading(false, false);
     }
@@ -696,7 +947,12 @@
     setText('dataRevision', `ข้อมูลชุด ${text(board.snapshotId || board.dataRevision).slice(0, 18) || '-'}`);
     setText('lastUpdated', `อัปเดตล่าสุด ${board.generatedAt || state.analytics?.generatedAt || '-'}`);
     const truncated = state.analytics?.historyWindow?.truncated === true;
-    setText('autoRefreshLabel', truncated ? 'ข้อมูลย้อนหลังถึงขีดจำกัด โปรดตรวจคุณภาพข้อมูล' : 'อัปเดตอัตโนมัติทุก 60 วินาที');
+    setText(
+      'autoRefreshLabel',
+      truncated
+        ? 'ข้อมูลย้อนหลังถึงขีดจำกัด โปรดตรวจคุณภาพข้อมูล'
+        : 'ตรวจการเปลี่ยนแปลงทุก 5 วินาที'
+    );
   }
 
   function previousPeriodRecords() {
@@ -1777,8 +2033,28 @@
   }
 
   function startAutoRefresh() {
-    if (state.timer) window.clearInterval(state.timer);
-    state.timer = window.setInterval(() => loadDashboard(false, {background: true}), CONFIG.REFRESH_MS);
+    if (state.timer) {
+      window.clearInterval(
+        state.timer
+      );
+    }
+
+    state.timer = window.setInterval(
+      function () {
+        updateFreshnessStatus();
+
+        if (
+          Date.now() >=
+          number(state.nextRetryAtEpochMs)
+        ) {
+          loadDashboard(
+            false,
+            {background: true}
+          );
+        }
+      },
+      CONFIG.REVISION_POLL_MS
+    );
   }
 
   function updateClock() {
@@ -1787,6 +2063,7 @@
     setText('currentTime', new Intl.DateTimeFormat('th-TH', {
       timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
     }).format(now));
+    updateFreshnessStatus();
   }
 
   function bindEvents() {
