@@ -1,3 +1,4 @@
+/* ROUND4_FINAL_REV3_FULLSCREEN_HARD_LAYOUT: 2026.07.23 */
 /* ROUND4_FINAL_REV1_OPERATIONAL24H_THEMES: 2026.07.23 */
 /* ROUND4_HOTFIX7_REV5_DASHBOARD_MOBILE_COMPARISON: 2026.07.23 */
 /* ROUND4_HOTFIX7_REV3_DASHBOARD_MOBILE_HEADER: 2026.07.23 */
@@ -392,11 +393,21 @@ function formatFreshnessAge(milliseconds) {
       : `${minutes} นาที`;
   }
 
-  function isCompactDashboardHeader() {
-    return Boolean(
-      window.matchMedia &&
-      window.matchMedia('(max-width: 760px)').matches
+  function getDashboardHeaderDensity() {
+    const width = Math.max(
+      window.innerWidth || 0,
+      document.documentElement?.clientWidth || 0
     );
+
+    if (width <= 760) {
+      return 'compact';
+    }
+
+    if (width <= 1760) {
+      return 'narrow';
+    }
+
+    return 'full';
   }
 
   function formatFreshnessAgeCompact(milliseconds) {
@@ -412,11 +423,27 @@ function formatFreshnessAge(milliseconds) {
     const minutes = Math.floor(seconds / 60);
 
     if (minutes < 60) {
-      return `${minutes} น.`;
+      const remainSeconds = seconds % 60;
+      return remainSeconds
+        ? `${minutes}น ${remainSeconds}วิ`
+        : `${minutes}น`;
     }
 
     const hours = Math.floor(minutes / 60);
-    return `${hours} ชม.`;
+    const remainMinutes = minutes % 60;
+    return remainMinutes
+      ? `${hours}ชม ${remainMinutes}น`
+      : `${hours}ชม`;
+  }
+
+  function setHeaderConnectionMessage(shortText, fullText) {
+    setText('connectionText', shortText);
+
+    const element = byId('connectionText');
+    const liveBox = element?.closest('.ops-header-live');
+
+    element?.setAttribute('title', fullText || shortText || '');
+    liveBox?.setAttribute('title', fullText || shortText || '');
   }
 
   function updateFreshnessStatus() {
@@ -428,8 +455,10 @@ function formatFreshnessAge(milliseconds) {
       ? Math.max(0, now - lastCheck)
       : Number.POSITIVE_INFINITY;
     const element = byId('connectionText');
-    const compact = isCompactDashboardHeader();
-    const ageText = compact
+    const density = getDashboardHeaderDensity();
+    const compact = density === 'compact';
+    const narrow = density === 'narrow';
+    const ageText = compact || narrow
       ? formatFreshnessAgeCompact(age)
       : formatFreshnessAge(age);
 
@@ -440,37 +469,33 @@ function formatFreshnessAge(milliseconds) {
     );
 
     if (!state.initialized) {
-      setText(
-        'connectionText',
-        compact ? 'เชื่อมต่อ…' : 'กำลังเชื่อมต่อ'
+      setHeaderConnectionMessage(
+        compact ? 'เชื่อมต่อ…' : 'กำลังเชื่อมต่อ',
+        'กำลังเชื่อมต่อ'
       );
       return;
     }
 
-    if (
-      window.navigator.onLine === false
-    ) {
-      setText(
-        'connectionText',
+    if (window.navigator.onLine === false) {
+      setHeaderConnectionMessage(
         compact
           ? 'ออฟไลน์'
-          : 'ออฟไลน์ · ใช้ข้อมูลล่าสุด'
+          : 'ออฟไลน์ · ใช้ข้อมูลล่าสุด',
+        'ออฟไลน์ · ใช้ข้อมูลล่าสุด'
       );
-      element?.classList.add(
-        'refresh-critical'
-      );
+      element?.classList.add('refresh-critical');
       return;
     }
 
-    if (
-      age <= CONFIG.STALE_WARNING_MS
-    ) {
-      setText(
-        'connectionText',
-        compact
+    if (age <= CONFIG.STALE_WARNING_MS) {
+      const fullText = `สด · ตรวจล่าสุด ${formatFreshnessAge(age)}`;
+      const displayText = compact
+        ? `สด · ${ageText}`
+        : narrow
           ? `สด · ${ageText}`
-          : `สด · ตรวจล่าสุด ${ageText}`
-      );
+          : fullText;
+
+      setHeaderConnectionMessage(displayText, fullText);
       setText(
         'autoRefreshLabel',
         'ตรวจการเปลี่ยนแปลงทุก 5 วินาที'
@@ -478,18 +503,16 @@ function formatFreshnessAge(milliseconds) {
       return;
     }
 
-    if (
-      age <= CONFIG.STALE_CRITICAL_MS
-    ) {
-      setText(
-        'connectionText',
-        compact
-          ? `ช้า · ${ageText}`
-          : `ล่าช้า ${ageText} · กำลังตรวจใหม่`
-      );
-      element?.classList.add(
-        'refresh-warning'
-      );
+    if (age <= CONFIG.STALE_CRITICAL_MS) {
+      const fullText = `ล่าช้า ${formatFreshnessAge(age)} · กำลังตรวจใหม่`;
+      const displayText = compact
+        ? `ช้า · ${ageText}`
+        : narrow
+          ? `ช้า ${ageText} · ตรวจใหม่`
+          : fullText;
+
+      setHeaderConnectionMessage(displayText, fullText);
+      element?.classList.add('refresh-warning');
       setText(
         'autoRefreshLabel',
         'ยังใช้ข้อมูลชุดล่าสุดที่ยืนยันแล้ว'
@@ -497,15 +520,15 @@ function formatFreshnessAge(milliseconds) {
       return;
     }
 
-    setText(
-      'connectionText',
-      compact
-        ? `ล่าช้า · ${ageText}`
-        : `ข้อมูลล่าช้า ${ageText} · กำลังเชื่อมต่อใหม่`
-    );
-    element?.classList.add(
-      'refresh-critical'
-    );
+    const fullText = `ข้อมูลล่าช้า ${formatFreshnessAge(age)} · กำลังเชื่อมต่อใหม่`;
+    const displayText = compact
+      ? `ล่าช้า · ${ageText}`
+      : narrow
+        ? `ล่าช้า ${ageText} · เชื่อมต่อใหม่`
+        : fullText;
+
+    setHeaderConnectionMessage(displayText, fullText);
+    element?.classList.add('refresh-critical');
     setText(
       'autoRefreshLabel',
       'ข้อมูลบนจอยังไม่ใช่สถานะวินาทีปัจจุบัน'
@@ -2947,13 +2970,765 @@ function isMobileComparisonViewport() {
     }
   }
 
-  function toggleFullscreen() {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen?.().catch(() => {});
-    } else {
-      document.exitFullscreen?.();
-    }
+const FULLSCREEN_HARD_STYLE_PROPS = {
+  dashboardStage: [
+    'display', 'box-sizing', 'width', 'max-width',
+    'height', 'min-height', 'padding', 'margin',
+    'overflow'
+  ],
+  mainDashboardGrid: [
+    'display', 'grid-template-columns',
+    'grid-template-rows', 'width', 'height',
+    'min-height', 'gap', 'overflow'
+  ],
+  currentStateSection: [
+    'height', 'min-height', 'overflow'
+  ],
+  currentStateGrid: [
+    'display', 'grid-template-columns',
+    'grid-auto-rows', 'min-height'
+  ],
+  opsContentGrid: [
+    'display', 'grid-template-columns',
+    'grid-template-rows', 'width', 'height',
+    'min-height', 'gap', 'overflow'
+  ],
+  opsLeftStack: [
+    'display', 'flex-direction', 'width', 'height',
+    'min-height', 'gap', 'overflow',
+    'align-items', 'justify-content'
+  ],
+  opsRightStack: [
+    'display', 'flex-direction', 'width', 'height',
+    'min-height', 'gap', 'overflow',
+    'align-items', 'justify-content'
+  ],
+  rollingSection: [
+    'flex', 'height', 'min-height', 'overflow'
+  ],
+  flowSection: [
+    'flex', 'height', 'min-height', 'overflow'
+  ],
+  shiftSection: [
+    'flex', 'height', 'min-height', 'overflow'
+  ],
+  urgentSection: [
+    'flex', 'height', 'min-height', 'overflow'
+  ],
+  bottleneckSection: [
+    'flex', 'height', 'min-height', 'overflow'
+  ]
+};
+
+function fullscreenHardElement(key) {
+  const selectors = {
+    dashboardStage: '#dashboardStage',
+    mainDashboardGrid: '#mainDashboardGrid',
+    currentStateSection: '.current-state-section',
+    currentStateGrid: '.current-state-grid',
+    opsContentGrid: '.ops-content-grid',
+    opsLeftStack: '.ops-left-stack',
+    opsRightStack: '.ops-right-stack',
+    rollingSection: '.rolling-section',
+    flowSection: '.flow-section',
+    shiftSection: '.shift-section',
+    urgentSection: '.urgent-section',
+    bottleneckSection: '.bottleneck-section'
+  };
+
+  return document.querySelector(selectors[key]);
+}
+
+function setFullscreenHardStyle(
+  element,
+  property,
+  value
+) {
+  element?.style?.setProperty(
+    property,
+    value,
+    'important'
+  );
+}
+
+function clearFullscreenHardLayout() {
+  Object.entries(
+    FULLSCREEN_HARD_STYLE_PROPS
+  ).forEach(([key, properties]) => {
+    const element = fullscreenHardElement(key);
+    if (!element) return;
+
+    properties.forEach((property) => {
+      element.style.removeProperty(property);
+    });
+  });
+
+  document.body.removeAttribute(
+    'data-fullscreen-layout'
+  );
+}
+
+function applyFullscreenHardLayout() {
+  if (!document.fullscreenElement) {
+    clearFullscreenHardLayout();
+    return;
   }
+
+  const viewportWidth = Math.max(
+    320,
+    window.innerWidth ||
+    document.documentElement.clientWidth ||
+    0
+  );
+  const viewportHeight = Math.max(
+    360,
+    window.innerHeight ||
+    document.documentElement.clientHeight ||
+    0
+  );
+
+  const header =
+    document.querySelector('.ops-topbar');
+  const measuredHeader = Math.round(
+    header?.getBoundingClientRect?.().height || 56
+  );
+  const headerHeight = Math.max(
+    52,
+    Math.min(64, measuredHeader)
+  );
+
+  const smallScreen =
+    viewportWidth <= 1180 ||
+    viewportHeight <= 720;
+
+  document.body.setAttribute(
+    'data-fullscreen-layout',
+    smallScreen ? 'SCROLL' : 'EXECUTIVE'
+  );
+
+  const stage = fullscreenHardElement(
+    'dashboardStage'
+  );
+  const main = fullscreenHardElement(
+    'mainDashboardGrid'
+  );
+  const current = fullscreenHardElement(
+    'currentStateSection'
+  );
+  const currentGrid = fullscreenHardElement(
+    'currentStateGrid'
+  );
+  const content = fullscreenHardElement(
+    'opsContentGrid'
+  );
+  const left = fullscreenHardElement(
+    'opsLeftStack'
+  );
+  const right = fullscreenHardElement(
+    'opsRightStack'
+  );
+  const rolling = fullscreenHardElement(
+    'rollingSection'
+  );
+  const flow = fullscreenHardElement(
+    'flowSection'
+  );
+  const shift = fullscreenHardElement(
+    'shiftSection'
+  );
+  const urgent = fullscreenHardElement(
+    'urgentSection'
+  );
+  const bottleneck = fullscreenHardElement(
+    'bottleneckSection'
+  );
+
+  if (smallScreen) {
+    setFullscreenHardStyle(
+      stage,
+      'height',
+      'auto'
+    );
+    setFullscreenHardStyle(
+      stage,
+      'min-height',
+      `calc(100vh - ${headerHeight}px)`
+    );
+    setFullscreenHardStyle(
+      stage,
+      'overflow',
+      'visible'
+    );
+
+    setFullscreenHardStyle(
+      main,
+      'display',
+      'grid'
+    );
+    setFullscreenHardStyle(
+      main,
+      'grid-template-columns',
+      'minmax(0, 1fr)'
+    );
+    setFullscreenHardStyle(
+      main,
+      'grid-template-rows',
+      'auto auto'
+    );
+    setFullscreenHardStyle(
+      main,
+      'height',
+      'auto'
+    );
+    setFullscreenHardStyle(
+      main,
+      'min-height',
+      '100%'
+    );
+    setFullscreenHardStyle(
+      main,
+      'overflow',
+      'visible'
+    );
+
+    setFullscreenHardStyle(
+      current,
+      'height',
+      'auto'
+    );
+    setFullscreenHardStyle(
+      current,
+      'min-height',
+      '0'
+    );
+
+    setFullscreenHardStyle(
+      currentGrid,
+      'grid-template-columns',
+      'repeat(5, minmax(0, 1fr))'
+    );
+
+    setFullscreenHardStyle(
+      content,
+      'display',
+      'grid'
+    );
+    setFullscreenHardStyle(
+      content,
+      'grid-template-columns',
+      'minmax(0, 1fr)'
+    );
+    setFullscreenHardStyle(
+      content,
+      'grid-template-rows',
+      'auto'
+    );
+    setFullscreenHardStyle(
+      content,
+      'height',
+      'auto'
+    );
+    setFullscreenHardStyle(
+      content,
+      'overflow',
+      'visible'
+    );
+
+    [left, right].forEach((stack) => {
+      setFullscreenHardStyle(
+        stack,
+        'display',
+        'flex'
+      );
+      setFullscreenHardStyle(
+        stack,
+        'flex-direction',
+        'column'
+      );
+      setFullscreenHardStyle(
+        stack,
+        'height',
+        'auto'
+      );
+      setFullscreenHardStyle(
+        stack,
+        'overflow',
+        'visible'
+      );
+    });
+
+    [
+      rolling,
+      flow,
+      shift,
+      urgent,
+      bottleneck
+    ].forEach((panel) => {
+      setFullscreenHardStyle(
+        panel,
+        'flex',
+        'none'
+      );
+      setFullscreenHardStyle(
+        panel,
+        'height',
+        'auto'
+      );
+      setFullscreenHardStyle(
+        panel,
+        'min-height',
+        '280px'
+      );
+    });
+
+    return;
+  }
+
+  const stageHeight = Math.max(
+    620,
+    viewportHeight - headerHeight
+  );
+  const innerHeight = Math.max(
+    600,
+    stageHeight - 12
+  );
+  const currentHeight = 104;
+  const contentHeight = Math.max(
+    490,
+    innerHeight - currentHeight - 6
+  );
+
+  const leftGapTotal = 12;
+  const leftUsable = Math.max(
+    470,
+    contentHeight - leftGapTotal
+  );
+
+  let rollingHeight = Math.max(
+    116,
+    Math.round(leftUsable * 0.19)
+  );
+  let flowHeight = Math.max(
+    248,
+    Math.round(leftUsable * 0.49)
+  );
+  let shiftHeight =
+    leftUsable -
+    rollingHeight -
+    flowHeight;
+
+  if (shiftHeight < 180) {
+    const missing = 180 - shiftHeight;
+    flowHeight = Math.max(
+      248,
+      flowHeight - missing
+    );
+    shiftHeight =
+      leftUsable -
+      rollingHeight -
+      flowHeight;
+  }
+
+  const rightGapTotal = 6;
+  const rightUsable = Math.max(
+    480,
+    contentHeight - rightGapTotal
+  );
+  let urgentHeight = Math.max(
+    310,
+    Math.round(rightUsable * 0.58)
+  );
+  let bottleneckHeight =
+    rightUsable - urgentHeight;
+
+  if (bottleneckHeight < 218) {
+    urgentHeight = Math.max(
+      310,
+      rightUsable - 218
+    );
+    bottleneckHeight =
+      rightUsable - urgentHeight;
+  }
+
+  setFullscreenHardStyle(
+    stage,
+    'display',
+    'block'
+  );
+  setFullscreenHardStyle(
+    stage,
+    'box-sizing',
+    'border-box'
+  );
+  setFullscreenHardStyle(
+    stage,
+    'width',
+    '100%'
+  );
+  setFullscreenHardStyle(
+    stage,
+    'max-width',
+    'none'
+  );
+  setFullscreenHardStyle(
+    stage,
+    'height',
+    `${stageHeight}px`
+  );
+  setFullscreenHardStyle(
+    stage,
+    'min-height',
+    '0'
+  );
+  setFullscreenHardStyle(
+    stage,
+    'padding',
+    '6px'
+  );
+  setFullscreenHardStyle(
+    stage,
+    'margin',
+    '0'
+  );
+  setFullscreenHardStyle(
+    stage,
+    'overflow',
+    'hidden'
+  );
+
+  setFullscreenHardStyle(
+    main,
+    'display',
+    'grid'
+  );
+  setFullscreenHardStyle(
+    main,
+    'grid-template-columns',
+    'minmax(0, 1fr)'
+  );
+  setFullscreenHardStyle(
+    main,
+    'grid-template-rows',
+    `${currentHeight}px ${contentHeight}px`
+  );
+  setFullscreenHardStyle(
+    main,
+    'width',
+    '100%'
+  );
+  setFullscreenHardStyle(
+    main,
+    'height',
+    `${innerHeight}px`
+  );
+  setFullscreenHardStyle(
+    main,
+    'min-height',
+    '0'
+  );
+  setFullscreenHardStyle(
+    main,
+    'gap',
+    '6px'
+  );
+  setFullscreenHardStyle(
+    main,
+    'overflow',
+    'hidden'
+  );
+
+  setFullscreenHardStyle(
+    current,
+    'height',
+    `${currentHeight}px`
+  );
+  setFullscreenHardStyle(
+    current,
+    'min-height',
+    `${currentHeight}px`
+  );
+  setFullscreenHardStyle(
+    current,
+    'overflow',
+    'hidden'
+  );
+
+  setFullscreenHardStyle(
+    currentGrid,
+    'display',
+    'grid'
+  );
+  setFullscreenHardStyle(
+    currentGrid,
+    'grid-template-columns',
+    'repeat(10, minmax(0, 1fr))'
+  );
+  setFullscreenHardStyle(
+    currentGrid,
+    'grid-auto-rows',
+    'minmax(0, 1fr)'
+  );
+  setFullscreenHardStyle(
+    currentGrid,
+    'min-height',
+    '56px'
+  );
+
+  setFullscreenHardStyle(
+    content,
+    'display',
+    'grid'
+  );
+  setFullscreenHardStyle(
+    content,
+    'grid-template-columns',
+    'minmax(0, 1.57fr) minmax(410px, 1fr)'
+  );
+  setFullscreenHardStyle(
+    content,
+    'grid-template-rows',
+    `${contentHeight}px`
+  );
+  setFullscreenHardStyle(
+    content,
+    'width',
+    '100%'
+  );
+  setFullscreenHardStyle(
+    content,
+    'height',
+    `${contentHeight}px`
+  );
+  setFullscreenHardStyle(
+    content,
+    'min-height',
+    '0'
+  );
+  setFullscreenHardStyle(
+    content,
+    'gap',
+    '6px'
+  );
+  setFullscreenHardStyle(
+    content,
+    'overflow',
+    'hidden'
+  );
+
+  [left, right].forEach((stack) => {
+    setFullscreenHardStyle(
+      stack,
+      'display',
+      'flex'
+    );
+    setFullscreenHardStyle(
+      stack,
+      'flex-direction',
+      'column'
+    );
+    setFullscreenHardStyle(
+      stack,
+      'align-items',
+      'stretch'
+    );
+    setFullscreenHardStyle(
+      stack,
+      'justify-content',
+      'flex-start'
+    );
+    setFullscreenHardStyle(
+      stack,
+      'width',
+      '100%'
+    );
+    setFullscreenHardStyle(
+      stack,
+      'height',
+      `${contentHeight}px`
+    );
+    setFullscreenHardStyle(
+      stack,
+      'min-height',
+      '0'
+    );
+    setFullscreenHardStyle(
+      stack,
+      'gap',
+      '6px'
+    );
+    setFullscreenHardStyle(
+      stack,
+      'overflow',
+      'hidden'
+    );
+  });
+
+  setFullscreenHardStyle(
+    rolling,
+    'flex',
+    `0 0 ${rollingHeight}px`
+  );
+  setFullscreenHardStyle(
+    rolling,
+    'height',
+    `${rollingHeight}px`
+  );
+  setFullscreenHardStyle(
+    rolling,
+    'min-height',
+    `${rollingHeight}px`
+  );
+  setFullscreenHardStyle(
+    rolling,
+    'overflow',
+    'hidden'
+  );
+
+  setFullscreenHardStyle(
+    flow,
+    'flex',
+    `0 0 ${flowHeight}px`
+  );
+  setFullscreenHardStyle(
+    flow,
+    'height',
+    `${flowHeight}px`
+  );
+  setFullscreenHardStyle(
+    flow,
+    'min-height',
+    `${flowHeight}px`
+  );
+  setFullscreenHardStyle(
+    flow,
+    'overflow',
+    'hidden'
+  );
+
+  setFullscreenHardStyle(
+    shift,
+    'flex',
+    `0 0 ${shiftHeight}px`
+  );
+  setFullscreenHardStyle(
+    shift,
+    'height',
+    `${shiftHeight}px`
+  );
+  setFullscreenHardStyle(
+    shift,
+    'min-height',
+    `${shiftHeight}px`
+  );
+  setFullscreenHardStyle(
+    shift,
+    'overflow',
+    'hidden'
+  );
+
+  setFullscreenHardStyle(
+    urgent,
+    'flex',
+    `0 0 ${urgentHeight}px`
+  );
+  setFullscreenHardStyle(
+    urgent,
+    'height',
+    `${urgentHeight}px`
+  );
+  setFullscreenHardStyle(
+    urgent,
+    'min-height',
+    `${urgentHeight}px`
+  );
+  setFullscreenHardStyle(
+    urgent,
+    'overflow',
+    'hidden'
+  );
+
+  setFullscreenHardStyle(
+    bottleneck,
+    'flex',
+    `0 0 ${bottleneckHeight}px`
+  );
+  setFullscreenHardStyle(
+    bottleneck,
+    'height',
+    `${bottleneckHeight}px`
+  );
+  setFullscreenHardStyle(
+    bottleneck,
+    'min-height',
+    `${bottleneckHeight}px`
+  );
+  setFullscreenHardStyle(
+    bottleneck,
+    'overflow',
+    'hidden'
+  );
+}
+
+function verifyFullscreenHardLayout() {
+  if (!document.fullscreenElement) return true;
+
+  const rolling =
+    fullscreenHardElement('rollingSection');
+  const flow =
+    fullscreenHardElement('flowSection');
+  const shift =
+    fullscreenHardElement('shiftSection');
+  const currentGrid =
+    fullscreenHardElement('currentStateGrid');
+
+  const measurements = {
+    rolling:
+      rolling?.getBoundingClientRect().height || 0,
+    flow:
+      flow?.getBoundingClientRect().height || 0,
+    shift:
+      shift?.getBoundingClientRect().height || 0,
+    current:
+      currentGrid?.getBoundingClientRect().height || 0
+  };
+
+  const healthy =
+    measurements.rolling >= 100 &&
+    measurements.flow >= 220 &&
+    measurements.shift >= 160 &&
+    measurements.current >= 45;
+
+  document.body.setAttribute(
+    'data-fullscreen-health',
+    healthy ? 'READY' : 'RECOVERING'
+  );
+
+  if (!healthy) {
+    applyFullscreenHardLayout();
+  }
+
+  return healthy;
+}
+
+  function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    const target =
+      document.body ||
+      document.documentElement;
+
+    target
+      .requestFullscreen?.({
+        navigationUI: 'hide'
+      })
+      .catch(() => {
+        document.documentElement
+          .requestFullscreen?.()
+          .catch(() => {});
+      });
+  } else {
+    document.exitFullscreen?.();
+  }
+}
 
   function resizeDashboardChartsNow() {
     Object.values(state.charts || {}).forEach((chart) => {
@@ -2972,46 +3747,86 @@ function isMobileComparisonViewport() {
   }
 
   function fitFullscreen() {
-    const fullscreenActive = Boolean(document.fullscreenElement);
-    const fullscreenButton = byId('fullscreenButton');
+  const fullscreenActive =
+    Boolean(document.fullscreenElement);
+  const fullscreenButton =
+    byId('fullscreenButton');
 
-    updateFullscreenViewportMetrics();
-    document.body.classList.toggle('is-fullscreen', fullscreenActive);
-    setText(
-      'fullscreenButton',
-      fullscreenActive ? '⛶ ออกจากเต็มจอ' : '⛶ เต็มจอ'
-    );
+  updateFullscreenViewportMetrics();
+  document.body.classList.toggle(
+    'is-fullscreen',
+    fullscreenActive
+  );
 
-    if (fullscreenButton) {
-      fullscreenButton.title = fullscreenActive
+  setText(
+    'fullscreenButton',
+    fullscreenActive
+      ? '⛶ ออกจากเต็มจอ'
+      : '⛶ เต็มจอ'
+  );
+
+  if (fullscreenButton) {
+    fullscreenButton.title =
+      fullscreenActive
         ? 'ออกจากเต็มจอ'
         : 'เปิดเต็มจอ';
-      fullscreenButton.setAttribute(
-        'aria-label',
-        fullscreenButton.title
-      );
-    }
 
-    (state.fullscreenResizeTimers || []).forEach((timer) => {
+    fullscreenButton.setAttribute(
+      'aria-label',
+      fullscreenButton.title
+    );
+
+    fullscreenButton.setAttribute(
+      'data-fullscreen-engine',
+      'R3-HARD'
+    );
+  }
+
+  (state.fullscreenResizeTimers || [])
+    .forEach((timer) => {
       window.clearTimeout(timer);
     });
-    state.fullscreenResizeTimers = [];
+
+  state.fullscreenResizeTimers = [];
+
+  if (fullscreenActive) {
+    applyFullscreenHardLayout();
+  } else {
+    clearFullscreenHardLayout();
+    document.body.removeAttribute(
+      'data-fullscreen-health'
+    );
+  }
+
+  window.requestAnimationFrame(() => {
+    applyFullscreenHardLayout();
 
     window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        resizeDashboardChartsNow();
-      });
+      applyFullscreenHardLayout();
+      resizeDashboardChartsNow();
+      verifyFullscreenHardLayout();
     });
+  });
 
-    [80, 220, 480].forEach((delay) => {
+  [60, 160, 320, 600, 1000].forEach(
+    (delay) => {
       state.fullscreenResizeTimers.push(
         window.setTimeout(() => {
           updateFullscreenViewportMetrics();
+
+          if (document.fullscreenElement) {
+            applyFullscreenHardLayout();
+            verifyFullscreenHardLayout();
+          } else {
+            clearFullscreenHardLayout();
+          }
+
           resizeDashboardChartsNow();
         }, delay)
       );
-    });
-  }
+    }
+  );
+}
 
   function scheduleChartResize() {
     window.clearTimeout(state.chartResizeTimer);
@@ -3110,7 +3925,25 @@ function isMobileComparisonViewport() {
     byId('trackingTableBody')?.addEventListener('click', (event) => { const row = event.target.closest('[data-record-id]'); if (row) showRecordDetail(findRecord(row.dataset.recordId)); });
 
     window.addEventListener('resize', scheduleChartResize);
-    window.addEventListener('resize', updateFreshnessStatus);
+    window.addEventListener(
+  'resize',
+  updateFreshnessStatus
+);
+window.addEventListener('resize', () => {
+  if (!document.fullscreenElement) return;
+
+  window.clearTimeout(
+    state.fullscreenHardResizeTimer
+  );
+
+  state.fullscreenHardResizeTimer =
+    window.setTimeout(() => {
+      updateFullscreenViewportMetrics();
+      applyFullscreenHardLayout();
+      resizeDashboardChartsNow();
+      verifyFullscreenHardLayout();
+    }, 100);
+});
     window.addEventListener('resize', () => { window.clearTimeout(state.compareResizeTimer); state.compareResizeTimer = window.setTimeout(() => { if (state.compareMode) renderComparisonWorkspace(); }, 180); });
     document.addEventListener('fullscreenchange', fitFullscreen);
     window.addEventListener('resize', fitFullscreen);
