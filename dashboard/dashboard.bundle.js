@@ -393,7 +393,8 @@ function formatFreshnessAge(milliseconds) {
       : `${minutes} นาที`;
   }
 
-  function getDashboardHeaderDensity() {
+  
+function getDashboardHeaderDensity() {
     const width = Math.max(
       window.innerWidth || 0,
       document.documentElement?.clientWidth || 0
@@ -401,8 +402,8 @@ function formatFreshnessAge(milliseconds) {
 
     if (width <= 640) return 'mobile';
     if (width <= 980) return 'tablet';
-    if (width <= 1760) return 'compact';
-    return 'full';
+    if (width <= 1450) return 'notebook';
+    return 'desktop';
   }
 
   function formatFreshnessAgeCompact(milliseconds) {
@@ -411,34 +412,106 @@ function formatFreshnessAge(milliseconds) {
       Math.floor(number(milliseconds) / 1000)
     );
 
-    if (seconds < 60) return `${seconds}วิ`;
+    if (seconds < 60) return `${seconds} วิ`;
 
     const minutes = Math.floor(seconds / 60);
-    const remainSeconds = seconds % 60;
+    if (minutes < 60) return `${minutes} น.`;
 
-    if (minutes < 60) {
-      return remainSeconds
-        ? `${minutes}น${remainSeconds}วิ`
-        : `${minutes}น`;
-    }
-
-    const hours = Math.floor(minutes / 60);
-    const remainMinutes = minutes % 60;
-    return remainMinutes
-      ? `${hours}ชม${remainMinutes}น`
-      : `${hours}ชม`;
+    return `${Math.floor(minutes / 60)} ชม.`;
   }
 
-  function setHeaderConnectionMessage(shortText, fullText) {
-    setText('connectionText', shortText);
+  function formatUpdateClock(epochMs) {
+    const timestamp = number(epochMs);
+    if (!timestamp) return '--:--:--';
 
-    const element = byId('connectionText');
-    const liveBox = element?.closest('.ops-header-live');
-    const title = fullText || shortText || '';
+    try {
+      return new Intl.DateTimeFormat(
+        'th-TH',
+        {
+          timeZone: 'Asia/Bangkok',
+          hour12: false,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        }
+      ).format(new Date(timestamp));
+    } catch (error) {
+      const date = new Date(timestamp);
+      return [
+        String(date.getHours()).padStart(2, '0'),
+        String(date.getMinutes()).padStart(2, '0'),
+        String(date.getSeconds()).padStart(2, '0')
+      ].join(':');
+    }
+  }
 
-    element?.setAttribute('title', title);
-    liveBox?.setAttribute('title', title);
-    element?.setAttribute('aria-label', title);
+  function setHeaderUpdateIndicator(
+    status,
+    fullMessage,
+    epochMs
+  ) {
+    const button = byId('refreshButton');
+    const hiddenText = byId('connectionText');
+    const timeElement = byId('connectionTime');
+    const safeStatus = [
+      'connecting',
+      'live',
+      'warning',
+      'critical',
+      'offline'
+    ].includes(status)
+      ? status
+      : 'connecting';
+
+    const updateEpoch =
+      number(epochMs) ||
+      number(state.lastSuccessfulCheckAtEpochMs);
+    const clockText = formatUpdateClock(updateEpoch);
+    const accessibleMessage =
+      fullMessage ||
+      'กำลังตรวจสอบข้อมูล';
+
+    button?.classList.remove(
+      'update-state-connecting',
+      'update-state-live',
+      'update-state-warning',
+      'update-state-critical',
+      'update-state-offline'
+    );
+    button?.classList.add(
+      `update-state-${safeStatus}`
+    );
+
+    setText('connectionText', accessibleMessage);
+    setText('connectionTime', clockText);
+
+    if (timeElement) {
+      timeElement.dateTime = updateEpoch
+        ? new Date(updateEpoch).toISOString()
+        : '';
+    }
+
+    const actionLabel =
+      `${accessibleMessage} · ` +
+      (
+        updateEpoch
+          ? `อัปเดตล่าสุด ${clockText}`
+          : 'ยังไม่มีเวลาอัปเดตล่าสุด'
+      ) +
+      ' · คลิกเพื่อรีเฟรชข้อมูล';
+
+    button?.setAttribute(
+      'aria-label',
+      actionLabel
+    );
+    button?.setAttribute(
+      'title',
+      actionLabel
+    );
+    hiddenText?.setAttribute(
+      'title',
+      accessibleMessage
+    );
   }
 
   function updateFreshnessStatus() {
@@ -449,39 +522,30 @@ function formatFreshnessAge(milliseconds) {
     const age = lastCheck
       ? Math.max(0, now - lastCheck)
       : Number.POSITIVE_INFINITY;
-    const element = byId('connectionText');
-    const density = getDashboardHeaderDensity();
-    const fullMode = density === 'full';
-    const ageCompact = formatFreshnessAgeCompact(age);
-
-    element?.classList.remove(
-      'refresh-stale',
-      'refresh-warning',
-      'refresh-critical'
-    );
 
     if (!state.initialized) {
-      setHeaderConnectionMessage(
-        density === 'mobile' ? 'เชื่อมต่อ…' : 'กำลังเชื่อมต่อ',
-        'กำลังเชื่อมต่อ'
+      setHeaderUpdateIndicator(
+        'connecting',
+        'กำลังเชื่อมต่อ',
+        0
       );
       return;
     }
 
     if (window.navigator.onLine === false) {
-      setHeaderConnectionMessage(
-        'ออฟไลน์ · ข้อมูลล่าสุด',
-        'ออฟไลน์ · ใช้ข้อมูลชุดล่าสุดที่ยืนยันแล้ว'
+      setHeaderUpdateIndicator(
+        'offline',
+        'ออฟไลน์ กำลังใช้ข้อมูลล่าสุดที่ยืนยันแล้ว',
+        lastCheck
       );
-      element?.classList.add('refresh-critical');
       return;
     }
 
     if (age <= CONFIG.STALE_WARNING_MS) {
-      const fullText = `สด · ตรวจล่าสุด ${formatFreshnessAge(age)}`;
-      setHeaderConnectionMessage(
-        fullMode ? fullText : `สด · ${ageCompact}`,
-        fullText
+      setHeaderUpdateIndicator(
+        'live',
+        `ข้อมูลสด ตรวจล่าสุด ${formatFreshnessAge(age)}`,
+        lastCheck
       );
       setText(
         'autoRefreshLabel',
@@ -491,14 +555,11 @@ function formatFreshnessAge(milliseconds) {
     }
 
     if (age <= CONFIG.STALE_CRITICAL_MS) {
-      const fullText = `ข้อมูลล่าช้า ${formatFreshnessAge(age)} · กำลังตรวจใหม่`;
-      setHeaderConnectionMessage(
-        fullMode
-          ? `ช้า · ${formatFreshnessAge(age)}`
-          : `ช้า · ${ageCompact}`,
-        fullText
+      setHeaderUpdateIndicator(
+        'warning',
+        `ข้อมูลล่าช้า ${formatFreshnessAge(age)} กำลังตรวจใหม่`,
+        lastCheck
       );
-      element?.classList.add('refresh-warning');
       setText(
         'autoRefreshLabel',
         'ยังใช้ข้อมูลชุดล่าสุดที่ยืนยันแล้ว'
@@ -506,14 +567,11 @@ function formatFreshnessAge(milliseconds) {
       return;
     }
 
-    const fullText = `ข้อมูลล่าช้า ${formatFreshnessAge(age)} · กำลังเชื่อมต่อใหม่`;
-    setHeaderConnectionMessage(
-      fullMode
-        ? `ล่าช้า · ${formatFreshnessAge(age)}`
-        : `ล่าช้า · ${ageCompact}`,
-      fullText
+    setHeaderUpdateIndicator(
+      'critical',
+      `ข้อมูลล่าช้า ${formatFreshnessAge(age)} กำลังเชื่อมต่อใหม่`,
+      lastCheck
     );
-    element?.classList.add('refresh-critical');
     setText(
       'autoRefreshLabel',
       'ข้อมูลบนจอยังไม่ใช่สถานะวินาทีปัจจุบัน'
@@ -654,8 +712,11 @@ function formatFreshnessAge(milliseconds) {
 
   function showError(error) {
     const message = error && error.message ? error.message : 'ไม่สามารถโหลด Dashboard ได้';
-    setText('connectionText', 'เชื่อมต่อไม่สำเร็จ');
-    byId('connectionText')?.classList.add('refresh-stale');
+    setHeaderUpdateIndicator(
+      'critical',
+      'เชื่อมต่อไม่สำเร็จ',
+      state.lastSuccessfulCheckAtEpochMs
+    );
     const panel = byId('dashboardInlineError');
     if (panel) {
       panel.hidden = false;
@@ -3932,8 +3993,8 @@ window.addEventListener('resize', () => {
     window.addEventListener('resize', () => { window.clearTimeout(state.compareResizeTimer); state.compareResizeTimer = window.setTimeout(() => { if (state.compareMode) renderComparisonWorkspace(); }, 180); });
     document.addEventListener('fullscreenchange', fitFullscreen);
     window.addEventListener('resize', fitFullscreen);
-    window.addEventListener('online', () => setText('connectionText', 'ออนไลน์'));
-    window.addEventListener('offline', () => setText('connectionText', 'ออฟไลน์'));
+    window.addEventListener('online', updateFreshnessStatus);
+    window.addEventListener('offline', updateFreshnessStatus);
 
     const media = window.matchMedia?.('(prefers-color-scheme: dark)');
     media?.addEventListener?.('change', () => { if (state.themePreference === 'system') applyDashboardTheme('system', false); });
