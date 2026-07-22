@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#032f46">
-  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#031726">
+  <meta name="color-scheme" content="dark light">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>Dashboard ภาพรวม Vendor / Receiving</title>
+  <title>Dashboard Vendor / Receiving</title>
   <link rel="manifest" href="../manifest.webmanifest">
   <link rel="stylesheet" href="../core.bundle.css?v=20260722-round4-dashboard">
-  <link rel="stylesheet" href="./dashboard.bundle.css?v=20260723-round4-hotfix7-rev5-dashboard-mobile-comparison-v1">
+  <link rel="stylesheet" href="./dashboard.bundle.css?v=20260723-round4-final-rev1-operational24h-themes-v1">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-  <script src="./dashboard.bundle.js?v=20260723-round4-hotfix7-rev5-dashboard-mobile-comparison-v1" defer></script>
+  <script src="./dashboard.bundle.js?v=20260723-round4-final-rev1-operational24h-themes-v1" defer></script>
 </head>
-<body class="executive-dashboard" data-page="dashboard">
+<body class="executive-dashboard" data-page="dashboard" data-theme="deep" data-theme-preference="deep">
   <div id="dashboardLoading" class="loading-screen" aria-live="polite">
     <div class="loading-card">
       <div class="loading-spinner" aria-hidden="true"></div>
@@ -24,50 +24,195 @@
     </div>
   </div>
 
-  <header class="topbar">
-    <div class="brand-block">
-      <button id="backButton" class="icon-button back-button" type="button" title="กลับหน้า Module">‹</button>
-      <div class="brand-copy">
-        <h1 data-mobile-title="Dashboard Vendor / Receiving">Dashboard ภาพรวม Vendor / Receiving</h1>
-        <p>ติดตามสถานะรถและตู้สินค้าแบบเรียลไทม์</p>
+  <header class="topbar ops-topbar">
+    <div class="ops-brand">
+      <button id="backButton" class="menu-button" type="button" title="กลับหน้า Module" aria-label="กลับหน้า Module">☰</button>
+      <div class="ops-brand-copy">
+        <h1>Dashboard Vendor / Receiving</h1>
+        <p>ภาพรวมการรับรถ / ตู้สินค้า อัปเดตอัตโนมัติ</p>
       </div>
     </div>
 
-    <div class="topbar-actions">
-      <div class="live-state"><i></i><span id="connectionText">กำลังเชื่อมต่อ</span></div>
-      <div class="clock-block">
-        <span id="currentDate">--/--/----</span>
-        <strong id="currentTime">--:--:--</strong>
+    <div class="ops-header-live live-state"><i></i><span id="connectionText">กำลังเชื่อมต่อ</span><button id="refreshButton" type="button" aria-label="รีเฟรชข้อมูล" title="รีเฟรชข้อมูล">↻</button></div>
+
+    <div class="ops-header-shift">
+      <span>กะปัจจุบัน</span>
+      <strong id="headerShiftName">กำลังตรวจสอบ</strong>
+      <small><span id="currentDate">--/--/----</span> <b id="currentTime">--:--:--</b></small>
+    </div>
+
+    <div class="ops-header-actions">
+      <button id="analysisButton" class="topbar-button" type="button" title="วิเคราะห์ย้อนหลัง">⌁ วิเคราะห์</button>
+      <button id="compareModeButton" class="topbar-button compare-button" type="button" title="เปิดโหมดเปรียบเทียบ">⇄ เปรียบเทียบ</button>
+      <button id="exportButton" class="topbar-button" type="button" title="ส่งออกข้อมูล">⇧ ส่งออก</button>
+      <button id="fullscreenButton" class="topbar-button fullscreen-button" type="button" title="เปิดเต็มจอ">⛶ เต็มจอ</button>
+      <div class="theme-switcher" role="group" aria-label="เลือกธีม Dashboard">
+        <span>ธีม</span>
+        <button type="button" data-theme-value="light" title="ธีมสว่าง">สว่าง</button>
+        <button type="button" data-theme-value="deep" title="ธีมน้ำเงินเข้ม">น้ำเงิน</button>
+        <button type="button" data-theme-value="plum" title="ธีมพลัม">พลัม</button>
+        <button type="button" data-theme-value="system" title="ใช้ตามระบบ">ระบบ</button>
       </div>
-      <button id="compareModeButton" class="topbar-button compare-button" type="button" title="เปิดโหมดเปรียบเทียบ" aria-label="เปิดโหมดเปรียบเทียบ">⇄ เปรียบเทียบ</button>
-      <button id="exportButton" class="topbar-button" type="button" title="ส่งออกข้อมูล" aria-label="ส่งออกข้อมูล">ส่งออก</button>
-      <button id="fullscreenButton" class="topbar-button fullscreen-button" type="button" title="เปิดเต็มจอ" aria-label="เปิดเต็มจอ">⛶ เปิดเต็มจอ</button>
     </div>
   </header>
 
   <div id="dashboardInlineError" class="dashboard-inline-error" hidden></div>
 
-  <main id="dashboardStage" class="dashboard-stage">
-    <section class="kpi-row" aria-label="ตัวเลขสรุป">
-      <article class="kpi-card kpi-blue"><div class="kpi-icon">เข้า</div><div><span>รถเข้า</span><strong id="kpiGateIn">0</strong><small id="deltaGateIn">เทียบช่วงก่อนหน้า</small></div></article>
-      <article class="kpi-card kpi-green"><div class="kpi-icon">✓</div><div><span>ปิดงานแล้ว</span><strong id="kpiCompleted">0</strong><small id="deltaCompleted">เทียบช่วงก่อนหน้า</small></div></article>
-      <article class="kpi-card kpi-orange"><div class="kpi-icon">ค้าง</div><div><span>คงค้าง</span><strong id="kpiBacklog">0</strong><small>ยังอยู่ในกระบวนการ</small></div></article>
-      <article class="kpi-card kpi-red"><div class="kpi-icon">!</div><div><span>เกินเวลา</span><strong id="kpiOverdue">0</strong><small id="deltaOverdue">ต้องติดตาม</small></div></article>
-      <article class="kpi-card kpi-purple"><div class="kpi-icon">เอก</div><div><span>รอยื่นเอกสาร</span><strong id="kpiWaitingDocument">0</strong><small>รอห้อง Inbound</small></div></article>
-      <article class="kpi-card kpi-indigo"><div class="kpi-icon">กล่อง</div><div><span>รอรับสินค้า</span><strong id="kpiWaitingReceiving">0</strong><small>รอหน้างานรับสินค้า</small></div></article>
-      <article class="kpi-card kpi-teal"><div class="kpi-icon">คืน</div><div><span>รอคืนเอกสาร</span><strong id="kpiWaitingReturn">0</strong><small>รอส่งคืน พขร.</small></div></article>
-      <article class="kpi-card kpi-slate"><div class="kpi-icon">×</div><div><span>ยกเลิก</span><strong id="kpiCancelled">0</strong><small id="deltaCancelled">ตามช่วงวันที่</small></div></article>
+  <main id="dashboardStage" class="dashboard-stage ops-stage">
+    <section id="mainDashboardGrid" class="ops-dashboard" aria-label="ภาพรวมปฏิบัติการ 24 ชั่วโมง">
+      <article class="ops-panel current-state-section">
+        <div class="ops-section-heading">
+          <div><span class="section-number">1</span><h2>สถานะปัจจุบัน</h2><small>รวมทุกคันที่ยังไม่ปิดงาน ไม่จำกัดวันที่เข้า</small></div>
+          <span id="currentStateAsOf" class="section-meta">ณ เวลาปัจจุบัน</span>
+        </div>
+        <div class="current-state-grid">
+          <button class="state-card tone-blue" type="button" data-current-mode="ALL"><span class="state-icon">▣</span><span>อยู่ในระบบตอนนี้</span><strong id="opsActiveNow">0</strong><small>คัน</small></button>
+          <button class="state-card tone-purple" type="button" data-current-mode="WAITING_INBOUND_DOCUMENT"><span class="state-icon">เอก</span><span>รอยื่นเอกสาร</span><strong id="opsWaitingDocument">0</strong><small>คัน</small></button>
+          <button class="state-card tone-orange" type="button" data-current-mode="WAITING_RECEIVING"><span class="state-icon">คลัง</span><span>รอรับสินค้า</span><strong id="opsWaitingReceiving">0</strong><small>คัน</small></button>
+          <button class="state-card tone-green" type="button" data-current-mode="WAITING_DOCUMENT_RETURN"><span class="state-icon">✓</span><span>รอคืนเอกสาร</span><strong id="opsWaitingReturn">0</strong><small>คัน</small></button>
+          <button class="state-card tone-sky" type="button" data-current-mode="WAITING_GATE_OUT"><span class="state-icon">ออก</span><span>รอออกจากพื้นที่</span><strong id="opsWaitingGateOut">0</strong><small>คัน</small></button>
+          <button class="state-card tone-amber" type="button" data-current-mode="WARNING"><span class="state-icon">!</span><span>ใกล้เกินเวลา</span><strong id="opsWarning">0</strong><small>คัน</small></button>
+          <button class="state-card tone-red" type="button" data-current-mode="OVERDUE"><span class="state-icon">▲</span><span>เกินเวลา</span><strong id="opsOverdue">0</strong><small>&gt; SLA</small></button>
+          <button class="state-card tone-magenta" type="button" data-current-mode="SEVERE"><span class="state-icon">▲</span><span>เกินเวลารุนแรง</span><strong id="opsSevere">0</strong><small>&gt;&gt; SLA</small></button>
+          <button class="state-card tone-gold" type="button" data-current-mode="INCOMPLETE"><span class="state-icon">i</span><span>ข้อมูลไม่ครบ</span><strong id="opsIncomplete">0</strong><small>คัน</small></button>
+          <button class="state-card tone-slate" type="button" data-current-mode="CANCELLED"><span class="state-icon">×</span><span>ยกเลิก 24 ชม.</span><strong id="opsCancelled24">0</strong><small>คัน</small></button>
+        </div>
+      </article>
+
+      <div class="ops-content-grid">
+        <div class="ops-left-stack">
+          <article class="ops-panel rolling-section">
+            <div class="ops-section-heading">
+              <div><span class="section-number">2</span><h2>ผลงาน 24 ชั่วโมงล่าสุด</h2><small id="rollingRangeLabel">ช่วงเวลาแบบเลื่อนต่อเนื่อง</small></div>
+            </div>
+            <div class="rolling-kpi-grid">
+              <div class="metric-card tone-blue"><span>รถเข้า</span><strong id="rollingGateIn">0</strong><small id="rollingGateInDelta">เทียบ 24 ชม.ก่อนหน้า</small></div>
+              <div class="metric-card tone-green"><span>ปิดงานแล้ว</span><strong id="rollingCompleted">0</strong><small id="rollingCompletedDelta">เทียบ 24 ชม.ก่อนหน้า</small></div>
+              <div class="metric-card tone-amber"><span>คงค้างเพิ่ม/ลด</span><strong id="rollingNet">0</strong><small id="rollingNetDetail">เข้า − ปิดงาน</small></div>
+              <div class="metric-card tone-purple"><span>เวลาทั่วไป</span><strong id="rollingMedian">-</strong><small id="rollingMedianDelta">Median ของงานปิด</small></div>
+              <button id="rollingSlowButton" class="metric-card tone-red" type="button"><span>งานกลุ่มช้า (Top 3)</span><strong id="rollingSlowCount">0</strong><small>กดดูรายละเอียด</small></button>
+              <div class="metric-card tone-teal"><span>ผ่านเกณฑ์ SLA</span><strong id="rollingCompliance">-</strong><small id="rollingComplianceDetail">จากรายการที่ตรวจสอบได้</small></div>
+            </div>
+          </article>
+
+          <article class="ops-panel flow-section">
+            <div class="ops-section-heading compact">
+              <div><span class="section-number">3</span><h2>การไหลของงาน</h2><small id="flowRangeLabel">24 ชั่วโมงล่าสุด</small></div>
+              <div class="range-switch" role="group" aria-label="ช่วงเวลาของกราฟ">
+                <button type="button" data-flow-range="24H" class="is-active">24 ชม.</button>
+                <button type="button" data-flow-range="7D">7 วัน</button>
+                <button type="button" data-flow-range="30D">30 วัน</button>
+              </div>
+            </div>
+            <div class="flow-layout">
+              <div class="ops-chart-wrap"><canvas id="opsFlowChart"></canvas></div>
+              <div class="stage-donut-block">
+                <h3>งานในแต่ละขั้นตอน</h3>
+                <div class="stage-donut-layout">
+                  <div class="stage-donut-wrap"><canvas id="opsStageChart"></canvas><div class="stage-donut-center"><small>รวม</small><strong id="opsStageTotal">0</strong><span>คัน</span></div></div>
+                  <div id="opsStageLegend" class="ops-stage-legend"></div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="ops-panel shift-section">
+            <div class="ops-section-heading compact">
+              <div><span class="section-number">5</span><h2>สรุปผลงานกะปัจจุบัน</h2><small>ใช้ช่วงเวลาตาม Admin และรองรับกะข้ามวัน</small></div>
+            </div>
+            <div class="shift-layout">
+              <div class="shift-focus-card">
+                <small>กะปัจจุบัน</small>
+                <strong id="opsShiftName">นอกกะ</strong>
+                <span id="opsShiftTime">-</span>
+                <span id="opsShiftBusinessDate">-</span>
+                <div class="shift-progress"><i id="opsShiftProgressBar"></i></div>
+                <b id="opsShiftProgressText">0%</b>
+              </div>
+              <div class="shift-metrics-grid">
+                <div><span>รับเข้ากะนี้</span><strong id="opsShiftGateIn">0</strong><small>คัน</small></div>
+                <div><span>ปิดงานแล้ว</span><strong id="opsShiftCompleted">0</strong><small>คัน</small></div>
+                <div><span>รับมาจากกะก่อน</span><strong id="opsShiftCarryIn">0</strong><small>คัน</small></div>
+                <div><span>ยังค้าง</span><strong id="opsShiftClosing">0</strong><small>คัน</small></div>
+                <div><span>ส่งต่อกะถัดไป</span><strong id="opsShiftCarryOut">0</strong><small>คัน</small></div>
+                <div class="danger"><span>เกินเวลา</span><strong id="opsShiftOverdue">0</strong><small>คัน</small></div>
+                <div><span>ประสิทธิภาพ</span><strong id="opsShiftEfficiency">-</strong><small>ปิด / ภาระงาน</small></div>
+              </div>
+              <div class="shift-process-block">
+                <h3>สถานะความคืบหน้ากระบวนการ</h3>
+                <div id="shiftProcessFlow" class="shift-process-flow"></div>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="ops-right-stack">
+          <article class="ops-panel urgent-section">
+            <div class="ops-section-heading compact">
+              <div><span class="section-number">4</span><h2>งานที่ต้องดำเนินการเร่งด่วน</h2><small>เรียงตามระดับความรุนแรงและเวลาค้าง</small></div>
+              <button id="showAllAlerts" class="section-link" type="button">ดูทั้งหมด →</button>
+            </div>
+            <div id="urgentTabs" class="urgent-tabs" role="tablist">
+              <button type="button" data-urgent-mode="SEVERE" class="is-active">รุนแรง <b id="urgentSevereCount">0</b></button>
+              <button type="button" data-urgent-mode="OVERDUE">เกินเวลา <b id="urgentOverdueCount">0</b></button>
+              <button type="button" data-urgent-mode="WARNING">ใกล้เกิน <b id="urgentWarningCount">0</b></button>
+              <button type="button" data-urgent-mode="INCOMPLETE">ข้อมูลไม่ครบ <b id="urgentIncompleteCount">0</b></button>
+            </div>
+            <div class="urgent-table-wrap">
+              <table class="urgent-table">
+                <thead><tr><th>เลขนัดหมาย</th><th>บริษัท</th><th>ขั้นตอนปัจจุบัน</th><th>ค้างในขั้นตอน</th><th>เกณฑ์ SLA</th></tr></thead>
+                <tbody id="urgentTableBody"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="ops-panel bottleneck-section">
+            <div class="ops-section-heading compact">
+              <div><span class="section-number">6</span><h2>คอขวดปัจจุบัน</h2><small>Top 5 ขั้นตอนที่ค้างงานมากที่สุด</small></div>
+            </div>
+            <div class="bottleneck-table-wrap">
+              <table class="bottleneck-table">
+                <thead><tr><th>อันดับ</th><th>ขั้นตอน</th><th>ค้างเฉลี่ย</th><th>ค้างนานสุด</th><th>จำนวนค้าง</th></tr></thead>
+                <tbody id="bottleneckTableBody"></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </div>
     </section>
 
-    <section class="filter-bar panel">
-      <label><span>ช่วงวันที่</span><div class="date-range"><input id="dateFrom" type="date"><b>–</b><input id="dateTo" type="date"></div></label>
-      <label><span>โมดูล</span><select id="moduleFilter"><option value="vendors">Vendor / Receiving</option></select></label>
-      <label><span>กะ</span><select id="shiftFilter"><option value="">ทั้งหมด</option></select></label>
-      <label><span>รูปแบบงาน</span><select id="profileFilter"><option value="">ทั้งหมด</option></select></label>
-      <label><span>สถานะ</span><select id="statusFilter"><option value="">ทั้งหมด</option><option value="ACTIVE">ยังไม่ปิดงาน</option><option value="COMPLETED">ปิดงานแล้ว</option><option value="OVERDUE">เกินเวลา</option><option value="CANCELLED">ยกเลิก</option><option value="INCOMPLETE">ข้อมูลต้องตรวจสอบ</option></select></label>
-      <label class="search-field"><span>ค้นหา</span><input id="searchInput" type="search" placeholder="เลขนัดหมาย บริษัท ทะเบียนรถ Auto ID"></label>
-      <button id="resetButton" class="refresh-button secondary" type="button">ล้าง</button>
-      <button id="refreshButton" class="refresh-button" type="button">↻ รีเฟรช</button>
+    <section id="analysisPanel" class="analysis-panel ops-panel" hidden>
+      <div class="ops-section-heading compact">
+        <div><h2>วิเคราะห์ย้อนหลังและค้นหารายการ</h2><small>วันปฏิทินใช้สำหรับรายงานย้อนหลัง ไม่กระทบตัวเลขสถานการณ์ปัจจุบัน</small></div>
+        <button id="closeAnalysisButton" class="section-link" type="button">ปิด</button>
+      </div>
+      <section class="filter-bar">
+        <label><span>ช่วงวันที่</span><div class="date-range"><input id="dateFrom" type="date"><b>–</b><input id="dateTo" type="date"></div></label>
+        <label><span>โมดูล</span><select id="moduleFilter"><option value="vendors">Vendor / Receiving</option></select></label>
+        <label><span>กะ</span><select id="shiftFilter"><option value="">ทั้งหมด</option></select></label>
+        <label><span>รูปแบบงาน</span><select id="profileFilter"><option value="">ทั้งหมด</option></select></label>
+        <label><span>สถานะ</span><select id="statusFilter"><option value="">ทั้งหมด</option><option value="ACTIVE">ยังไม่ปิดงาน</option><option value="COMPLETED">ปิดงานแล้ว</option><option value="OVERDUE">เกินเวลา</option><option value="CANCELLED">ยกเลิก</option><option value="INCOMPLETE">ข้อมูลต้องตรวจสอบ</option></select></label>
+        <label class="search-field"><span>ค้นหา</span><input id="searchInput" type="search" placeholder="เลขนัดหมาย บริษัท ทะเบียนรถ Auto ID"></label>
+        <button id="resetButton" class="refresh-button secondary" type="button">ล้าง</button>
+      </section>
+      <div class="analysis-grid">
+        <article class="analysis-calendar">
+          <div class="calendar-header"><h3>ปฏิทินงานรายวัน</h3><div><button id="calendarPrev" type="button">‹</button><strong id="calendarMonthLabel">-</strong><button id="calendarNext" type="button">›</button></div></div>
+          <div class="calendar-week"><span>อา</span><span>จ</span><span>อ</span><span>พ</span><span>พฤ</span><span>ศ</span><span>ส</span></div>
+          <div id="calendarGrid" class="calendar-grid"></div>
+          <div class="selected-day"><strong id="selectedDateLabel">-</strong><div class="selected-day-grid"><span>รถเข้า <b id="dayGateIn">0</b></span><span>ปิดงาน <b id="dayCompleted">0</b></span><span>คงค้าง <b id="dayBacklog">0</b></span><span>เกินเวลา <b id="dayOverdue">0</b></span></div></div>
+        </article>
+        <article class="analysis-list">
+          <h3>งานที่ใช้เวลานานในวันที่เลือก</h3>
+          <div id="companyRanking" class="ranking-list"></div>
+        </article>
+        <article class="analysis-table">
+          <div class="panel-title"><h3>รายการตามตัวกรอง</h3><span id="trackingCount">0 รายการ</span></div>
+          <div class="table-wrap"><table class="tracking-table"><thead><tr><th>เลขนัดหมาย</th><th>บริษัท</th><th>ขั้นตอน</th><th>เวลาเข้า</th><th>เวลาล่าสุด</th><th>เวลารวม</th><th>สถานะ</th></tr></thead><tbody id="trackingTableBody"></tbody></table></div>
+        </article>
+      </div>
+      <div id="alertList" hidden></div>
+      <div id="statusLegend" hidden></div><span id="statusChartTotal" hidden></span><span id="statusTotalLabel" hidden></span><span id="hourlyRangeLabel" hidden></span>
     </section>
 
 
@@ -84,34 +229,11 @@
         <label class="compare-control-b"><span>ฝั่ง B</span><select id="compareB"></select></label>
         <button id="closeCompareButton" class="compare-close" type="button">กลับภาพรวม</button>
       </div>
-
-      <div
-        id="compareMobileLayout"
-        class="compare-mobile-layout"
-        role="group"
-        aria-label="รูปแบบการแสดงผลบนมือถือ"
-      >
-        <button
-          id="comparePairButton"
-          class="compare-layout-button is-active"
-          type="button"
-          aria-pressed="true"
-        >เทียบคู่</button>
-        <button
-          id="compareOverlayButton"
-          class="compare-layout-button"
-          type="button"
-          aria-pressed="false"
-        >ซ้อนกัน</button>
+      <div id="compareMobileLayout" class="compare-mobile-layout" role="group" aria-label="รูปแบบการแสดงผลบนมือถือ">
+        <button id="comparePairButton" class="compare-layout-button is-active" type="button" aria-pressed="true">เทียบคู่</button>
+        <button id="compareOverlayButton" class="compare-layout-button" type="button" aria-pressed="false">ซ้อนกัน</button>
       </div>
-
-      <article
-        id="compareOverlayPane"
-        class="compare-overlay-pane"
-        hidden
-        aria-live="polite"
-      ></article>
-
+      <article id="compareOverlayPane" class="compare-overlay-pane" hidden aria-live="polite"></article>
       <div id="comparisonGrid" class="comparison-grid">
         <article id="comparePaneA" class="compare-pane compare-pane-a"></article>
         <article id="comparePaneB" class="compare-pane compare-pane-b"></article>
@@ -119,68 +241,13 @@
       <div id="compareDelta" class="compare-delta"></div>
     </section>
 
-    <section id="mainDashboardGrid" class="main-grid">
-      <div class="left-column">
-        <article class="panel chart-panel status-panel">
-          <div class="panel-title"><h2>สถานะปัจจุบัน</h2><span id="statusTotalLabel">รวม 0 คัน</span></div>
-          <div class="donut-layout"><div class="donut-wrap"><canvas id="statusChart"></canvas><div class="donut-center"><small>รวมทั้งสิ้น</small><strong id="statusChartTotal">0</strong><span>คัน</span></div></div><div id="statusLegend" class="status-legend"></div></div>
-        </article>
 
-        <article class="panel alert-panel">
-          <div class="panel-title"><h2>⚠ เตือนสำคัญ</h2><button id="showAllAlerts" class="text-button" type="button">ดูทั้งหมด</button></div>
-          <div id="alertList" class="alert-list"></div>
-        </article>
-      </div>
-
-      <div class="center-column">
-        <article class="panel chart-panel hourly-panel">
-          <div class="panel-title"><h2>แนวโน้มงานรายชั่วโมง</h2><span id="hourlyRangeLabel">ตามช่วงวันที่</span></div>
-          <div class="chart-canvas"><canvas id="hourlyChart"></canvas></div>
-        </article>
-
-        <article class="panel chart-panel stage-time-panel">
-          <div class="panel-title"><h2>เวลาของแต่ละขั้นตอน</h2><span>เวลาทั่วไป · งานกลุ่มช้า · เป้าหมาย</span></div>
-          <div class="chart-canvas"><canvas id="stageTimeChart"></canvas></div>
-        </article>
-      </div>
-
-      <div class="right-column">
-        <article class="panel calendar-panel">
-          <div class="calendar-header"><h2>ปฏิทินงานรายวัน</h2><div><button id="calendarPrev" type="button">‹</button><strong id="calendarMonthLabel">-</strong><button id="calendarNext" type="button">›</button></div></div>
-          <div class="calendar-week"><span>อา</span><span>จ</span><span>อ</span><span>พ</span><span>พฤ</span><span>ศ</span><span>ส</span></div>
-          <div id="calendarGrid" class="calendar-grid"></div>
-          <div class="selected-day"><strong id="selectedDateLabel">ข้อมูลวันที่เลือก</strong><div class="selected-day-grid"><span>🚚 รถเข้า <b id="dayGateIn">0</b></span><span>✅ ปิดงาน <b id="dayCompleted">0</b></span><span>📄 คงค้าง <b id="dayBacklog">0</b></span><span>⏰ เกินเวลา <b id="dayOverdue">0</b></span></div></div>
-        </article>
-
-        <article class="panel ranking-panel">
-          <div class="panel-title"><h2>งานที่ใช้เวลานานสุด</h2><span>เลขนัดหมาย · บริษัท</span></div>
-          <div id="companyRanking" class="ranking-list"></div>
-        </article>
-      </div>
-    </section>
-
-    <section id="mainDashboardBottom" class="bottom-grid">
-      <article class="panel tracking-panel">
-        <div class="panel-title"><h2>รายการที่ต้องติดตาม</h2><span id="trackingCount">0 รายการ</span></div>
-        <div class="table-wrap">
-          <table class="tracking-table">
-            <thead><tr><th>เลขนัดหมาย</th><th>บริษัท</th><th>ขั้นตอน</th><th>เวลาเข้า</th><th>เวลาล่าสุด</th><th>เวลารวม</th><th>สถานะ</th></tr></thead>
-            <tbody id="trackingTableBody"></tbody>
-          </table>
-        </div>
-      </article>
-
-      <article class="panel shift-panel">
-        <div class="panel-title"><h2>สรุปกะ</h2><span id="shiftStatusLabel">อัตโนมัติ</span></div>
-        <div class="shift-summary">
-          <div class="current-shift"><small>กะปัจจุบัน</small><strong id="currentShiftName">นอกกะ</strong><span id="currentShiftTime">-</span></div>
-          <div class="shift-metric"><small>งานรับเข้า</small><strong id="shiftGateIn">0</strong><span>คัน</span></div>
-          <div class="shift-metric"><small>งานปิด</small><strong id="shiftCompleted">0</strong><span>คัน</span></div>
-          <div class="shift-metric"><small>ส่งต่ออัตโนมัติ</small><strong id="shiftCarryOver">0</strong><span>คัน</span></div>
-          <div class="shift-metric"><small>นอกกะ</small><strong id="outsideShiftCount">0</strong><span>คัน</span></div>
-        </div>
-        <div class="data-footnote"><span id="dataRevision">ข้อมูลชุด -</span><span id="lastUpdated">อัปเดตล่าสุด -</span><span id="autoRefreshLabel">ตรวจการเปลี่ยนแปลงทุก 5 วินาที</span></div>
-      </article>
+    <section id="mainDashboardBottom" class="ops-footer">
+      <span>SLA และเกณฑ์เวลาทั้งหมดอ้างอิงจากการตั้งค่า Admin</span>
+      <span id="dataRevision">ข้อมูลชุด -</span>
+      <span id="lastUpdated">อัปเดตล่าสุด -</span>
+      <span id="autoRefreshLabel">ตรวจการเปลี่ยนแปลงทุก 5 วินาที</span>
+      <span>Timezone: Asia/Bangkok</span>
     </section>
   </main>
 
