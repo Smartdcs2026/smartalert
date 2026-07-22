@@ -1909,3 +1909,249 @@ body[data-fullscreen-health="RECOVERING"]
    across desktop, tablet and mobile sizes.
    ========================================================= */
 body:not(.is-fullscreen) .ops-topbar{height:auto;min-height:76px;grid-template-columns:minmax(320px,1.08fr) minmax(0,.88fr) minmax(188px,.54fr) auto;gap:10px;align-items:center}body:not(.is-fullscreen) .ops-topbar>*{min-width:0}body:not(.is-fullscreen) .ops-brand{min-width:0}body:not(.is-fullscreen) .ops-brand-copy{min-width:0}body:not(.is-fullscreen) .ops-header-live{display:flex;align-items:center;justify-self:stretch;min-width:0;width:100%;max-width:100%;padding:0 10px;gap:8px;overflow:hidden}body:not(.is-fullscreen) .ops-header-live i{flex:0 0 10px}body:not(.is-fullscreen) #connectionText{flex:1 1 auto;min-width:0;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}body:not(.is-fullscreen) .ops-header-shift{justify-self:stretch;min-width:0;width:100%;max-width:100%;padding:5px 10px;overflow:hidden}body:not(.is-fullscreen) .ops-header-shift>span,body:not(.is-fullscreen) .ops-header-shift strong,body:not(.is-fullscreen) .ops-header-shift small{display:block;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}body:not(.is-fullscreen) .ops-header-actions{min-width:0;display:flex;align-items:center;justify-content:flex-end;flex-wrap:nowrap;gap:6px}body:not(.is-fullscreen) .ops-header-actions .topbar-button{min-width:0;padding:0 10px;font-size:10px}body:not(.is-fullscreen) .theme-switcher{min-width:0;max-width:100%;overflow:hidden}body:not(.is-fullscreen) .theme-switcher>span{padding:0 4px}body:not(.is-fullscreen) .theme-switcher button{padding:0 6px}body:not(.is-fullscreen) .menu-button{flex:0 0 48px}@media (max-width:1760px){body:not(.is-fullscreen) .ops-topbar{grid-template-columns:minmax(280px,1fr) minmax(0,.9fr) minmax(176px,.56fr) auto;gap:8px}body:not(.is-fullscreen) .ops-brand-copy h1{font-size:clamp(18px,1.45vw,28px)}body:not(.is-fullscreen) .ops-brand-copy p{font-size:10px}body:not(.is-fullscreen) .ops-header-live{font-size:10px}body:not(.is-fullscreen) .ops-header-shift strong{font-size:14px}body:not(.is-fullscreen) .ops-header-actions .topbar-button{padding:0 9px;font-size:10px}body:not(.is-fullscreen) .theme-switcher button{padding:0 5px;font-size:8px}}@media (max-width:1540px){body:not(.is-fullscreen) .ops-topbar{grid-template-columns:minmax(280px,1fr) minmax(0,.9fr) minmax(170px,.58fr);grid-template-areas:"brand live shift" "brand actions actions";row-gap:8px;align-items:center;padding-top:10px;padding-bottom:10px}body:not(.is-fullscreen) .ops-brand{grid-area:brand}body:not(.is-fullscreen) .ops-header-live{grid-area:live}body:not(.is-fullscreen) .ops-header-shift{grid-area:shift}body:not(.is-fullscreen) .ops-header-actions{grid-area:actions;justify-self:end;width:100%}}@media (max-width:1320px){body:not(.is-fullscreen) .ops-topbar{grid-template-columns:minmax(220px,1fr) minmax(220px,1fr);grid-template-areas:"brand brand" "live shift" "actions actions";min-height:124px}body:not(.is-fullscreen) .ops-header-actions{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:stretch;justify-content:stretch}body:not(.is-fullscreen) .ops-header-actions .topbar-button,body:not(.is-fullscreen) .theme-switcher{width:100%}body:not(.is-fullscreen) .theme-switcher{justify-content:center}}@media (max-width:980px){body:not(.is-fullscreen) .ops-topbar{grid-template-columns:1fr;grid-template-areas:"brand" "live" "shift" "actions";min-height:auto}body:not(.is-fullscreen) .ops-header-actions{grid-template-columns:repeat(2,minmax(0,1fr))}body:not(.is-fullscreen) .theme-switcher{grid-column:1/-1}body:not(.is-fullscreen) .ops-brand-copy h1{white-space:normal;overflow:visible;text-overflow:clip}body:not(.is-fullscreen) .ops-brand-copy p{white-space:normal}}@media (max-width:640px){body:not(.is-fullscreen) .ops-topbar{padding:8px}body:not(.is-fullscreen) .ops-header-actions{grid-template-columns:1fr 1fr}body:not(.is-fullscreen) .ops-header-actions .topbar-button{height:38px;font-size:10px}body:not(.is-fullscreen) .theme-switcher{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;height:auto;padding:4px}body:not(.is-fullscreen) .theme-switcher>span{grid-column:1/-1;padding:0 2px}body:not(.is-fullscreen) .theme-switcher button{height:30px}}
+
+
+/* =========================================================
+   ROUND 4 FINAL REV5 — COMPACT FIXED TOPBAR
+   Do not increase desktop header height to fit long content.
+   Shorten, clip and compact controls instead.
+   ========================================================= */
+
+/* Desktop and notebook: one fixed-height row only. */
+@media (min-width:981px){
+  body:not(.is-fullscreen) .ops-topbar{
+    height:68px!important;
+    min-height:68px!important;
+    max-height:68px!important;
+    padding:6px 12px!important;
+    display:grid!important;
+    grid-template-columns:minmax(280px,1fr) minmax(150px,.62fr) minmax(166px,.52fr) auto!important;
+    grid-template-areas:"brand live shift actions"!important;
+    grid-template-rows:56px!important;
+    gap:8px!important;
+    align-items:center!important;
+    overflow:hidden!important;
+  }
+
+  body:not(.is-fullscreen) .ops-brand{grid-area:brand!important;min-width:0!important;overflow:hidden!important}
+  body:not(.is-fullscreen) .ops-header-live{grid-area:live!important}
+  body:not(.is-fullscreen) .ops-header-shift{grid-area:shift!important}
+  body:not(.is-fullscreen) .ops-header-actions{grid-area:actions!important}
+
+  body:not(.is-fullscreen) .ops-brand-copy h1{
+    font-size:clamp(18px,1.42vw,26px)!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+
+  body:not(.is-fullscreen) .ops-brand-copy p{
+    margin-top:2px!important;
+    font-size:9px!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+
+  body:not(.is-fullscreen) .menu-button{
+    width:42px!important;
+    height:42px!important;
+    flex:0 0 42px!important;
+    font-size:21px!important;
+  }
+
+  body:not(.is-fullscreen) .ops-header-live{
+    min-width:0!important;
+    width:100%!important;
+    height:40px!important;
+    padding:0 7px!important;
+    gap:6px!important;
+    overflow:hidden!important;
+  }
+
+  body:not(.is-fullscreen) .ops-header-live i{
+    width:9px!important;
+    height:9px!important;
+    flex:0 0 9px!important;
+  }
+
+  body:not(.is-fullscreen) #connectionText{
+    min-width:0!important;
+    flex:1 1 auto!important;
+    font-size:10px!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+
+  body:not(.is-fullscreen) .ops-header-live button{
+    width:27px!important;
+    height:27px!important;
+    flex:0 0 27px!important;
+    margin-left:0!important;
+  }
+
+  body:not(.is-fullscreen) .ops-header-shift{
+    min-width:0!important;
+    width:100%!important;
+    height:46px!important;
+    padding:4px 8px!important;
+    overflow:hidden!important;
+  }
+
+  body:not(.is-fullscreen) .ops-header-shift>span{font-size:8px!important}
+  body:not(.is-fullscreen) .ops-header-shift strong{
+    font-size:13px!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  body:not(.is-fullscreen) .ops-header-shift small{
+    font-size:7px!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+
+  body:not(.is-fullscreen) .ops-header-actions{
+    min-width:0!important;
+    height:42px!important;
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    gap:5px!important;
+    overflow:hidden!important;
+  }
+
+  /* Icon-only action buttons save horizontal space. Full labels remain in title/aria-label. */
+  body:not(.is-fullscreen) .ops-header-actions .topbar-button{
+    width:40px!important;
+    min-width:40px!important;
+    max-width:40px!important;
+    height:40px!important;
+    padding:0!important;
+    font-size:0!important;
+    display:grid!important;
+    place-items:center!important;
+  }
+  body:not(.is-fullscreen) #analysisButton::after{content:"⌁";font-size:17px}
+  body:not(.is-fullscreen) #compareModeButton::after{content:"⇄";font-size:18px}
+  body:not(.is-fullscreen) #exportButton::after{content:"⇧";font-size:18px}
+  body:not(.is-fullscreen) #fullscreenButton::after{content:"⛶";font-size:17px}
+
+  body:not(.is-fullscreen) .theme-switcher{
+    min-width:0!important;
+    width:auto!important;
+    height:40px!important;
+    padding:3px!important;
+    gap:2px!important;
+    overflow:hidden!important;
+  }
+  body:not(.is-fullscreen) .theme-switcher>span{display:none!important}
+  body:not(.is-fullscreen) .theme-switcher button{
+    width:27px!important;
+    min-width:27px!important;
+    height:32px!important;
+    padding:0!important;
+    font-size:0!important;
+  }
+  body:not(.is-fullscreen) .theme-switcher button[data-theme-value="light"]::after{content:"ส";font-size:9px}
+  body:not(.is-fullscreen) .theme-switcher button[data-theme-value="deep"]::after{content:"น";font-size:9px}
+  body:not(.is-fullscreen) .theme-switcher button[data-theme-value="plum"]::after{content:"พ";font-size:9px}
+  body:not(.is-fullscreen) .theme-switcher button[data-theme-value="system"]::after{content:"ร";font-size:9px}
+}
+
+/* Notebook widths: keep one row, hide nonessential subtitle. */
+@media (min-width:981px) and (max-width:1450px){
+  body:not(.is-fullscreen) .ops-topbar{
+    grid-template-columns:minmax(240px,1fr) minmax(125px,.54fr) minmax(148px,.48fr) auto!important;
+    gap:6px!important;
+  }
+  body:not(.is-fullscreen) .ops-brand-copy p{display:none!important}
+  body:not(.is-fullscreen) .ops-brand-copy h1{font-size:19px!important}
+  body:not(.is-fullscreen) .ops-header-live{height:38px!important}
+  body:not(.is-fullscreen) .ops-header-shift{height:42px!important;padding:3px 6px!important}
+  body:not(.is-fullscreen) .ops-header-actions .topbar-button{width:36px!important;min-width:36px!important;max-width:36px!important;height:38px!important}
+  body:not(.is-fullscreen) .theme-switcher{height:38px!important}
+  body:not(.is-fullscreen) .theme-switcher button{width:24px!important;min-width:24px!important;height:30px!important}
+}
+
+/* Tablet: two compact rows, fixed 82px — never expands according to text length. */
+@media (min-width:641px) and (max-width:980px){
+  body:not(.is-fullscreen) .ops-topbar{
+    height:82px!important;
+    min-height:82px!important;
+    max-height:82px!important;
+    padding:5px 8px!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(145px,.52fr) auto!important;
+    grid-template-areas:"brand shift actions" "live live live"!important;
+    grid-template-rows:42px 28px!important;
+    gap:2px 6px!important;
+    overflow:hidden!important;
+  }
+  body:not(.is-fullscreen) .ops-brand{grid-area:brand!important;min-width:0!important;overflow:hidden!important}
+  body:not(.is-fullscreen) .ops-header-shift{grid-area:shift!important;height:40px!important;min-width:0!important;padding:3px 6px!important}
+  body:not(.is-fullscreen) .ops-header-actions{grid-area:actions!important;height:40px!important;display:flex!important;flex-wrap:nowrap!important;gap:4px!important;overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:none!important}
+  body:not(.is-fullscreen) .ops-header-actions::-webkit-scrollbar{display:none!important}
+  body:not(.is-fullscreen) .ops-header-live{grid-area:live!important;height:27px!important;min-width:0!important;width:100%!important;padding:0 7px!important;overflow:hidden!important}
+  body:not(.is-fullscreen) .ops-brand-copy p{display:none!important}
+  body:not(.is-fullscreen) .ops-brand-copy h1{font-size:18px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  body:not(.is-fullscreen) .menu-button{width:38px!important;height:38px!important;flex:0 0 38px!important}
+  body:not(.is-fullscreen) #connectionText{font-size:9px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  body:not(.is-fullscreen) .ops-header-live button{width:24px!important;height:24px!important}
+  body:not(.is-fullscreen) .ops-header-actions .topbar-button{width:36px!important;min-width:36px!important;height:36px!important;padding:0!important;font-size:0!important}
+  body:not(.is-fullscreen) #analysisButton::after{content:"⌁";font-size:16px}
+  body:not(.is-fullscreen) #compareModeButton::after{content:"⇄";font-size:17px}
+  body:not(.is-fullscreen) #exportButton::after{content:"⇧";font-size:17px}
+  body:not(.is-fullscreen) #fullscreenButton::after{content:"⛶";font-size:16px}
+  body:not(.is-fullscreen) .theme-switcher{height:36px!important;display:flex!important;flex:0 0 auto!important;padding:2px!important;gap:2px!important}
+  body:not(.is-fullscreen) .theme-switcher>span{display:none!important}
+  body:not(.is-fullscreen) .theme-switcher button{width:25px!important;min-width:25px!important;height:30px!important;padding:0!important;font-size:0!important}
+  body:not(.is-fullscreen) .theme-switcher button[data-theme-value="light"]::after{content:"ส";font-size:9px}
+  body:not(.is-fullscreen) .theme-switcher button[data-theme-value="deep"]::after{content:"น";font-size:9px}
+  body:not(.is-fullscreen) .theme-switcher button[data-theme-value="plum"]::after{content:"พ";font-size:9px}
+  body:not(.is-fullscreen) .theme-switcher button[data-theme-value="system"]::after{content:"ร";font-size:9px}
+}
+
+/* Mobile: retain a compact two-row header; actions can scroll instead of increasing height. */
+@media (max-width:640px){
+  body:not(.is-fullscreen) .ops-topbar{
+    height:86px!important;
+    min-height:86px!important;
+    max-height:86px!important;
+    padding:5px 7px!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(112px,.48fr)!important;
+    grid-template-areas:"brand shift" "live actions"!important;
+    grid-template-rows:42px 32px!important;
+    gap:2px 6px!important;
+    overflow:hidden!important;
+  }
+  body:not(.is-fullscreen) .ops-brand{grid-area:brand!important;min-width:0!important;overflow:hidden!important}
+  body:not(.is-fullscreen) .ops-header-shift{grid-area:shift!important;height:40px!important;min-width:0!important;padding:3px 5px!important}
+  body:not(.is-fullscreen) .ops-header-live{grid-area:live!important;height:30px!important;min-width:0!important;width:100%!important;padding:0 5px!important;overflow:hidden!important}
+  body:not(.is-fullscreen) .ops-header-actions{grid-area:actions!important;height:30px!important;min-width:0!important;display:flex!important;gap:3px!important;overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:none!important}
+  body:not(.is-fullscreen) .ops-header-actions::-webkit-scrollbar{display:none!important}
+  body:not(.is-fullscreen) .ops-brand-copy p{display:none!important}
+  body:not(.is-fullscreen) .ops-brand-copy h1{font-size:15px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  body:not(.is-fullscreen) .menu-button{width:36px!important;height:36px!important;flex:0 0 36px!important;font-size:18px!important}
+  body:not(.is-fullscreen) .ops-header-shift>span{font-size:7px!important}
+  body:not(.is-fullscreen) .ops-header-shift strong{font-size:10px!important}
+  body:not(.is-fullscreen) .ops-header-shift small{font-size:6px!important}
+  body:not(.is-fullscreen) #connectionText{font-size:8px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  body:not(.is-fullscreen) .ops-header-live button{width:22px!important;height:22px!important;font-size:15px!important}
+  body:not(.is-fullscreen) .ops-header-actions .topbar-button{width:29px!important;min-width:29px!important;height:29px!important;padding:0!important;font-size:0!important}
+  body:not(.is-fullscreen) #analysisButton::after{content:"⌁";font-size:14px}
+  body:not(.is-fullscreen) #compareModeButton::after{content:"⇄";font-size:15px}
+  body:not(.is-fullscreen) #exportButton::after{content:"⇧";font-size:15px}
+  body:not(.is-fullscreen) #fullscreenButton::after{content:"⛶";font-size:14px}
+  body:not(.is-fullscreen) .theme-switcher{height:29px!important;display:flex!important;flex:0 0 auto!important;padding:1px!important;gap:1px!important}
+  body:not(.is-fullscreen) .theme-switcher>span{display:none!important}
+  body:not(.is-fullscreen) .theme-switcher button{width:21px!important;min-width:21px!important;height:25px!important;padding:0!important;font-size:0!important}
+  body:not(.is-fullscreen) .theme-switcher button[data-theme-value="light"]::after{content:"ส";font-size:8px}
+  body:not(.is-fullscreen) .theme-switcher button[data-theme-value="deep"]::after{content:"น";font-size:8px}
+  body:not(.is-fullscreen) .theme-switcher button[data-theme-value="plum"]::after{content:"พ";font-size:8px}
+  body:not(.is-fullscreen) .theme-switcher button[data-theme-value="system"]::after{content:"ร";font-size:8px}
+}
