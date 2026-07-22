@@ -2155,3 +2155,268 @@ body:not(.is-fullscreen) .ops-topbar{height:auto;min-height:76px;grid-template-c
   body:not(.is-fullscreen) .theme-switcher button[data-theme-value="plum"]::after{content:"พ";font-size:8px}
   body:not(.is-fullscreen) .theme-switcher button[data-theme-value="system"]::after{content:"ร";font-size:8px}
 }
+
+
+/* =========================================================
+   ROUND 4 FINAL REV6 — MINIMAL UPDATE INDICATOR
+   Only status dot + last update time are visible.
+   The entire indicator remains a manual refresh button.
+   ========================================================= */
+
+.status-visually-hidden{
+  position:absolute!important;
+  width:1px!important;
+  height:1px!important;
+  padding:0!important;
+  margin:-1px!important;
+  overflow:hidden!important;
+  clip:rect(0,0,0,0)!important;
+  white-space:nowrap!important;
+  border:0!important;
+}
+
+body:not(.is-fullscreen) .ops-header-live{
+  appearance:none!important;
+  -webkit-appearance:none!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:82px!important;
+  min-width:82px!important;
+  max-width:82px!important;
+  height:36px!important;
+  padding:0 8px!important;
+  gap:6px!important;
+  border:1px solid rgba(255,255,255,.14)!important;
+  border-radius:10px!important;
+  background:rgba(255,255,255,.025)!important;
+  box-shadow:none!important;
+  color:rgba(255,255,255,.84)!important;
+  overflow:hidden!important;
+  cursor:pointer!important;
+}
+
+body:not(.is-fullscreen) .ops-header-live:hover{
+  background:rgba(255,255,255,.07)!important;
+  border-color:rgba(255,255,255,.26)!important;
+}
+
+body:not(.is-fullscreen) .ops-header-live:focus-visible{
+  outline:2px solid var(--accent)!important;
+  outline-offset:2px!important;
+}
+
+body:not(.is-fullscreen) .ops-header-live .update-state-dot{
+  display:block!important;
+  width:9px!important;
+  height:9px!important;
+  min-width:9px!important;
+  flex:0 0 9px!important;
+  border-radius:50%!important;
+  background:#5ca7d8!important;
+  box-shadow:0 0 8px rgba(92,167,216,.65)!important;
+}
+
+body:not(.is-fullscreen) .ops-header-live time{
+  display:block!important;
+  min-width:0!important;
+  color:inherit!important;
+  font-size:10px!important;
+  font-weight:900!important;
+  font-variant-numeric:tabular-nums!important;
+  letter-spacing:.1px!important;
+  white-space:nowrap!important;
+}
+
+body:not(.is-fullscreen) .ops-header-live.update-state-live
+.update-state-dot{
+  background:#20cf78!important;
+  box-shadow:0 0 9px rgba(32,207,120,.72)!important;
+}
+
+body:not(.is-fullscreen) .ops-header-live.update-state-warning
+.update-state-dot{
+  background:#ffb51b!important;
+  box-shadow:0 0 9px rgba(255,181,27,.72)!important;
+}
+
+body:not(.is-fullscreen) .ops-header-live.update-state-critical
+.update-state-dot{
+  background:#ff3f72!important;
+  box-shadow:0 0 10px rgba(255,63,114,.78)!important;
+}
+
+body:not(.is-fullscreen) .ops-header-live.update-state-offline
+.update-state-dot{
+  background:#8fa2ad!important;
+  box-shadow:none!important;
+}
+
+body:not(.is-fullscreen) .ops-header-live.update-state-connecting
+.update-state-dot{
+  background:#5ca7d8!important;
+  animation:smartalertUpdatePulse 1.25s ease-in-out infinite!important;
+}
+
+@keyframes smartalertUpdatePulse{
+  0%,100%{opacity:.45;transform:scale(.86)}
+  50%{opacity:1;transform:scale(1.12)}
+}
+
+/* Desktop and notebook: one fixed 68px row. */
+@media (min-width:981px){
+  body:not(.is-fullscreen) .ops-topbar{
+    height:68px!important;
+    min-height:68px!important;
+    max-height:68px!important;
+    grid-template-columns:
+      minmax(255px,1fr)
+      82px
+      minmax(156px,182px)
+      auto!important;
+    grid-template-areas:"brand live shift actions"!important;
+    grid-template-rows:56px!important;
+    gap:7px!important;
+    padding:6px 12px!important;
+    overflow:hidden!important;
+  }
+
+  body:not(.is-fullscreen) .ops-header-live{
+    grid-area:live!important;
+    justify-self:center!important;
+  }
+
+  body:not(.is-fullscreen) .ops-header-shift{
+    grid-area:shift!important;
+  }
+
+  body:not(.is-fullscreen) .ops-header-actions{
+    grid-area:actions!important;
+  }
+}
+
+/* Narrow notebook: preserve one row and reduce only nonessential text. */
+@media (min-width:981px) and (max-width:1280px){
+  body:not(.is-fullscreen) .ops-topbar{
+    grid-template-columns:
+      minmax(215px,1fr)
+      74px
+      minmax(138px,152px)
+      auto!important;
+    gap:5px!important;
+  }
+
+  body:not(.is-fullscreen) .ops-brand-copy p{
+    display:none!important;
+  }
+
+  body:not(.is-fullscreen) .ops-brand-copy h1{
+    font-size:18px!important;
+  }
+
+  body:not(.is-fullscreen) .ops-header-live{
+    width:74px!important;
+    min-width:74px!important;
+    max-width:74px!important;
+    padding:0 6px!important;
+  }
+
+  body:not(.is-fullscreen) .ops-header-live time{
+    font-size:9px!important;
+  }
+}
+
+/* Tablet: fixed 76px, status remains tiny in the control row. */
+@media (min-width:641px) and (max-width:980px){
+  body:not(.is-fullscreen) .ops-topbar{
+    height:76px!important;
+    min-height:76px!important;
+    max-height:76px!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(140px,176px)!important;
+    grid-template-areas:
+      "brand shift"
+      "actions actions"!important;
+    grid-template-rows:40px 28px!important;
+    gap:2px 6px!important;
+    padding:4px 8px!important;
+    overflow:hidden!important;
+  }
+
+  body:not(.is-fullscreen) .ops-header-live{
+    position:absolute!important;
+    right:calc(min(176px,23vw) + 11px)!important;
+    top:6px!important;
+    width:72px!important;
+    min-width:72px!important;
+    max-width:72px!important;
+    height:32px!important;
+  }
+
+  body:not(.is-fullscreen) .ops-header-actions{
+    grid-area:actions!important;
+    width:100%!important;
+    height:28px!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    scrollbar-width:none!important;
+  }
+
+  body:not(.is-fullscreen) .ops-header-actions::-webkit-scrollbar{
+    display:none!important;
+  }
+}
+
+/* Mobile: compact two-row header, fixed 80px. */
+@media (max-width:640px){
+  body:not(.is-fullscreen) .ops-topbar{
+    height:80px!important;
+    min-height:80px!important;
+    max-height:80px!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(108px,132px)!important;
+    grid-template-areas:
+      "brand shift"
+      "actions actions"!important;
+    grid-template-rows:40px 28px!important;
+    gap:2px 5px!important;
+    padding:4px 7px!important;
+    overflow:hidden!important;
+  }
+
+  body:not(.is-fullscreen) .ops-header-live{
+    position:absolute!important;
+    right:calc(min(132px,34vw) + 9px)!important;
+    top:6px!important;
+    width:66px!important;
+    min-width:66px!important;
+    max-width:66px!important;
+    height:30px!important;
+    padding:0 5px!important;
+    gap:4px!important;
+  }
+
+  body:not(.is-fullscreen) .ops-header-live .update-state-dot{
+    width:8px!important;
+    height:8px!important;
+    min-width:8px!important;
+    flex-basis:8px!important;
+  }
+
+  body:not(.is-fullscreen) .ops-header-live time{
+    font-size:8px!important;
+  }
+
+  body:not(.is-fullscreen) .ops-header-actions{
+    grid-area:actions!important;
+    width:100%!important;
+    height:28px!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    scrollbar-width:none!important;
+  }
+
+  body:not(.is-fullscreen) .ops-header-actions::-webkit-scrollbar{
+    display:none!important;
+  }
+}
