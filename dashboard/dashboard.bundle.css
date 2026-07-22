@@ -1874,3 +1874,38 @@ body.is-fullscreen #comparisonWorkspace:not([hidden]){
     overflow:visible!important;
   }
 }
+
+
+/* =========================================================
+   ROUND 4 FINAL REV3 — FULLSCREEN HARD LAYOUT
+   External copy; critical copy also lives in index.html.
+   ========================================================= */
+body[data-fullscreen-layout="EXECUTIVE"]
+.ops-left-stack,
+body[data-fullscreen-layout="EXECUTIVE"]
+.ops-right-stack {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+body[data-fullscreen-health="RECOVERING"]
+.rolling-section,
+body[data-fullscreen-health="RECOVERING"]
+.flow-section,
+body[data-fullscreen-health="RECOVERING"]
+.shift-section {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+
+/* =========================================================
+   ROUND 4 FINAL REV4 — TOPBAR RESPONSIVE NO OVERLAP
+   Fix header collision between live refresh status and shift card
+   across desktop, tablet and mobile sizes.
+   ========================================================= */
+body:not(.is-fullscreen) .ops-topbar{height:auto;min-height:76px;grid-template-columns:minmax(320px,1.08fr) minmax(0,.88fr) minmax(188px,.54fr) auto;gap:10px;align-items:center}body:not(.is-fullscreen) .ops-topbar>*{min-width:0}body:not(.is-fullscreen) .ops-brand{min-width:0}body:not(.is-fullscreen) .ops-brand-copy{min-width:0}body:not(.is-fullscreen) .ops-header-live{display:flex;align-items:center;justify-self:stretch;min-width:0;width:100%;max-width:100%;padding:0 10px;gap:8px;overflow:hidden}body:not(.is-fullscreen) .ops-header-live i{flex:0 0 10px}body:not(.is-fullscreen) #connectionText{flex:1 1 auto;min-width:0;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}body:not(.is-fullscreen) .ops-header-shift{justify-self:stretch;min-width:0;width:100%;max-width:100%;padding:5px 10px;overflow:hidden}body:not(.is-fullscreen) .ops-header-shift>span,body:not(.is-fullscreen) .ops-header-shift strong,body:not(.is-fullscreen) .ops-header-shift small{display:block;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}body:not(.is-fullscreen) .ops-header-actions{min-width:0;display:flex;align-items:center;justify-content:flex-end;flex-wrap:nowrap;gap:6px}body:not(.is-fullscreen) .ops-header-actions .topbar-button{min-width:0;padding:0 10px;font-size:10px}body:not(.is-fullscreen) .theme-switcher{min-width:0;max-width:100%;overflow:hidden}body:not(.is-fullscreen) .theme-switcher>span{padding:0 4px}body:not(.is-fullscreen) .theme-switcher button{padding:0 6px}body:not(.is-fullscreen) .menu-button{flex:0 0 48px}@media (max-width:1760px){body:not(.is-fullscreen) .ops-topbar{grid-template-columns:minmax(280px,1fr) minmax(0,.9fr) minmax(176px,.56fr) auto;gap:8px}body:not(.is-fullscreen) .ops-brand-copy h1{font-size:clamp(18px,1.45vw,28px)}body:not(.is-fullscreen) .ops-brand-copy p{font-size:10px}body:not(.is-fullscreen) .ops-header-live{font-size:10px}body:not(.is-fullscreen) .ops-header-shift strong{font-size:14px}body:not(.is-fullscreen) .ops-header-actions .topbar-button{padding:0 9px;font-size:10px}body:not(.is-fullscreen) .theme-switcher button{padding:0 5px;font-size:8px}}@media (max-width:1540px){body:not(.is-fullscreen) .ops-topbar{grid-template-columns:minmax(280px,1fr) minmax(0,.9fr) minmax(170px,.58fr);grid-template-areas:"brand live shift" "brand actions actions";row-gap:8px;align-items:center;padding-top:10px;padding-bottom:10px}body:not(.is-fullscreen) .ops-brand{grid-area:brand}body:not(.is-fullscreen) .ops-header-live{grid-area:live}body:not(.is-fullscreen) .ops-header-shift{grid-area:shift}body:not(.is-fullscreen) .ops-header-actions{grid-area:actions;justify-self:end;width:100%}}@media (max-width:1320px){body:not(.is-fullscreen) .ops-topbar{grid-template-columns:minmax(220px,1fr) minmax(220px,1fr);grid-template-areas:"brand brand" "live shift" "actions actions";min-height:124px}body:not(.is-fullscreen) .ops-header-actions{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:stretch;justify-content:stretch}body:not(.is-fullscreen) .ops-header-actions .topbar-button,body:not(.is-fullscreen) .theme-switcher{width:100%}body:not(.is-fullscreen) .theme-switcher{justify-content:center}}@media (max-width:980px){body:not(.is-fullscreen) .ops-topbar{grid-template-columns:1fr;grid-template-areas:"brand" "live" "shift" "actions";min-height:auto}body:not(.is-fullscreen) .ops-header-actions{grid-template-columns:repeat(2,minmax(0,1fr))}body:not(.is-fullscreen) .theme-switcher{grid-column:1/-1}body:not(.is-fullscreen) .ops-brand-copy h1{white-space:normal;overflow:visible;text-overflow:clip}body:not(.is-fullscreen) .ops-brand-copy p{white-space:normal}}@media (max-width:640px){body:not(.is-fullscreen) .ops-topbar{padding:8px}body:not(.is-fullscreen) .ops-header-actions{grid-template-columns:1fr 1fr}body:not(.is-fullscreen) .ops-header-actions .topbar-button{height:38px;font-size:10px}body:not(.is-fullscreen) .theme-switcher{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;height:auto;padding:4px}body:not(.is-fullscreen) .theme-switcher>span{grid-column:1/-1;padding:0 2px}body:not(.is-fullscreen) .theme-switcher button{height:30px}}
