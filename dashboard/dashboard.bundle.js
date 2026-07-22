@@ -1,3 +1,4 @@
+/* ROUND4_HOTFIX7_REV5_DASHBOARD_MOBILE_COMPARISON: 2026.07.23 */
 /* ROUND4_HOTFIX7_REV3_DASHBOARD_MOBILE_HEADER: 2026.07.23 */
 /* ROUND4_HOTFIX7_NEAR_REALTIME_DASHBOARD_UI: 2026.07.22 */
 /* ROUND4_HOTFIX4_DASHBOARD_TRUSTED_COMPARISON: 2026.07.22 */
@@ -81,7 +82,9 @@
     compareView: 'OVERVIEW',
     compareA: '',
     compareB: '',
+    compareLayout: 'PAIR',
     compareCharts: {},
+    compareResizeTimer: null,
     refreshWarningAt: 0,
     chartResizeTimer: null,
     lastSuccessfulCheckAtEpochMs: 0,
@@ -1989,30 +1992,438 @@ function formatFreshnessAge(milliseconds) {
     return chartPaneHtml(side, dataset, state.compareView);
   }
 
+function isMobileComparisonViewport() {
+    return Boolean(
+      window.matchMedia &&
+      window.matchMedia('(max-width: 760px)').matches
+    );
+  }
+
+  function compareLayoutOverlayAllowed() {
+    return (
+      state.compareView === 'OVERVIEW' &&
+      state.compareType !== 'RECORD'
+    );
+  }
+
+  function compareDeltaText(value, unit) {
+    const amount = number(value);
+
+    if (unit === 'TIME') {
+      if (amount === 0) return 'เท่ากัน';
+      return (
+        (amount > 0 ? 'A มากกว่า ' : 'B มากกว่า ') +
+        durationLabel(Math.abs(amount))
+      );
+    }
+
+    if (amount === 0) return 'เท่ากัน';
+
+    return (
+      (amount > 0 ? 'A มากกว่า ' : 'B มากกว่า ') +
+      Math.abs(amount).toLocaleString('th-TH')
+    );
+  }
+
+  function comparisonOverlayHtml(datasetA, datasetB) {
+    const metricsA = summaryMetrics(datasetA);
+    const metricsB = summaryMetrics(datasetB);
+
+    const kpis = [
+      ['รถเข้า', metricsA.gateIn, metricsB.gateIn, 'COUNT'],
+      ['ปิดงาน', metricsA.completed, metricsB.completed, 'COUNT'],
+      ['คงค้าง', metricsA.active, metricsB.active, 'COUNT'],
+      ['เกินเวลา', metricsA.overdue, metricsB.overdue, 'COUNT']
+    ];
+
+    const severityA = new Map(
+      (metricsA.severity || []).map((item) => [
+        item.code,
+        item
+      ])
+    );
+    const severityB = new Map(
+      (metricsB.severity || []).map((item) => [
+        item.code,
+        item
+      ])
+    );
+
+    const severityOrder = [
+      ['NORMAL', 'ปกติ'],
+      ['WARNING', 'ใกล้เกินเวลา'],
+      ['OVERDUE', 'เกินเวลา'],
+      ['SEVERE', 'เกินเวลารุนแรง'],
+      ['INCOMPLETE', 'ข้อมูลไม่ครบ']
+    ];
+
+    const stagesA = compareStageRows(datasetA.rows);
+    const stagesB = compareStageRows(datasetB.rows);
+    const stageMapA = new Map(
+      stagesA.map((item) => [item.code, item])
+    );
+    const stageMapB = new Map(
+      stagesB.map((item) => [item.code, item])
+    );
+
+    const stageCodes = Array.from(
+      new Set([
+        ...stagesA.map((item) => item.code),
+        ...stagesB.map((item) => item.code)
+      ])
+    );
+
+    const maxStage = Math.max(
+      1,
+      ...stageCodes.map((code) =>
+        Math.max(
+          number(stageMapA.get(code)?.count),
+          number(stageMapB.get(code)?.count)
+        )
+      )
+    );
+
+    const speedRows = [
+      [
+        'เวลาทั่วไป',
+        metricsA.median,
+        metricsB.median,
+        'TIME'
+      ],
+      [
+        'งานกลุ่มช้า',
+        metricsA.p90,
+        metricsB.p90,
+        'TIME'
+      ],
+      [
+        'ผ่านเป้าหมาย',
+        metricsA.compliance,
+        metricsB.compliance,
+        'PERCENT'
+      ]
+    ];
+
+    return (
+      `<div class="compare-overlay-head">` +
+        `<div class="overlay-side overlay-side-a">` +
+          `<b>ฝั่ง A</b>` +
+          `<strong>${escapeHtml(datasetA.title)}</strong>` +
+          `<span>${number(datasetA.rows.length || datasetA.summary?.recordCount).toLocaleString('th-TH')} รายการ</span>` +
+        `</div>` +
+        `<div class="overlay-versus" aria-hidden="true">เทียบ</div>` +
+        `<div class="overlay-side overlay-side-b">` +
+          `<b>ฝั่ง B</b>` +
+          `<strong>${escapeHtml(datasetB.title)}</strong>` +
+          `<span>${number(datasetB.rows.length || datasetB.summary?.recordCount).toLocaleString('th-TH')} รายการ</span>` +
+        `</div>` +
+      `</div>` +
+
+      `<section class="overlay-section">` +
+        `<h3>ตัวเลขสำคัญ</h3>` +
+        `<div class="overlay-kpi-list">` +
+          kpis.map(([label, valueA, valueB]) => (
+            `<div class="overlay-kpi-row">` +
+              `<strong class="overlay-value-a">${number(valueA).toLocaleString('th-TH')}</strong>` +
+              `<span>${escapeHtml(label)}</span>` +
+              `<strong class="overlay-value-b">${number(valueB).toLocaleString('th-TH')}</strong>` +
+              `<small>${escapeHtml(compareDeltaText(number(valueA) - number(valueB), 'COUNT'))}</small>` +
+            `</div>`
+          )).join('') +
+        `</div>` +
+      `</section>` +
+
+      `<section class="overlay-section">` +
+        `<h3>สถานะตามเกณฑ์เวลา Admin</h3>` +
+        `<div class="overlay-severity-list">` +
+          severityOrder.map(([code, label]) => {
+            const valueA = number(severityA.get(code)?.count);
+            const valueB = number(severityB.get(code)?.count);
+            const maximum = Math.max(1, valueA, valueB);
+
+            return (
+              `<div class="overlay-severity-row severity-${code.toLowerCase()}">` +
+                `<span>${escapeHtml(label)}</span>` +
+                `<div class="overlay-dual-bars">` +
+                  `<i class="overlay-bar-a" style="width:${valueA / maximum * 100}%"></i>` +
+                  `<i class="overlay-bar-b" style="width:${valueB / maximum * 100}%"></i>` +
+                `</div>` +
+                `<b>A ${valueA} · B ${valueB}</b>` +
+              `</div>`
+            );
+          }).join('') +
+        `</div>` +
+      `</section>` +
+
+      `<section class="overlay-section">` +
+        `<h3>สถานะและคอขวด</h3>` +
+        `<div class="overlay-stage-list">` +
+          (
+            stageCodes.length
+              ? stageCodes.map((code) => {
+                  const itemA = stageMapA.get(code);
+                  const itemB = stageMapB.get(code);
+                  const label =
+                    itemA?.label ||
+                    itemB?.label ||
+                    code;
+                  const countA = number(itemA?.count);
+                  const countB = number(itemB?.count);
+
+                  return (
+                    `<div class="overlay-stage-row">` +
+                      `<span>${escapeHtml(label)}</span>` +
+                      `<div class="overlay-stage-bars">` +
+                        `<i class="overlay-bar-a" style="width:${countA / maxStage * 100}%"></i>` +
+                        `<i class="overlay-bar-b" style="width:${countB / maxStage * 100}%"></i>` +
+                      `</div>` +
+                      `<b>A ${countA} · B ${countB}</b>` +
+                    `</div>`
+                  );
+                }).join('')
+              : `<div class="empty-row">ไม่มีงานคงค้างทั้งสองฝั่ง</div>`
+          ) +
+        `</div>` +
+      `</section>` +
+
+      `<section class="overlay-section">` +
+        `<h3>ความเร็วโดยรวม</h3>` +
+        `<div class="overlay-speed-list">` +
+          speedRows.map(([label, valueA, valueB, unit]) => {
+            const shownA =
+              unit === 'TIME'
+                ? durationLabel(valueA)
+                : (
+                    valueA === null
+                      ? '-'
+                      : number(valueA).toFixed(1) + '%'
+                  );
+            const shownB =
+              unit === 'TIME'
+                ? durationLabel(valueB)
+                : (
+                    valueB === null
+                      ? '-'
+                      : number(valueB).toFixed(1) + '%'
+                  );
+
+            const delta =
+              valueA === null || valueB === null
+                ? 'ข้อมูลไม่ครบ'
+                : (
+                    unit === 'PERCENT'
+                      ? compareDeltaText(
+                          number(valueA) - number(valueB),
+                          'COUNT'
+                        ) + ' จุด'
+                      : compareDeltaText(
+                          number(valueA) - number(valueB),
+                          unit
+                        )
+                  );
+
+            return (
+              `<div class="overlay-speed-row">` +
+                `<strong class="overlay-value-a">${escapeHtml(shownA)}</strong>` +
+                `<span>${escapeHtml(label)}</span>` +
+                `<strong class="overlay-value-b">${escapeHtml(shownB)}</strong>` +
+                `<small>${escapeHtml(delta)}</small>` +
+              `</div>`
+            );
+          }).join('') +
+        `</div>` +
+      `</section>` +
+
+      `<div class="overlay-legend">` +
+        `<span><i class="legend-a"></i>ฝั่ง A</span>` +
+        `<span><i class="legend-b"></i>ฝั่ง B</span>` +
+      `</div>`
+    );
+  }
+
+  function updateCompareLayoutControls() {
+    const pairButton = byId('comparePairButton');
+    const overlayButton = byId('compareOverlayButton');
+    const allowed = compareLayoutOverlayAllowed();
+
+    if (!allowed && state.compareLayout === 'OVERLAY') {
+      state.compareLayout = 'PAIR';
+    }
+
+    const overlayActive =
+      isMobileComparisonViewport() &&
+      allowed &&
+      state.compareLayout === 'OVERLAY';
+
+    pairButton?.classList.toggle(
+      'is-active',
+      !overlayActive
+    );
+    pairButton?.setAttribute(
+      'aria-pressed',
+      String(!overlayActive)
+    );
+
+    overlayButton?.classList.toggle(
+      'is-active',
+      overlayActive
+    );
+    overlayButton?.setAttribute(
+      'aria-pressed',
+      String(overlayActive)
+    );
+
+    if (overlayButton) {
+      overlayButton.disabled = !allowed;
+      overlayButton.title = allowed
+        ? 'แสดงค่า A และ B ในมุมมองเดียว'
+        : 'โหมดซ้อนกันใช้ได้กับภาพรวมและคอขวด';
+    }
+
+    return overlayActive;
+  }
+
+  function setCompareLayout(layout) {
+    const next =
+      String(layout || '').toUpperCase() === 'OVERLAY'
+        ? 'OVERLAY'
+        : 'PAIR';
+
+    if (
+      next === 'OVERLAY' &&
+      !compareLayoutOverlayAllowed()
+    ) {
+      state.compareLayout = 'PAIR';
+    } else {
+      state.compareLayout = next;
+    }
+
+    renderComparisonWorkspace();
+  }
+
   function renderComparisonWorkspace() {
     if (!state.compareMode) return;
+
     destroyCompareCharts();
-    const datasetA = comparisonDataset(state.compareType, state.compareA);
-    const datasetB = comparisonDataset(state.compareType, state.compareB);
-    byId('comparePaneA').innerHTML = comparePaneHtml('A', datasetA);
-    byId('comparePaneB').innerHTML = comparePaneHtml('B', datasetB);
-    if (state.compareView !== 'OVERVIEW' && state.compareType !== 'RECORD') {
-      renderCompareChart('A', datasetA, state.compareView);
-      renderCompareChart('B', datasetB, state.compareView);
+
+    const datasetA = comparisonDataset(
+      state.compareType,
+      state.compareA
+    );
+    const datasetB = comparisonDataset(
+      state.compareType,
+      state.compareB
+    );
+
+    const grid = byId('comparisonGrid') ||
+      document.querySelector('.comparison-grid');
+    const overlayPane = byId('compareOverlayPane');
+    const deltaPane = byId('compareDelta');
+    const overlayActive =
+      updateCompareLayoutControls();
+
+    byId('comparisonWorkspace')?.classList.toggle(
+      'is-mobile-overlay',
+      overlayActive
+    );
+
+    if (overlayActive) {
+      if (grid) grid.hidden = true;
+      if (deltaPane) deltaPane.hidden = true;
+
+      if (overlayPane) {
+        overlayPane.hidden = false;
+        overlayPane.innerHTML =
+          comparisonOverlayHtml(
+            datasetA,
+            datasetB
+          );
+      }
+
+      byId('comparePaneA').innerHTML = '';
+      byId('comparePaneB').innerHTML = '';
+      scheduleChartResize();
+      return;
     }
+
+    if (grid) grid.hidden = false;
+    if (deltaPane) deltaPane.hidden = false;
+
+    if (overlayPane) {
+      overlayPane.hidden = true;
+      overlayPane.innerHTML = '';
+    }
+
+    byId('comparePaneA').innerHTML =
+      comparePaneHtml('A', datasetA);
+    byId('comparePaneB').innerHTML =
+      comparePaneHtml('B', datasetB);
+
+    if (
+      state.compareView !== 'OVERVIEW' &&
+      state.compareType !== 'RECORD'
+    ) {
+      renderCompareChart(
+        'A',
+        datasetA,
+        state.compareView
+      );
+      renderCompareChart(
+        'B',
+        datasetB,
+        state.compareView
+      );
+    }
+
     const a = summaryMetrics(datasetA);
     const b = summaryMetrics(datasetB);
     const cells = [
-      ['รถเข้า',a.gateIn-b.gateIn,false],['ปิดงาน',a.completed-b.completed,true],
-      ['คงค้าง',a.active-b.active,false],['ใกล้เกิน',a.warning-b.warning,false],
-      ['เกินเวลา',a.overdue-b.overdue,false],['รุนแรง',a.severe-b.severe,false],
-      ['เวลาทั่วไป',a.median-b.median,false],['งานกลุ่มช้า',a.p90-b.p90,false]
+      ['รถเข้า', a.gateIn - b.gateIn, false],
+      ['ปิดงาน', a.completed - b.completed, true],
+      ['คงค้าง', a.active - b.active, false],
+      ['ใกล้เกิน', a.warning - b.warning, false],
+      ['เกินเวลา', a.overdue - b.overdue, false],
+      ['รุนแรง', a.severe - b.severe, false],
+      ['เวลาทั่วไป', a.median - b.median, false],
+      ['งานกลุ่มช้า', a.p90 - b.p90, false]
     ];
-    byId('compareDelta').innerHTML = `<div class="delta-title"><strong>ผลต่าง A เทียบ B</strong><span>ค่าบวกหมายถึงฝั่ง A มากกว่า</span></div>${cells.map(([label,value,higherGood],index) => {
-      const good = value === 0 ? 'delta-neutral' : ((value > 0) === higherGood ? 'delta-good' : 'delta-bad');
-      const shown = index >= 6 ? durationLabel(Math.abs(value)) : `${value > 0 ? '+' : ''}${value.toLocaleString('th-TH')}`;
-      return `<div class="delta-cell ${good}"><span>${label}</span><strong>${value < 0 && index >= 6 ? '-' : ''}${shown}</strong></div>`;
-    }).join('')}`;
+
+    byId('compareDelta').innerHTML =
+      `<div class="delta-title">` +
+        `<strong>ผลต่าง A เทียบ B</strong>` +
+        `<span>ค่าบวกหมายถึงฝั่ง A มากกว่า</span>` +
+      `</div>` +
+      cells.map(
+        ([label, value, higherGood], index) => {
+          const good =
+            value === 0
+              ? 'delta-neutral'
+              : (
+                  (value > 0) === higherGood
+                    ? 'delta-good'
+                    : 'delta-bad'
+                );
+
+          const shown =
+            index >= 6
+              ? durationLabel(Math.abs(value))
+              : (
+                  `${value > 0 ? '+' : ''}` +
+                  value.toLocaleString('th-TH')
+                );
+
+          return (
+            `<div class="delta-cell ${good}">` +
+              `<span>${label}</span>` +
+              `<strong>` +
+                `${value < 0 && index >= 6 ? '-' : ''}` +
+                `${shown}` +
+              `</strong>` +
+            `</div>`
+          );
+        }
+      ).join('');
+
     scheduleChartResize();
   }
 
@@ -2138,6 +2549,14 @@ function formatFreshnessAge(milliseconds) {
     byId('exportButton').addEventListener('click', exportMenu);
     byId('compareModeButton').addEventListener('click', () => setCompareMode(!state.compareMode));
     byId('closeCompareButton').addEventListener('click', () => setCompareMode(false));
+    byId('comparePairButton')?.addEventListener(
+      'click',
+      () => setCompareLayout('PAIR')
+    );
+    byId('compareOverlayButton')?.addEventListener(
+      'click',
+      () => setCompareLayout('OVERLAY')
+    );
     byId('compareType').addEventListener('change', () => {
       state.compareType = byId('compareType').value || 'DAY';
       state.compareA = '';
@@ -2160,6 +2579,18 @@ function formatFreshnessAge(milliseconds) {
     byId('resetButton').addEventListener('click', resetFilters);
     window.addEventListener('resize', scheduleChartResize);
     window.addEventListener('resize', updateFreshnessStatus);
+    window.addEventListener('resize', () => {
+      window.clearTimeout(
+        state.compareResizeTimer
+      );
+
+      state.compareResizeTimer =
+        window.setTimeout(() => {
+          if (state.compareMode) {
+            renderComparisonWorkspace();
+          }
+        }, 180);
+    });
     ['dateFrom','dateTo','shiftFilter','profileFilter','statusFilter'].forEach((id) => byId(id).addEventListener('change', applyFiltersAndRender));
     let searchTimer = null;
     byId('searchInput').addEventListener('input', () => {
