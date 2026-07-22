@@ -1,3 +1,4 @@
+/* ROUND4_HOTFIX5_RECEIVING_INSTANT_UI: 2026.07.22 */
 /* SMARTALERT_AUTOMATIC_HANDOVER_ONLY_BUILD: 2026.07.22 */
 /* PROFILE_AWARE_TIMING_R1_BUILD: 2026.07.21 */
 /* SMARTALERT BASELINE 2 FINAL HOTFIX 5 — PROFILE-AWARE MODULE
@@ -2422,7 +2423,7 @@
             timeoutMs:
               Math.min(
                 Number(CONFIG.API_TIMEOUT_MS || 30000),
-                8000
+                25000
               ),
 
             requestId:
@@ -11864,11 +11865,36 @@
       if (!matches) return record;
       changed = true;
       const next = Object.assign({}, record);
+      const restoredStage = String(
+        payload.previousOperationalStage ||
+        'WAITING_RECEIVING'
+      ).toUpperCase();
+      const restoredMeta = getOperationalStageMeta(restoredStage);
+
       next._receivingHandoffHidden = false;
       next.receivingHandoffHidden = false;
       next._receivingOverlayApplied = false;
-      next.canCompleteReceiving = next.operationalStage === 'WAITING_RECEIVING';
-      return next;
+      next.operationalStage = restoredStage;
+      next.operationalStageLabel = restoredMeta.label;
+      next.operationalStageDescription = restoredMeta.description;
+      next.operationalStageOrder = restoredMeta.order;
+      next.workflowStatusCode = String(
+        payload.previousWorkflowStatusCode ||
+        'DOCUMENT_SUBMITTED'
+      );
+      next.workflowStatusLabel =
+        next.workflowStatusCode === 'DOCUMENT_SUBMITTED'
+          ? 'ยื่นเอกสารแล้ว'
+          : next.workflowStatusLabel;
+      next.receivingCompleteAt = String(
+        payload.previousReceivingCompleteAt || ''
+      );
+      next.workflowReceivingCompletedAt =
+        next.receivingCompleteAt;
+      next.canCompleteReceiving =
+        restoredStage === 'WAITING_RECEIVING';
+      next.receivingEnabled = true;
+      return normalizeOperationalRecord(next);
     });
 
     if (changed) {
@@ -18536,13 +18562,13 @@
  ************************************************************/
 
 (function (window, document) {
-  const BUILD = '2026.07.21-baseline2-final-hotfix3-direct-receiving-v1';
+  const BUILD = '2026.07.22-round4-hotfix5-receiving-instant-ui-v1';
   const STORAGE_PREFIX = 'smartalert:receiving-command:v1:';
   const MAX_ITEM_AGE_MS = 24 * 60 * 60 * 1000;
-  const SEND_RETRY_MIN_MS = 2500;
-  const SEND_RETRY_MAX_MS = 60000;
-  const STATUS_POLL_MS = 12000;
-  const LOOP_MS = 2500;
+  const SEND_RETRY_MIN_MS = 1800;
+  const SEND_RETRY_MAX_MS = 30000;
+  const STATUS_POLL_MS = 4000;
+  const LOOP_MS = 1500;
   const pending = new Map();
   let loopTimer = null;
   let loopRunning = false;
@@ -18654,7 +18680,18 @@
       nextStatusAtEpochMs: 0,
       serverAccepted: false,
       lastCode: '',
-      lastMessage: ''
+      lastMessage: '',
+      previousOperationalStage: String(
+        record.operationalStage || 'WAITING_RECEIVING'
+      ),
+      previousWorkflowStatusCode: String(
+        record.workflowStatusCode ||
+        record.statusCode ||
+        'DOCUMENT_SUBMITTED'
+      ),
+      previousReceivingCompleteAt: String(
+        record.receivingCompleteAt || ''
+      )
     };
     command.clientRequestId = command.requestId;
 
@@ -18662,13 +18699,20 @@
     pending.set(command.requestId, command);
     persistPending();
     setButtonsForRecord(recordId, true);
+
+    /*
+     * ย้ายการ์ดออกจากงานรอรับสินค้าทันที
+     * คำสั่งถูกเก็บใน Local Storage ก่อนแล้ว
+     * ถ้า Backend ปฏิเสธจริง ระบบจะคืนการ์ดด้วยข้อมูลเดิม
+     */
+    dispatchAccepted(command);
     closeDetailModal();
     updateStrip();
 
     showToast(
       navigator.onLine === true ? 'info' : 'warning',
       navigator.onLine === true
-        ? 'กำลังยืนยันรับสินค้าเสร็จ ' + (command.expectedPrimaryValue || command.entryCode || '')
+        ? 'รับคำสั่งแล้ว · ย้ายรายการไปขั้นตอนถัดไป ' + (command.expectedPrimaryValue || command.entryCode || '')
         : 'อุปกรณ์ออฟไลน์ เก็บคำสั่งไว้และจะแจ้งผลเมื่อเชื่อมต่อ'
     );
 
@@ -18713,7 +18757,7 @@
         );
         command.lastCode = code || 'RECEIVING_COMMAND_ACCEPTED';
         command.lastMessage = String(result.message || 'รับคำสั่งแล้ว');
-        command.nextStatusAtEpochMs = Date.now() + 2500;
+        command.nextStatusAtEpochMs = Date.now() + 800;
         command.updatedAtEpochMs = Date.now();
         persistPending();
 
@@ -18740,7 +18784,7 @@
       command.lastCode = code || 'NETWORK_OR_TIMEOUT';
       command.lastMessage = String(error && error.message || 'การเชื่อมต่อไม่เสถียร');
       command.status = command.serverAccepted ? 'SERVER_ACCEPTED' : 'VERIFYING';
-      command.nextStatusAtEpochMs = Date.now() + 1500;
+      command.nextStatusAtEpochMs = Date.now() + 800;
       command.nextSendAtEpochMs = Date.now() + retryDelay(command.sendAttempts);
       command.updatedAtEpochMs = Date.now();
       persistPending();
@@ -18819,6 +18863,15 @@
     pending.delete(command.requestId);
     persistPending();
     updateStrip();
+    showToast(
+      'success',
+      'บันทึกรับสินค้าเสร็จแล้ว ' +
+        (
+          command.expectedPrimaryValue ||
+          command.entryCode ||
+          ''
+        )
+    );
     scheduleBoardRevisionCheck();
   }
 
@@ -18839,7 +18892,7 @@
   function scheduleSendRetry(command) {
     command.status = command.serverAccepted ? 'SERVER_ACCEPTED' : 'LOCAL_ACCEPTED';
     command.nextSendAtEpochMs = Date.now() + retryDelay(command.sendAttempts);
-    command.nextStatusAtEpochMs = Date.now() + 1500;
+    command.nextStatusAtEpochMs = Date.now() + 800;
     command.updatedAtEpochMs = Date.now();
     persistPending();
     updateStrip();
@@ -18970,7 +19023,13 @@
       autoId: command.autoId || command.entryCode,
       receivingCompleteAt: command.receivingCompleteAt,
       receivingCompleteEpochMs: command.clientActionAtEpochMs,
-      hideFromReceivingWorkspace: true
+      hideFromReceivingWorkspace: true,
+      previousOperationalStage:
+        command.previousOperationalStage || 'WAITING_RECEIVING',
+      previousWorkflowStatusCode:
+        command.previousWorkflowStatusCode || 'DOCUMENT_SUBMITTED',
+      previousReceivingCompleteAt:
+        command.previousReceivingCompleteAt || ''
     };
   }
 
@@ -18980,6 +19039,7 @@
       command.serverAccepted = false;
       command.nextStatusAtEpochMs = 0;
       setButtonsForRecord(command.recordId, true);
+      dispatchAccepted(command);
     });
     persistPending();
   }
@@ -19017,8 +19077,8 @@
     strip.innerHTML =
       '<strong>' + (offline ? 'เก็บคำสั่งในเครื่อง' : 'กำลังยืนยันกับระบบส่วนกลาง') + '</strong>' +
       '<span>' + count + ' รายการ' +
-      (waitingServer ? ' · รอส่ง ' + waitingServer : '') +
-      ' · การ์ดยังคงอยู่จนกว่าจะ Commit สำเร็จ</span>';
+      (waitingServer ? ' · รอยืนยัน ' + waitingServer : '') +
+      ' · รายการถูกย้ายออกจากงานรอรับสินค้าแล้ว</span>';
   }
 
   function injectUi() {
