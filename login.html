@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <!-- SmartAlert build: 20260721-baseline2-hotfix5-auth-stability-v1 -->
+  <!-- SmartAlert build: 20260723-login-company-icon-border-v1 -->
   <meta charset="UTF-8">
 
   <meta
@@ -55,21 +55,21 @@
     rel="icon"
     type="image/png"
     sizes="64x64"
-    href="./icons/favicon-64.png?v=20260628"
+    href="./assets/icons/android-chrome-192x192.png?v=20260723"
   >
 
   <link
     rel="icon"
     type="image/png"
     sizes="32x32"
-    href="./icons/favicon-32.png?v=20260628"
+    href="./assets/icons/android-chrome-192x192.png?v=20260723"
   >
 
   <!-- iPhone / iPad Home Screen -->
   <link
     rel="apple-touch-icon"
     sizes="180x180"
-    href="./icons/apple-touch-icon.png?v=20260628"
+    href="./assets/icons/android-chrome-192x192.png?v=20260723"
   >
   <link rel="stylesheet" href="./core.bundle.css?v=20260720-compact-material-bento-r1">
 <script
@@ -139,37 +139,138 @@
         text-align: left;
       }
     }
-  </style>
+  
 
-  <script src="./core-login.bundle.js?v=20260721-source-auth-stability-hotfix5-v1" defer></script>
-  <!-- SmartAlert PWA / Icons -->
-<link rel="manifest" href="/smartalert/manifest.webmanifest">
 
-<meta name="theme-color" content="#004B68">
-<meta name="application-name" content="Smart Alert">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Smart Alert">
-<meta name="msapplication-TileColor" content="#004B68">
-<meta name="msapplication-config" content="/smartalert/browserconfig.xml">
+    /* Login visual identity — company palette */
+    :root {
+      --company-yellow: #ffad0a;
+      --company-coral: #ff5c89;
+      --company-magenta: #cf0089;
+      --company-green: #69b43b;
+      --company-sky: #4b9cdc;
+      --company-blue: #4374c7;
+      --company-navy: #004b68;
+    }
 
-<link rel="icon" href="/smartalert/assets/icons/favicon.ico" sizes="any">
-<link rel="icon" type="image/png" sizes="16x16"
-      href="/smartalert/assets/icons/favicon-16x16.png">
-<link rel="icon" type="image/png" sizes="32x32"
-      href="/smartalert/assets/icons/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="48x48"
-      href="/smartalert/assets/icons/favicon-48x48.png">
+    .login-page {
+      background:
+        radial-gradient(circle at 12% 16%, rgba(255, 173, 10, .10), transparent 25%),
+        radial-gradient(circle at 88% 12%, rgba(255, 92, 137, .10), transparent 25%),
+        radial-gradient(circle at 80% 88%, rgba(67, 116, 199, .11), transparent 27%),
+        linear-gradient(145deg, #f7fbfd 0%, #ffffff 52%, #f3f8fc 100%);
+    }
 
-<link rel="apple-touch-icon" sizes="180x180"
-      href="/smartalert/assets/icons/apple-touch-icon.png">
+    .login-card {
+      position: relative;
+      isolation: isolate;
+      border: 0 !important;
+      padding: 27px 21px 21px;
+      background:
+        linear-gradient(#ffffff, #ffffff) padding-box,
+        linear-gradient(
+          105deg,
+          rgba(255, 173, 10, .72),
+          rgba(255, 92, 137, .68) 22%,
+          rgba(207, 0, 137, .62) 42%,
+          rgba(105, 180, 59, .60) 62%,
+          rgba(75, 156, 220, .65) 80%,
+          rgba(67, 116, 199, .72)
+        ) border-box !important;
+      border: 1.5px solid transparent !important;
+      border-radius: 23px !important;
+      box-shadow:
+        0 18px 48px rgba(0, 75, 104, .10),
+        0 2px 8px rgba(0, 75, 104, .05) !important;
+      overflow: hidden;
+    }
 
-<link rel="mask-icon"
-      href="/smartalert/assets/icons/safari-pinned-tab.svg"
-      color="#004B68">
+    .login-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg,
+          rgba(255,173,10,.16),
+          rgba(255,92,137,.13),
+          rgba(207,0,137,.10),
+          rgba(105,180,59,.10),
+          rgba(75,156,220,.12),
+          rgba(67,116,199,.15)
+        ) top / 100% 4px no-repeat;
+    }
 
-<script src="/smartalert/pwa-register.js" defer></script>
+    .login-app-icon {
+      width: 116px;
+      height: 116px;
+      margin: 0 auto 10px;
+      padding: 4px;
+      border-radius: 27px;
+      background: rgba(255,255,255,.94);
+      box-shadow:
+        0 10px 26px rgba(0,75,104,.13),
+        0 0 0 1px rgba(67,116,199,.08);
+    }
 
+    .login-app-icon img {
+      width: 108px;
+      height: 108px;
+      border-radius: 23px;
+      object-fit: cover;
+    }
+
+    .login-header .eyebrow {
+      color: var(--company-blue);
+      letter-spacing: .12em;
+    }
+
+    .login-header h1 {
+      color: var(--company-navy);
+    }
+
+    .date-time-panel {
+      border: 1px solid rgba(75, 156, 220, .20);
+      background:
+        linear-gradient(90deg, rgba(255,173,10,.045), rgba(255,92,137,.035), rgba(67,116,199,.055));
+    }
+
+    .form-field input:focus {
+      border-color: var(--company-blue) !important;
+      box-shadow: 0 0 0 4px rgba(67,116,199,.11) !important;
+    }
+
+    .primary-button,
+    .login-submit,
+    button[type="submit"] {
+      border: 0;
+      background: linear-gradient(100deg, var(--company-navy), var(--company-blue)) !important;
+      box-shadow: 0 9px 22px rgba(0,75,104,.18);
+    }
+
+    @media (max-width: 480px) {
+      .login-card {
+        padding: 23px 16px 18px;
+        border-radius: 20px !important;
+      }
+
+      .login-app-icon {
+        width: 104px;
+        height: 104px;
+        border-radius: 24px;
+      }
+
+      .login-app-icon img {
+        width: 96px;
+        height: 96px;
+        border-radius: 20px;
+      }
+    }
+
+</style>
+
+  <script src="./core-login.bundle.js?v=20260723-login-company-icon-border-v1" defer></script>
 </head>
 
 <body
@@ -182,16 +283,15 @@
       aria-labelledby="loginTitle"
     >
       <!-- ไอคอนระบบจริง -->
-     <div class="login-app-icon">
-  <img
-    src="./icons/icon-192.png?v=20260628-2"
-    alt="ไอคอนระบบติดตามสถานะรถและตู้สินค้า"
-    width="112"
-    height="112"
-    loading="eager"
-    decoding="async"
-  >
-</div>
+     <div class="login-app-icon" aria-hidden="true">
+        <img
+          src="./assets/icons/android-chrome-192x192.png?v=20260723"
+          alt=""
+          width="112"
+          height="112"
+          decoding="async"
+        >
+      </div>
 
       <header class="login-header">
         <p class="eyebrow">
@@ -238,6 +338,8 @@
             autocomplete="username"
             autocapitalize="none"
             spellcheck="false"
+            autocorrect="off"
+            enterkeyhint="next"
             maxlength="80"
             placeholder="กรอกชื่อผู้ใช้"
             required
@@ -255,6 +357,10 @@
               name="password"
               type="password"
               autocomplete="current-password"
+              autocorrect="off"
+              autocapitalize="none"
+              spellcheck="false"
+              enterkeyhint="go"
               maxlength="128"
               placeholder="กรอกรหัสผ่าน"
               required
