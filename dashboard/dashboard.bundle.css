@@ -2420,3 +2420,262 @@ body:not(.is-fullscreen) .ops-header-live.update-state-connecting
     display:none!important;
   }
 }
+
+
+/* =========================================================
+   ROUND 4 FINAL REV7 — BALANCED TOPBAR (DESKTOP + MOBILE)
+   Goal: use space naturally, no silly shrinking, no theme-name truncation.
+   ========================================================= */
+
+body:not(.is-fullscreen) .ops-topbar,
+body:not(.is-fullscreen) .ops-topbar *{
+  box-sizing:border-box!important;
+}
+
+/* ---------- Desktop / large notebook ---------- */
+@media (min-width:1281px){
+  body:not(.is-fullscreen) .ops-topbar{
+    display:grid!important;
+    grid-template-columns:minmax(320px,1.15fr) 96px 224px minmax(560px,1fr)!important;
+    grid-template-areas:"brand live shift actions"!important;
+    align-items:center!important;
+    gap:10px!important;
+    padding:8px 14px!important;
+    min-height:76px!important;
+    height:auto!important;
+    overflow:hidden!important;
+  }
+  body:not(.is-fullscreen) .ops-brand{grid-area:brand!important;min-width:0!important;overflow:hidden!important}
+  body:not(.is-fullscreen) .ops-brand-copy h1{
+    font-size:clamp(19px,1.75vw,28px)!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  body:not(.is-fullscreen) .ops-brand-copy p{
+    display:block!important;
+    font-size:11px!important;
+    margin-top:3px!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  body:not(.is-fullscreen) .ops-header-live{
+    grid-area:live!important;
+    justify-self:center!important;
+    width:96px!important;
+    min-width:96px!important;
+    max-width:96px!important;
+    height:42px!important;
+    padding:0 8px!important;
+    gap:7px!important;
+    border-radius:12px!important;
+  }
+  body:not(.is-fullscreen) .ops-header-live time{font-size:11px!important}
+  body:not(.is-fullscreen) .ops-header-shift{
+    grid-area:shift!important;
+    min-width:224px!important;
+    width:224px!important;
+    height:52px!important;
+    padding:6px 12px!important;
+    border-radius:12px!important;
+  }
+  body:not(.is-fullscreen) .ops-header-shift > span{font-size:10px!important}
+  body:not(.is-fullscreen) .ops-header-shift strong{font-size:15px!important;white-space:nowrap!important}
+  body:not(.is-fullscreen) .ops-header-shift small{font-size:9px!important;white-space:nowrap!important}
+  body:not(.is-fullscreen) .ops-header-actions{
+    grid-area:actions!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    flex-wrap:nowrap!important;
+    gap:8px!important;
+    min-width:0!important;
+    overflow:visible!important;
+  }
+  body:not(.is-fullscreen) .ops-header-actions .topbar-button{
+    height:42px!important;
+    min-width:96px!important;
+    padding:0 12px!important;
+    border-radius:12px!important;
+    font-size:12px!important;
+    font-weight:800!important;
+    white-space:nowrap!important;
+  }
+  body:not(.is-fullscreen) .theme-switcher{
+    display:flex!important;
+    align-items:center!important;
+    flex:0 0 auto!important;
+    height:42px!important;
+    padding:4px!important;
+    gap:4px!important;
+    border-radius:12px!important;
+    overflow:visible!important;
+  }
+  body:not(.is-fullscreen) .theme-switcher > span{
+    display:inline-flex!important;
+    align-items:center!important;
+    padding:0 7px!important;
+    font-size:10px!important;
+    white-space:nowrap!important;
+  }
+  body:not(.is-fullscreen) .theme-switcher button{
+    min-width:64px!important;
+    height:32px!important;
+    padding:0 10px!important;
+    font-size:11px!important;
+    font-weight:800!important;
+    white-space:nowrap!important;
+  }
+}
+
+/* ---------- Mid notebook / normal laptop ---------- */
+@media (min-width:981px) and (max-width:1280px){
+  body:not(.is-fullscreen) .ops-topbar{
+    display:grid!important;
+    grid-template-columns:minmax(260px,1fr) 84px 186px minmax(420px,1fr)!important;
+    grid-template-areas:"brand live shift actions"!important;
+    align-items:center!important;
+    gap:8px!important;
+    padding:8px 10px!important;
+    min-height:72px!important;
+    height:auto!important;
+  }
+  body:not(.is-fullscreen) .ops-brand{grid-area:brand!important;min-width:0!important;overflow:hidden!important}
+  body:not(.is-fullscreen) .ops-brand-copy p{display:none!important}
+  body:not(.is-fullscreen) .ops-brand-copy h1{font-size:20px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  body:not(.is-fullscreen) .ops-header-live{grid-area:live!important;width:84px!important;min-width:84px!important;max-width:84px!important;height:40px!important;padding:0 7px!important;gap:6px!important}
+  body:not(.is-fullscreen) .ops-header-live time{font-size:10px!important}
+  body:not(.is-fullscreen) .ops-header-shift{grid-area:shift!important;width:186px!important;min-width:186px!important;height:48px!important;padding:5px 8px!important}
+  body:not(.is-fullscreen) .ops-header-shift>span{font-size:9px!important}
+  body:not(.is-fullscreen) .ops-header-shift strong{font-size:13px!important}
+  body:not(.is-fullscreen) .ops-header-shift small{font-size:8px!important}
+  body:not(.is-fullscreen) .ops-header-actions{grid-area:actions!important;display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:6px!important;min-width:0!important;overflow:visible!important}
+  body:not(.is-fullscreen) .ops-header-actions .topbar-button{height:40px!important;min-width:82px!important;padding:0 10px!important;font-size:11px!important;font-weight:800!important}
+  body:not(.is-fullscreen) .theme-switcher{height:40px!important;padding:3px!important;gap:3px!important;display:flex!important;align-items:center!important;overflow:visible!important}
+  body:not(.is-fullscreen) .theme-switcher>span{display:none!important}
+  body:not(.is-fullscreen) .theme-switcher button{min-width:58px!important;height:32px!important;padding:0 8px!important;font-size:10px!important;white-space:nowrap!important}
+  body:not(.is-fullscreen) .theme-switcher button::after{content:none!important}
+}
+
+/* ---------- Tablet ---------- */
+@media (min-width:641px) and (max-width:980px){
+  body:not(.is-fullscreen) .ops-topbar{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 210px!important;
+    grid-template-areas:"brand shift" "live actions"!important;
+    align-items:start!important;
+    gap:8px!important;
+    padding:8px 10px!important;
+    min-height:auto!important;
+    height:auto!important;
+  }
+  body:not(.is-fullscreen) .ops-brand{grid-area:brand!important;min-width:0!important;display:flex!important;align-items:center!important;gap:10px!important}
+  body:not(.is-fullscreen) .ops-brand-copy h1{font-size:19px!important;line-height:1.12!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  body:not(.is-fullscreen) .ops-brand-copy p{display:none!important}
+  body:not(.is-fullscreen) .ops-header-shift{grid-area:shift!important;width:100%!important;min-width:0!important;height:50px!important;padding:6px 10px!important}
+  body:not(.is-fullscreen) .ops-header-shift>span{font-size:9px!important}
+  body:not(.is-fullscreen) .ops-header-shift strong{font-size:14px!important}
+  body:not(.is-fullscreen) .ops-header-shift small{font-size:8px!important}
+  body:not(.is-fullscreen) .ops-header-live{grid-area:live!important;justify-self:start!important;width:92px!important;min-width:92px!important;max-width:92px!important;height:38px!important;padding:0 8px!important}
+  body:not(.is-fullscreen) .ops-header-actions{
+    grid-area:actions!important;
+    display:grid!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:6px!important;
+    align-items:start!important;
+    width:100%!important;
+  }
+  body:not(.is-fullscreen) .ops-header-actions .topbar-button{width:100%!important;min-width:0!important;height:38px!important;padding:0 6px!important;font-size:11px!important;white-space:nowrap!important}
+  body:not(.is-fullscreen) .theme-switcher{grid-column:1/-1!important;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px!important;height:auto!important;padding:0!important;border:none!important;background:transparent!important}
+  body:not(.is-fullscreen) .theme-switcher>span{display:none!important}
+  body:not(.is-fullscreen) .theme-switcher button{width:100%!important;min-width:0!important;height:36px!important;padding:0 8px!important;font-size:11px!important;white-space:nowrap!important;border:1px solid var(--line-strong)!important;border-radius:10px!important;background:rgba(255,255,255,.035)!important}
+  body:not(.is-fullscreen) .theme-switcher button::after{content:none!important}
+}
+
+/* ---------- Mobile ---------- */
+@media (max-width:640px){
+  body:not(.is-fullscreen) .ops-topbar{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 156px!important;
+    grid-template-areas:"brand shift" "live live" "actions actions"!important;
+    align-items:start!important;
+    gap:8px!important;
+    padding:8px!important;
+    min-height:auto!important;
+    height:auto!important;
+  }
+  body:not(.is-fullscreen) .ops-brand{grid-area:brand!important;min-width:0!important;display:flex!important;align-items:flex-start!important;gap:10px!important;overflow:hidden!important}
+  body:not(.is-fullscreen) .menu-button{width:44px!important;height:44px!important;flex:0 0 44px!important;font-size:22px!important}
+  body:not(.is-fullscreen) .ops-brand-copy{min-width:0!important;padding-top:2px!important}
+  body:not(.is-fullscreen) .ops-brand-copy h1{
+    font-size:16px!important;
+    line-height:1.15!important;
+    white-space:normal!important;
+    overflow:visible!important;
+    text-overflow:clip!important;
+    display:-webkit-box!important;
+    -webkit-line-clamp:2!important;
+    -webkit-box-orient:vertical!important;
+  }
+  body:not(.is-fullscreen) .ops-brand-copy p{display:none!important}
+  body:not(.is-fullscreen) .ops-header-shift{grid-area:shift!important;width:100%!important;min-width:0!important;height:52px!important;padding:6px 8px!important;border-radius:12px!important}
+  body:not(.is-fullscreen) .ops-header-shift>span{font-size:8px!important}
+  body:not(.is-fullscreen) .ops-header-shift strong{font-size:12px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  body:not(.is-fullscreen) .ops-header-shift small{font-size:7px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  body:not(.is-fullscreen) .ops-header-live{grid-area:live!important;justify-self:start!important;width:92px!important;min-width:92px!important;max-width:92px!important;height:36px!important;padding:0 8px!important;gap:6px!important;border-radius:11px!important}
+  body:not(.is-fullscreen) .ops-header-live time{font-size:10px!important}
+  body:not(.is-fullscreen) .ops-header-actions{
+    grid-area:actions!important;
+    display:grid!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:6px!important;
+    align-items:start!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+  body:not(.is-fullscreen) .ops-header-actions .topbar-button{
+    width:100%!important;
+    min-width:0!important;
+    height:38px!important;
+    padding:0!important;
+    font-size:0!important;
+    position:relative!important;
+    border-radius:10px!important;
+  }
+  body:not(.is-fullscreen) #analysisButton::before{content:"⌁"!important}
+  body:not(.is-fullscreen) #compareModeButton::before{content:"⇄"!important}
+  body:not(.is-fullscreen) #exportButton::before{content:"⇧"!important}
+  body:not(.is-fullscreen) #fullscreenButton::before{content:"⛶"!important}
+  body:not(.is-fullscreen) .ops-header-actions .topbar-button::before{
+    display:block!important;
+    font-size:18px!important;
+    line-height:38px!important;
+    text-align:center!important;
+    color:#fff!important;
+    font-weight:900!important;
+  }
+  body:not(.is-fullscreen) .theme-switcher{
+    grid-column:1/-1!important;
+    display:grid!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:6px!important;
+    height:auto!important;
+    padding:0!important;
+    border:none!important;
+    background:transparent!important;
+  }
+  body:not(.is-fullscreen) .theme-switcher>span{display:none!important}
+  body:not(.is-fullscreen) .theme-switcher button{
+    width:100%!important;
+    min-width:0!important;
+    height:36px!important;
+    padding:0 4px!important;
+    font-size:11px!important;
+    white-space:nowrap!important;
+    border:1px solid var(--line-strong)!important;
+    border-radius:10px!important;
+    background:rgba(255,255,255,.035)!important;
+  }
+  body:not(.is-fullscreen) .theme-switcher button::after{content:none!important}
+}
