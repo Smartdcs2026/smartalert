@@ -10,10 +10,10 @@
   <title>Dashboard Vendor / Receiving</title>
   <link rel="manifest" href="../manifest.webmanifest">
   <link rel="stylesheet" href="../core.bundle.css?v=20260722-round4-dashboard">
-  <link rel="stylesheet" href="./dashboard.bundle.css?v=20260723-round4-final-rev7-balanced-topbar-v1">
+  <link rel="stylesheet" href="./dashboard.bundle.css?v=20260723-round4-final-rev8-professional-topbar-v1">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-  <script src="./dashboard.bundle.js?v=20260723-round4-final-rev7-balanced-topbar-v1" defer></script>
+  <script src="./dashboard.bundle.js?v=20260723-round4-final-rev8-professional-topbar-v1" defer></script>
 <style id="smartalertFullscreenCriticalRev3">
   /*
    * ROUND 4 FINAL REV3
@@ -261,7 +261,7 @@
   }
 </style>
 </head>
-<body class="executive-dashboard" data-page="dashboard" data-theme="deep" data-theme-preference="deep" data-dashboard-build="R4F-R7-BALANCED-TOPBAR">
+<body class="executive-dashboard" data-page="dashboard" data-theme="deep" data-theme-preference="deep" data-dashboard-build="R4F-R8-TOPBAR-PRO">
   <div id="dashboardLoading" class="loading-screen" aria-live="polite">
     <div class="loading-card">
       <div class="loading-spinner" aria-hidden="true"></div>
@@ -288,10 +288,10 @@
     </div>
 
     <div class="ops-header-actions">
-      <button id="analysisButton" class="topbar-button" type="button" title="วิเคราะห์ย้อนหลัง">⌁ วิเคราะห์</button>
-      <button id="compareModeButton" class="topbar-button compare-button" type="button" title="เปิดโหมดเปรียบเทียบ">⇄ เปรียบเทียบ</button>
-      <button id="exportButton" class="topbar-button" type="button" title="ส่งออกข้อมูล">⇧ ส่งออก</button>
-      <button id="fullscreenButton" class="topbar-button fullscreen-button" type="button" title="เปิดเต็มจอ">⛶ เต็มจอ</button>
+      <button id="analysisButton" class="topbar-button" type="button" title="วิเคราะห์ย้อนหลัง"><span class="topbar-action-icon" aria-hidden="true">⌁</span><span class="topbar-action-label">วิเคราะห์</span></button>
+      <button id="compareModeButton" class="topbar-button compare-button" type="button" title="เปิดโหมดเปรียบเทียบ"><span class="topbar-action-icon" aria-hidden="true">⇄</span><span class="topbar-action-label">เปรียบเทียบ</span></button>
+      <button id="exportButton" class="topbar-button" type="button" title="ส่งออกข้อมูล"><span class="topbar-action-icon" aria-hidden="true">⇧</span><span class="topbar-action-label">ส่งออก</span></button>
+      <button id="fullscreenButton" class="topbar-button fullscreen-button" type="button" title="เปิดเต็มจอ"><span class="topbar-action-icon" aria-hidden="true">⛶</span><span class="topbar-action-label">เต็มจอ</span></button>
       <div class="theme-switcher" role="group" aria-label="เลือกธีม Dashboard">
         <span>ธีม</span>
         <button type="button" data-theme-value="light" title="ธีมสว่าง">สว่าง</button>
